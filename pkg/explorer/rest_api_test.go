@@ -36,41 +36,94 @@ var (
 	feeCreditRecordID = money.NewFeeCreditRecordID(nil, []byte{1})
 )
 
-//func Test_txHistory(t *testing.T) {
-//	walletService := newWalletBackend(t)
-//	port, api := startServer(t, walletService)
-//
-//	makeTxHistoryRequest := func(pubkey sdk.PubKey) *http.Response {
-//		req := httptest.NewRequest("GET", fmt.Sprintf("http://localhost:%d/api/v1/tx-history/0x%x", port, pubkey), nil)
-//		req = mux.SetURLVars(req, map[string]string{"pubkey": sdk.EncodeHex(pubkey)})
-//		w := httptest.NewRecorder()
-//		api.txHistoryFunc(w, req)
-//		return w.Result()
-//	}
-//
-//	pubkey := sdk.PubKey(test.RandomBytes(33))
-//	pubkey2 := sdk.PubKey(test.RandomBytes(33))
-//	//bearerPredicate := script.PredicatePayToPublicKeyHashDefault(pubkey2.Hash())
-//	//attrs := &money.TransferAttributes{NewBearer: bearerPredicate}
-//	//b, err := cbor.Marshal(sdk.Transactions{Transactions: []*types.TransactionOrder{
-//	//	testtransaction.NewTransactionOrder(t, testtransaction.WithPayloadType(money.PayloadTypeTransfer), testtransaction.WithAttributes(attrs))},
-//	//})
-//	//require.NoError(t, err)
-//	//resp := makePostTxRequest(pubkey, b)
-//	//require.Equal(t, http.StatusAccepted, resp.StatusCode)
-//
-//	txHistResp := makeTxHistoryRequest(pubkey)
-//	require.Equal(t, http.StatusOK, txHistResp.StatusCode)
-//
-//	buf, err := io.ReadAll(txHistResp.Body)
-//	require.NoError(t, err)
-//	var txHistory []*sdk.TxHistoryRecord
-//	require.NoError(t, cbor.Unmarshal(buf, &txHistory))
-//	require.Len(t, txHistory, 1)
-//	require.Equal(t, sdk.OUTGOING, txHistory[0].Kind)
-//	require.Equal(t, sdk.UNCONFIRMED, txHistory[0].State)
-//	require.EqualValues(t, pubkey2.Hash(), txHistory[0].CounterParty)
-//}
+func Test_txHistory(t *testing.T) {
+	pubkey1 := sdk.PubKey(test.RandomBytes(33))
+	pubkey2 := sdk.PubKey(test.RandomBytes(33))
+	explorerService := &explorerBackendServiceMock{
+		getTxHistoryRecords: func( dbStartKey []byte, count int) ([]*sdk.TxHistoryRecord, []byte, error) {
+			return []*sdk.TxHistoryRecord{
+				{
+					Kind:         sdk.OUTGOING,
+					State:        sdk.UNCONFIRMED,
+					CounterParty: pubkey1.Hash(),
+				},
+				{
+					Kind:         sdk.OUTGOING,
+					State:        sdk.UNCONFIRMED,
+					CounterParty: pubkey2.Hash(),
+				},
+			}, nil, nil
+		},
+		getTxProof: func(unitID types.UnitID, txHash sdk.TxHash) (*sdk.Proof, error) {
+			return nil, nil
+		},
+		getRoundNumber: func(ctx context.Context) (uint64, error) {
+			return 0, nil
+		},
+	}
+	port, api := startServer(t, explorerService)
+
+	makeTxHistoryRequest := func() *http.Response {
+		req := httptest.NewRequest("GET", fmt.Sprintf("http://localhost:%d/api/v1/tx-history", port), nil)
+		w := httptest.NewRecorder()
+		api.getTxHistory(w, req)
+		return w.Result()
+	}
+	txHistResp := makeTxHistoryRequest()
+	require.Equal(t, http.StatusOK, txHistResp.StatusCode)
+
+	buf, err := io.ReadAll(txHistResp.Body)
+	require.NoError(t, err)
+	var txHistory []*sdk.TxHistoryRecord
+	require.NoError(t, cbor.Unmarshal(buf, &txHistory))
+	require.Len(t, txHistory, 2)
+	require.Equal(t, sdk.OUTGOING, txHistory[0].Kind)
+	require.Equal(t, sdk.UNCONFIRMED, txHistory[0].State)
+	require.EqualValues(t, pubkey1.Hash(), txHistory[0].CounterParty)
+	require.EqualValues(t, pubkey2.Hash(), txHistory[1].CounterParty)
+}
+
+func Test_txHistoryByKey(t *testing.T) {
+	explorerService := &explorerBackendServiceMock{
+		getTxHistoryRecordsByKey: func(hash sdk.PubKeyHash, dbStartKey []byte, count int) ([]*sdk.TxHistoryRecord, []byte, error) {
+			return []*sdk.TxHistoryRecord{
+				{
+					Kind:         sdk.OUTGOING,
+					State:        sdk.UNCONFIRMED,
+					CounterParty: hash,
+				},
+			}, nil, nil
+		},
+		getTxProof: func(unitID types.UnitID, txHash sdk.TxHash) (*sdk.Proof, error) {
+			return nil, nil
+		},
+		getRoundNumber: func(ctx context.Context) (uint64, error) {
+			return 0, nil
+		},
+	}
+	port, api := startServer(t, explorerService)
+
+	makeTxHistoryRequest := func(pubkey sdk.PubKey) *http.Response {
+		req := httptest.NewRequest("GET", fmt.Sprintf("http://localhost:%d/api/v1/tx-history/0x%x", port, pubkey), nil)
+		req = mux.SetURLVars(req, map[string]string{"pubkey": sdk.EncodeHex(pubkey)})
+		w := httptest.NewRecorder()
+		api.getTxHistoryByKey(w, req)
+		return w.Result()
+	}
+
+	pubkey := sdk.PubKey(test.RandomBytes(33))
+	txHistResp := makeTxHistoryRequest(pubkey)
+	require.Equal(t, http.StatusOK, txHistResp.StatusCode)
+
+	buf, err := io.ReadAll(txHistResp.Body)
+	require.NoError(t, err)
+	var txHistory []*sdk.TxHistoryRecord
+	require.NoError(t, cbor.Unmarshal(buf, &txHistory))
+	require.Len(t, txHistory, 1)
+	require.Equal(t, sdk.OUTGOING, txHistory[0].Kind)
+	require.Equal(t, sdk.UNCONFIRMED, txHistory[0].State)
+	require.EqualValues(t, pubkey.Hash(), txHistory[0].CounterParty)
+}
 
 func TestProofRequest_Ok(t *testing.T) {
 	tr := testtransaction.NewTransactionRecord(t)
