@@ -40,6 +40,9 @@ func (p *BlockProcessor) ProcessBlock(_ context.Context, b *types.Block) error {
 	roundNumber := b.GetRoundNumber()
 	wlog.Info("processing block: ", roundNumber)
 	return p.store.WithTransaction(func(dbTx BillStoreTx) error {
+		if len(b.Transactions) > 0 {
+			fmt.Printf("Block number: %d has %d transactions\n", roundNumber, len(b.Transactions))
+		}
 		lastBlockNumber, err := dbTx.GetBlockNumber()
 		if err != nil {
 			return err
@@ -53,7 +56,7 @@ func (p *BlockProcessor) ProcessBlock(_ context.Context, b *types.Block) error {
 				return fmt.Errorf("failed to process transaction: %w", err)
 			}
 
-			err = saveTxExplorerToStorage( dbTx , roundNumber , tx) ;
+			err = saveTxExplorerToStorage(dbTx, roundNumber, tx)
 			if err != nil {
 				return fmt.Errorf("failed to save txExplorer in ProcessBlock: %w", err)
 			}

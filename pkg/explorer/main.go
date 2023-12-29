@@ -28,7 +28,7 @@ type (
 		GetBlockExplorerByBlockNumber(blockNumber uint64) (*BlockExplorer, error)
 		GetBlocksExplorer(dbStartBlock uint64, count int) (res []*BlockExplorer, prevBlockNumber uint64, err error)
 		GetTxExplorerByTxHash(txHash string) (*TxExplorer, error)
-		GetBlockExplorerTxsByBlockNumber(blockNumber uint64) (res []*TxExplorer,err error)
+		GetBlockExplorerTxsByBlockNumber(blockNumber uint64) (res []*TxExplorer, err error)
 		GetRoundNumber(ctx context.Context) (uint64, error)
 		GetTxProof(unitID types.UnitID, txHash sdk.TxHash) (*sdk.Proof, error)
 		GetTxHistoryRecords(dbStartKey []byte, count int) ([]*sdk.TxHistoryRecord, []byte, error)
@@ -77,7 +77,7 @@ type (
 		GetBlockExplorerByBlockNumber(blockNumber uint64) (*BlockExplorer, error)
 		GetBlocksExplorer(dbStartBlock uint64, count int) (res []*BlockExplorer, prevBlockNumber uint64, err error)
 		SetBlockExplorer(b *types.Block) error
-		GetBlockExplorerTxsByBlockNumber(blockNumber uint64) (res []*TxExplorer,err error)
+		GetBlockExplorerTxsByBlockNumber(blockNumber uint64) (res []*TxExplorer, err error)
 		GetBlockNumber() (uint64, error)
 		SetBlockNumber(blockNumber uint64) error
 		GetTxExplorerByTxHash(txHash string) (*TxExplorer, error)
@@ -106,6 +106,7 @@ type (
 		ServerAddr              string
 		DbFile                  string
 		ListBillsPageLimit      int
+		BlockNumber             uint64
 		//SystemDescriptionRecords []*genesis.SystemDescriptionRecord
 	}
 
@@ -155,7 +156,16 @@ func Run(ctx context.Context, config *Config) error {
 		if err != nil {
 			return fmt.Errorf("failed to create block processor: %w", err)
 		}
-		getBlockNumber := func() (uint64, error) { return store.Do().GetBlockNumber() }
+		getBlockNumber := func() (uint64, error) {
+			storedBN, err := store.Do().GetBlockNumber()
+			if err != nil {
+				return 0, fmt.Errorf("failed to read current block number: %w", err)
+			}
+			if config.BlockNumber > storedBN {
+				return config.BlockNumber, nil
+			}
+			return storedBN, nil
+		}
 		// we act as if all errors returned by block sync are recoverable ie we
 		// just retry in a loop until ctx is cancelled
 		for {
@@ -184,10 +194,12 @@ func runBlockSync(ctx context.Context, getBlocks blocksync.BlocksLoaderFunc, get
 	// starts from 1 by adding 1 to it we start with the first block
 	return blocksync.Run(ctx, getBlocks, blockNumber+1, 0, batchSize, processor)
 }
+
 // GetBlockByBlockNumber returns block with given block number.
 func (ex *ExplorerBackend) GetLastBlockNumber() (uint64, error) {
-	return ex.store.Do().GetLastBlockNumber();
+	return ex.store.Do().GetLastBlockNumber()
 }
+
 // GetBlockByBlockNumber returns block with given block number.
 func (ex *ExplorerBackend) GetBlockByBlockNumber(blockNumber uint64) (*types.Block, error) {
 	return ex.store.Do().GetBlockByBlockNumber(blockNumber)
@@ -221,9 +233,10 @@ func (ex *ExplorerBackend) GetBill(unitID []byte) (*Bill, error) {
 func (ex *ExplorerBackend) GetTxProof(unitID types.UnitID, txHash sdk.TxHash) (*sdk.Proof, error) {
 	return ex.store.Do().GetTxProof(unitID, txHash)
 }
-func (ex *ExplorerBackend) GetBlockExplorerTxsByBlockNumber(blockNumber uint64) (res []*TxExplorer,err error) {
+func (ex *ExplorerBackend) GetBlockExplorerTxsByBlockNumber(blockNumber uint64) (res []*TxExplorer, err error) {
 	return ex.store.Do().GetBlockExplorerTxsByBlockNumber(blockNumber)
 }
+
 // GetRoundNumber returns latest round number.
 func (ex *ExplorerBackend) GetRoundNumber(ctx context.Context) (uint64, error) {
 	return ex.sdk.GetRoundNumber(ctx)
