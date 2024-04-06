@@ -10,10 +10,10 @@ import (
 	"github.com/fxamacker/cbor/v2"
 	bolt "go.etcd.io/bbolt"
 
-	"github.com/alphabill-org/alphabill/internal/network/protocol/genesis"
-	"github.com/alphabill-org/alphabill/internal/types"
-	"github.com/alphabill-org/alphabill/internal/util"
-	sdk "github.com/alphabill-org/alphabill/pkg/wallet"
+	sdk "github.com/alphabill-org/alphabill-wallet/wallet"
+	"github.com/alphabill-org/alphabill/network/protocol/genesis"
+	"github.com/alphabill-org/alphabill/types"
+	"github.com/alphabill-org/alphabill/util"
 )
 
 const BoltExplorerStoreFileName = "explorer.db"
@@ -63,7 +63,7 @@ func newBoltBillStore(dbFile string) (*boltBillStore, error) {
 		return nil, fmt.Errorf("failed to open bolt DB: %w", err)
 	}
 	s := &boltBillStore{db: db}
-	err = sdk.CreateBuckets(db.Update,
+	err = CreateBuckets(db.Update,
 		blockBucket, blockExplorerBucket, txExplorerBucket,
 		unitsBucket, predicatesBucket, metaBucket, expiredBillsBucket, feeUnitsBucket,
 		lockedFeeCreditBucket, closedFeeCreditBucket, sdrBucket, txProofsBucket, txHistoryBucket,
@@ -284,7 +284,7 @@ func (s *boltBillStoreTx) GetTxExplorerByTxHash(txHash string) (*TxExplorer, err
 	}
 	return txEx, nil
 }
-func (s *boltBillStoreTx) GetBlockExplorerTxsByBlockNumber(blockNumber uint64) (res []*TxExplorer,err error) {
+func (s *boltBillStoreTx) GetBlockExplorerTxsByBlockNumber(blockNumber uint64) (res []*TxExplorer, err error) {
 	return res, s.withTx(s.tx, func(tx *bolt.Tx) error {
 		var err error
 		res, err = s.getBlockExplorerTxsByBlockNumber(tx, blockNumber)
@@ -373,7 +373,7 @@ func (s *boltBillStoreTx) GetBills(ownerPredicate []byte, includeDCBills bool, s
 	return units, nextKey, nil
 }
 
-func (s *boltBillStoreTx) SetBill(bill *Bill, proof *sdk.Proof) error {
+func (s *boltBillStoreTx) SetBill(bill *Bill, proof *types.TxProof) error {
 	return s.withTx(s.tx, func(tx *bolt.Tx) error {
 		billsBucket := tx.Bucket(unitsBucket)
 		if bill.OwnerPredicate == nil {
@@ -386,7 +386,7 @@ func (s *boltBillStoreTx) SetBill(bill *Bill, proof *sdk.Proof) error {
 			return err
 		}
 		if prevUnit != nil && !bytes.Equal(prevUnit.OwnerPredicate, bill.OwnerPredicate) {
-			prevUnitIDBucket, err := sdk.EnsureSubBucket(tx, predicatesBucket, prevUnit.OwnerPredicate, false)
+			prevUnitIDBucket, err := EnsureSubBucket(tx, predicatesBucket, prevUnit.OwnerPredicate, false)
 			if err != nil {
 				return err
 			}
@@ -396,7 +396,7 @@ func (s *boltBillStoreTx) SetBill(bill *Bill, proof *sdk.Proof) error {
 		}
 
 		// add to new owner index
-		unitIDBucket, err := sdk.EnsureSubBucket(tx, predicatesBucket, bill.OwnerPredicate, false)
+		unitIDBucket, err := EnsureSubBucket(tx, predicatesBucket, bill.OwnerPredicate, false)
 		if err != nil {
 			return err
 		}
@@ -478,8 +478,8 @@ func (s *boltBillStoreTx) SetBlockNumber(blockNumber uint64) error {
 	}, true)
 }
 
-func (s *boltBillStoreTx) GetTxProof(unitID types.UnitID, txHash sdk.TxHash) (*sdk.Proof, error) {
-	var proof *sdk.Proof
+func (s *boltBillStoreTx) GetTxProof(unitID types.UnitID, txHash sdk.TxHash) (*types.TxProof, error) {
+	var proof *types.TxProof
 	err := s.withTx(s.tx, func(tx *bolt.Tx) error {
 		var err error
 		proof, err = s.getUnitBlockProof(tx, unitID, txHash)
@@ -503,7 +503,7 @@ func (s *boltBillStoreTx) GetFeeCreditBill(unitID []byte) (*Bill, error) {
 	return b, nil
 }
 
-func (s *boltBillStoreTx) SetFeeCreditBill(fcb *Bill, proof *sdk.Proof) error {
+func (s *boltBillStoreTx) SetFeeCreditBill(fcb *Bill, proof *types.TxProof) error {
 	return s.withTx(s.tx, func(tx *bolt.Tx) error {
 		fcbBytes, err := json.Marshal(fcb)
 		if err != nil {
@@ -600,7 +600,7 @@ func (s *boltBillStoreTx) SetSystemDescriptionRecords(sdrs []*genesis.SystemDesc
 			if err != nil {
 				return err
 			}
-			err = tx.Bucket(sdrBucket).Put(sdr.SystemIdentifier, sdrBytes)
+			err = tx.Bucket(sdrBucket).Put(sdr.SystemIdentifier.Bytes(), sdrBytes)
 			if err != nil {
 				return err
 			}
@@ -669,7 +669,7 @@ func (s *boltBillStoreTx) addExpiredBill(tx *bolt.Tx, blockNumber uint64, unitID
 	return b.Put(unitID, nil)
 }
 
-func (s *boltBillStoreTx) StoreTxProof(unitID types.UnitID, txHash sdk.TxHash, txProof *sdk.Proof) error {
+func (s *boltBillStoreTx) StoreTxProof(unitID types.UnitID, txHash sdk.TxHash, txProof *types.TxProof) error {
 	if unitID == nil {
 		return errors.New("unit id is nil")
 	}
@@ -684,7 +684,7 @@ func (s *boltBillStoreTx) StoreTxProof(unitID types.UnitID, txHash sdk.TxHash, t
 	}, true)
 }
 
-func (s *boltBillStoreTx) storeTxProof(dbTx *bolt.Tx, unitID types.UnitID, txHash sdk.TxHash, txProof *sdk.Proof) error {
+func (s *boltBillStoreTx) storeTxProof(dbTx *bolt.Tx, unitID types.UnitID, txHash sdk.TxHash, txProof *types.TxProof) error {
 	if txHash == nil || txProof == nil {
 		return nil
 	}
@@ -692,123 +692,123 @@ func (s *boltBillStoreTx) storeTxProof(dbTx *bolt.Tx, unitID types.UnitID, txHas
 	if err != nil {
 		return fmt.Errorf("failed to serialize tx proof: %w", err)
 	}
-	b, err := sdk.EnsureSubBucket(dbTx, txProofsBucket, unitID, false)
+	b, err := EnsureSubBucket(dbTx, txProofsBucket, unitID, false)
 	if err != nil {
 		return err
 	}
 	return b.Put(txHash, txProofBytes)
 }
 
-func (s *boltBillStoreTx) StoreTxHistoryRecord(hash sdk.PubKeyHash, rec *sdk.TxHistoryRecord) error {
-	return s.withTx(s.tx, func(tx *bolt.Tx) error {
-		return s.storeTxHistoryRecord(tx, hash, rec)
-	}, true)
-}
+//func (s *boltBillStoreTx) StoreTxHistoryRecord(hash sdk.PubKeyHash, rec *sdk.TxHistoryRecord) error {
+//	return s.withTx(s.tx, func(tx *bolt.Tx) error {
+//		return s.storeTxHistoryRecord(tx, hash, rec)
+//	}, true)
+//}
+//
+//func (s *boltBillStoreTx) storeTxHistoryRecord(tx *bolt.Tx, hash sdk.PubKeyHash, rec *sdk.TxHistoryRecord) error {
+//
+//	if len(hash) == 0 {
+//		return errors.New("sender is nil")
+//	}
+//	if rec == nil {
+//		return errors.New("record is nil")
+//	}
+//	b, err := EnsureSubBucket(tx, txHistoryBucket, hash, false)
+//	if err != nil {
+//		return err
+//	}
+//	id, _ := b.NextSequence()
+//	recBytes, err := cbor.Marshal(rec)
+//	if err != nil {
+//		return fmt.Errorf("failed to serialize tx history record: %w", err)
+//	}
+//	return b.Put(util.Uint64ToBytes(id), recBytes)
+//}
+//
+//func (s *boltBillStoreTx) GetTxHistoryRecords(dbStartKey []byte, count int) (res []*sdk.TxHistoryRecord, key []byte, err error) {
+//	return res, key, s.withTx(s.tx, func(tx *bolt.Tx) error {
+//		var err error
+//		res, key, err = s.getTxHistoryRecords(tx, dbStartKey, count)
+//		return err
+//	}, false)
+//}
+//
+//func (s *boltBillStoreTx) getTxHistoryRecords(tx *bolt.Tx, dbStartKey []byte, count int) ([]*sdk.TxHistoryRecord, []byte, error) {
+//	pb := tx.Bucket(txHistoryBucket)
+//	if pb == nil {
+//		return nil, nil, fmt.Errorf("bucket %s not found", txHistoryBucket)
+//	}
+//
+//	var res []*sdk.TxHistoryRecord
+//	var prevKey []byte
+//
+//	err := pb.ForEach(func(k, v []byte) error {
+//		b := pb.Bucket(k)
+//		if b == nil {
+//			return nil
+//		}
+//
+//		c := b.Cursor()
+//
+//		for k, v := c.Seek(dbStartKey); k != nil && count > 0; k, v = c.Prev() {
+//			rec := &sdk.TxHistoryRecord{}
+//			if err := cbor.Unmarshal(v, rec); err != nil {
+//				return fmt.Errorf("failed to deserialize tx history record: %w", err)
+//			}
+//			res = append(res, rec)
+//			if count--; count == 0 {
+//				prevKey, _ = c.Prev()
+//				break
+//			}
+//		}
+//		return nil
+//	})
+//
+//	if err != nil {
+//		return nil, nil, err
+//	}
+//
+//	return res, prevKey, nil
+//}
+//
+//func (s *boltBillStoreTx) GetTxHistoryRecordsByKey(hash sdk.PubKeyHash, dbStartKey []byte, count int) (res []*sdk.TxHistoryRecord, key []byte, err error) {
+//	return res, key, s.withTx(s.tx, func(tx *bolt.Tx) error {
+//		var err error
+//		res, key, err = s.getTxHistoryRecordsByKey(tx, hash, dbStartKey, count)
+//		return err
+//	}, false)
+//}
+//
+//func (s *boltBillStoreTx) getTxHistoryRecordsByKey(tx *bolt.Tx, hash sdk.PubKeyHash, dbStartKey []byte, count int) ([]*sdk.TxHistoryRecord, []byte, error) {
+//	b, err := EnsureSubBucket(tx, txHistoryBucket, hash, true)
+//	if err != nil {
+//		return nil, nil, err
+//	}
+//	if b == nil {
+//		return nil, nil, nil
+//	}
+//	c := b.Cursor()
+//	if len(dbStartKey) == 0 {
+//		dbStartKey, _ = c.Last()
+//	}
+//	var res []*sdk.TxHistoryRecord
+//	var prevKey []byte
+//	for k, v := c.Seek(dbStartKey); k != nil && count > 0; k, v = c.Prev() {
+//		rec := &sdk.TxHistoryRecord{}
+//		if err := cbor.Unmarshal(v, rec); err != nil {
+//			return nil, nil, fmt.Errorf("failed to deserialize tx history record: %w", err)
+//		}
+//		res = append(res, rec)
+//		if count--; count == 0 {
+//			prevKey, _ = c.Prev()
+//			break
+//		}
+//	}
+//	return res, prevKey, nil
+//}
 
-func (s *boltBillStoreTx) storeTxHistoryRecord(tx *bolt.Tx, hash sdk.PubKeyHash, rec *sdk.TxHistoryRecord) error {
-
-	if len(hash) == 0 {
-		return errors.New("sender is nil")
-	}
-	if rec == nil {
-		return errors.New("record is nil")
-	}
-	b, err := sdk.EnsureSubBucket(tx, txHistoryBucket, hash, false)
-	if err != nil {
-		return err
-	}
-	id, _ := b.NextSequence()
-	recBytes, err := cbor.Marshal(rec)
-	if err != nil {
-		return fmt.Errorf("failed to serialize tx history record: %w", err)
-	}
-	return b.Put(util.Uint64ToBytes(id), recBytes)
-}
-
-func (s *boltBillStoreTx) GetTxHistoryRecords(dbStartKey []byte, count int) (res []*sdk.TxHistoryRecord, key []byte, err error) {
-	return res, key, s.withTx(s.tx, func(tx *bolt.Tx) error {
-		var err error
-		res, key, err = s.getTxHistoryRecords(tx, dbStartKey, count)
-		return err
-	}, false)
-}
-
-func (s *boltBillStoreTx) getTxHistoryRecords(tx *bolt.Tx, dbStartKey []byte, count int) ([]*sdk.TxHistoryRecord, []byte, error) {
-	pb := tx.Bucket(txHistoryBucket)
-	if pb == nil {
-		return nil, nil, fmt.Errorf("bucket %s not found", txHistoryBucket)
-	}
-
-	var res []*sdk.TxHistoryRecord
-	var prevKey []byte
-
-	err := pb.ForEach(func(k, v []byte) error {
-		b := pb.Bucket(k)
-		if b == nil {
-			return nil
-		}
-
-		c := b.Cursor()
-
-		for k, v := c.Seek(dbStartKey); k != nil && count > 0; k, v = c.Prev() {
-			rec := &sdk.TxHistoryRecord{}
-			if err := cbor.Unmarshal(v, rec); err != nil {
-				return fmt.Errorf("failed to deserialize tx history record: %w", err)
-			}
-			res = append(res, rec)
-			if count--; count == 0 {
-				prevKey, _ = c.Prev()
-				break
-			}
-		}
-		return nil
-	})
-
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return res, prevKey, nil
-}
-
-func (s *boltBillStoreTx) GetTxHistoryRecordsByKey(hash sdk.PubKeyHash, dbStartKey []byte, count int) (res []*sdk.TxHistoryRecord, key []byte, err error) {
-	return res, key, s.withTx(s.tx, func(tx *bolt.Tx) error {
-		var err error
-		res, key, err = s.getTxHistoryRecordsByKey(tx, hash, dbStartKey, count)
-		return err
-	}, false)
-}
-
-func (s *boltBillStoreTx) getTxHistoryRecordsByKey(tx *bolt.Tx, hash sdk.PubKeyHash, dbStartKey []byte, count int) ([]*sdk.TxHistoryRecord, []byte, error) {
-	b, err := sdk.EnsureSubBucket(tx, txHistoryBucket, hash, true)
-	if err != nil {
-		return nil, nil, err
-	}
-	if b == nil {
-		return nil, nil, nil
-	}
-	c := b.Cursor()
-	if len(dbStartKey) == 0 {
-		dbStartKey, _ = c.Last()
-	}
-	var res []*sdk.TxHistoryRecord
-	var prevKey []byte
-	for k, v := c.Seek(dbStartKey); k != nil && count > 0; k, v = c.Prev() {
-		rec := &sdk.TxHistoryRecord{}
-		if err := cbor.Unmarshal(v, rec); err != nil {
-			return nil, nil, fmt.Errorf("failed to deserialize tx history record: %w", err)
-		}
-		res = append(res, rec)
-		if count--; count == 0 {
-			prevKey, _ = c.Prev()
-			break
-		}
-	}
-	return res, prevKey, nil
-}
-
-func (s *boltBillStoreTx) getUnitBlockProof(dbTx *bolt.Tx, id []byte, txHash sdk.TxHash) (*sdk.Proof, error) {
-	b, err := sdk.EnsureSubBucket(dbTx, txProofsBucket, id, true)
+func (s *boltBillStoreTx) getUnitBlockProof(dbTx *bolt.Tx, id []byte, txHash sdk.TxHash) (*types.TxProof, error) {
+	b, err := EnsureSubBucket(dbTx, txProofsBucket, id, true)
 	if err != nil {
 		return nil, err
 	}
@@ -819,7 +819,7 @@ func (s *boltBillStoreTx) getUnitBlockProof(dbTx *bolt.Tx, id []byte, txHash sdk
 	if proofData == nil {
 		return nil, nil
 	}
-	proof := &sdk.Proof{}
+	proof := &types.TxProof{}
 	if err := cbor.Unmarshal(proofData, proof); err != nil {
 		return nil, fmt.Errorf("failed to deserialize proof data: %w", err)
 	}

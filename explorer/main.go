@@ -8,15 +8,13 @@ import (
 	"time"
 
 	"github.com/ainvaltin/httpsrv"
-	"github.com/alphabill-org/alphabill/internal/debug"
-	"github.com/alphabill-org/alphabill/internal/network/protocol/genesis"
-	"github.com/alphabill-org/alphabill/internal/script"
-	"github.com/alphabill-org/alphabill/internal/types"
-	"github.com/alphabill-org/alphabill/pkg/client"
-	sdk "github.com/alphabill-org/alphabill/pkg/wallet"
-	"github.com/alphabill-org/alphabill/pkg/wallet/account"
-	"github.com/alphabill-org/alphabill/pkg/wallet/blocksync"
-	wlog "github.com/alphabill-org/alphabill/pkg/wallet/log"
+	"github.com/alphabill-org/alphabill-explorer-backend/blocksync"
+	"github.com/alphabill-org/alphabill-wallet/cli/alphabill/cmd/wallet/args"
+	"github.com/alphabill-org/alphabill-wallet/client/rpc"
+	sdk "github.com/alphabill-org/alphabill-wallet/wallet"
+	"github.com/alphabill-org/alphabill-wallet/wallet/account"
+	"github.com/alphabill-org/alphabill/network/protocol/genesis"
+	"github.com/alphabill-org/alphabill/types"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -30,14 +28,14 @@ type (
 		GetTxExplorerByTxHash(txHash string) (*TxExplorer, error)
 		GetBlockExplorerTxsByBlockNumber(blockNumber uint64) (res []*TxExplorer, err error)
 		GetRoundNumber(ctx context.Context) (uint64, error)
-		GetTxProof(unitID types.UnitID, txHash sdk.TxHash) (*sdk.Proof, error)
-		GetTxHistoryRecords(dbStartKey []byte, count int) ([]*sdk.TxHistoryRecord, []byte, error)
-		GetTxHistoryRecordsByKey(hash sdk.PubKeyHash, dbStartKey []byte, count int) ([]*sdk.TxHistoryRecord, []byte, error)
+		GetTxProof(unitID types.UnitID, txHash sdk.TxHash) (*types.TxProof, error)
+		//GetTxHistoryRecords(dbStartKey []byte, count int) ([]*sdk.TxHistoryRecord, []byte, error)
+		//GetTxHistoryRecordsByKey(hash sdk.PubKeyHash, dbStartKey []byte, count int) ([]*sdk.TxHistoryRecord, []byte, error)
 	}
 
 	ExplorerBackend struct {
-		store BillStore
-		sdk   *sdk.Wallet
+		store  BillStore
+		client *rpc.Client
 	}
 
 	Bills struct {
@@ -84,15 +82,15 @@ type (
 		SetTxExplorerToBucket(txExplorer *TxExplorer) error
 		GetBill(unitID []byte) (*Bill, error)
 		GetBills(ownerCondition []byte, includeDCBills bool, offsetKey []byte, limit int) ([]*Bill, []byte, error)
-		SetBill(bill *Bill, proof *sdk.Proof) error
+		SetBill(bill *Bill, proof *types.TxProof) error
 		RemoveBill(unitID []byte) error
 		GetSystemDescriptionRecords() ([]*genesis.SystemDescriptionRecord, error)
 		SetSystemDescriptionRecords(sdrs []*genesis.SystemDescriptionRecord) error
-		GetTxProof(unitID types.UnitID, txHash sdk.TxHash) (*sdk.Proof, error)
-		StoreTxProof(unitID types.UnitID, txHash sdk.TxHash, txProof *sdk.Proof) error
-		GetTxHistoryRecords(dbStartKey []byte, count int) ([]*sdk.TxHistoryRecord, []byte, error)
-		GetTxHistoryRecordsByKey(hash sdk.PubKeyHash, dbStartKey []byte, count int) ([]*sdk.TxHistoryRecord, []byte, error)
-		StoreTxHistoryRecord(hash sdk.PubKeyHash, rec *sdk.TxHistoryRecord) error
+		GetTxProof(unitID types.UnitID, txHash sdk.TxHash) (*types.TxProof, error)
+		StoreTxProof(unitID types.UnitID, txHash sdk.TxHash, txProof *types.TxProof) error
+		//GetTxHistoryRecords(dbStartKey []byte, count int) ([]*sdk.TxHistoryRecord, []byte, error)
+		//GetTxHistoryRecordsByKey(hash sdk.PubKeyHash, dbStartKey []byte, count int) ([]*sdk.TxHistoryRecord, []byte, error)
+		//StoreTxHistoryRecord(hash sdk.PubKeyHash, rec *sdk.TxHistoryRecord) error
 	}
 
 	p2pkhOwnerPredicates struct {
@@ -101,13 +99,12 @@ type (
 	}
 
 	Config struct {
-		ABMoneySystemIdentifier []byte
+		ABMoneySystemIdentifier types.SystemID
 		AlphabillUrl            string
 		ServerAddr              string
 		DbFile                  string
 		ListBillsPageLimit      int
 		BlockNumber             uint64
-		//SystemDescriptionRecords []*genesis.SystemDescriptionRecord
 	}
 
 	InitialBill struct {
@@ -118,26 +115,29 @@ type (
 )
 
 func Run(ctx context.Context, config *Config) error {
-	wlog.Info("starting money backend: BuildInfo=", debug.ReadBuildInfo())
+	println("starting money backend")
 	store, err := newBoltBillStore(config.DbFile)
 	if err != nil {
 		return fmt.Errorf("failed to get storage: %w", err)
 	}
 
-	abc := client.New(client.AlphabillClientConfig{Uri: config.AlphabillUrl})
+	moneyClient, err := rpc.DialContext(ctx, args.BuildRpcUrl(config.AlphabillUrl))
+	if err != nil {
+		return fmt.Errorf("failed to dial rpc client: %w", err)
+	}
 
 	g, ctx := errgroup.WithContext(ctx)
 
 	g.Go(func() error {
-		wlog.Info("money backend REST server starting on ", config.ServerAddr)
-		explorerBackend := &ExplorerBackend{store: store, sdk: sdk.New().SetABClient(abc).Build()}
-		defer explorerBackend.sdk.Shutdown()
+		println("money backend REST server starting on ", config.ServerAddr)
+		explorerBackend := &ExplorerBackend{store: store, client: moneyClient}
+		defer moneyClient.Close()
 
 		handler := &moneyRestAPI{
 			Service:            explorerBackend,
 			ListBillsPageLimit: config.ListBillsPageLimit,
 			SystemID:           config.ABMoneySystemIdentifier,
-			rw:                 &sdk.ResponseWriter{LogErr: wlog.Error},
+			rw:                 &ResponseWriter{},
 		}
 		server := http.Server{
 			Addr:              config.ServerAddr,
@@ -169,10 +169,10 @@ func Run(ctx context.Context, config *Config) error {
 		// we act as if all errors returned by block sync are recoverable ie we
 		// just retry in a loop until ctx is cancelled
 		for {
-			wlog.Debug("starting block sync")
-			err := runBlockSync(ctx, abc.GetBlocks, getBlockNumber, 100, blockProcessor.ProcessBlock)
+			println("starting block sync")
+			err := runBlockSync(ctx, moneyClient.GetBlock, getBlockNumber, 100, blockProcessor.ProcessBlock)
 			if err != nil {
-				wlog.Error("synchronizing blocks returned error: ", err)
+				println("synchronizing blocks returned error: ", err)
 			}
 			select {
 			case <-ctx.Done():
@@ -185,7 +185,7 @@ func Run(ctx context.Context, config *Config) error {
 	return g.Wait()
 }
 
-func runBlockSync(ctx context.Context, getBlocks blocksync.BlocksLoaderFunc, getBlockNumber func() (uint64, error), batchSize int, processor blocksync.BlockProcessorFunc) error {
+func runBlockSync(ctx context.Context, getBlocks blocksync.BlockLoaderFunc, getBlockNumber func() (uint64, error), batchSize int, processor blocksync.BlockProcessorFunc) error {
 	blockNumber, err := getBlockNumber()
 	if err != nil {
 		return fmt.Errorf("failed to read current block number for a sync starting point: %w", err)
@@ -230,7 +230,7 @@ func (ex *ExplorerBackend) GetBill(unitID []byte) (*Bill, error) {
 	return ex.store.Do().GetBill(unitID)
 }
 
-func (ex *ExplorerBackend) GetTxProof(unitID types.UnitID, txHash sdk.TxHash) (*sdk.Proof, error) {
+func (ex *ExplorerBackend) GetTxProof(unitID types.UnitID, txHash sdk.TxHash) (*types.TxProof, error) {
 	return ex.store.Do().GetTxProof(unitID, txHash)
 }
 func (ex *ExplorerBackend) GetBlockExplorerTxsByBlockNumber(blockNumber uint64) (res []*TxExplorer, err error) {
@@ -239,58 +239,16 @@ func (ex *ExplorerBackend) GetBlockExplorerTxsByBlockNumber(blockNumber uint64) 
 
 // GetRoundNumber returns latest round number.
 func (ex *ExplorerBackend) GetRoundNumber(ctx context.Context) (uint64, error) {
-	return ex.sdk.GetRoundNumber(ctx)
+	return ex.client.GetRoundNumber(ctx)
 }
 
-func (ex *ExplorerBackend) GetTxHistoryRecords(dbStartKey []byte, count int) ([]*sdk.TxHistoryRecord, []byte, error) {
-	return ex.store.Do().GetTxHistoryRecords(dbStartKey, count)
-}
-
-func (ex *ExplorerBackend) GetTxHistoryRecordsByKey(hash sdk.PubKeyHash, dbStartKey []byte, count int) ([]*sdk.TxHistoryRecord, []byte, error) {
-	return ex.store.Do().GetTxHistoryRecordsByKey(hash, dbStartKey, count)
-}
-
-// extractOwnerFromP2pkh extracts owner from p2pkh predicate.
-func extractOwnerHashFromP2pkh(bearer sdk.Predicate) sdk.PubKeyHash {
-	// p2pkh owner predicate must be 10 + (32 or 64) (SHA256 or SHA512) bytes long
-	if len(bearer) != 42 && len(bearer) != 74 {
-		return nil
-	}
-	// 6th byte is HashAlgo 0x01 or 0x02 for SHA256 and SHA512 respectively
-	hashAlgo := bearer[5]
-	if hashAlgo == script.HashAlgSha256 {
-		return sdk.PubKeyHash(bearer[6:38])
-	} else if hashAlgo == script.HashAlgSha512 {
-		return sdk.PubKeyHash(bearer[6:70])
-	}
-	return nil
-}
-
-func extractOwnerKeyFromProof(signature sdk.Predicate) sdk.PubKey {
-	if len(signature) == 103 && signature[68] == script.OpPushPubKey && signature[69] == script.SigSchemeSecp256k1 {
-		return sdk.PubKey(signature[70:])
-	}
-	return nil
-}
-
-func (b *Bill) ToGenericBill() *sdk.Bill {
-	return &sdk.Bill{
-		Id:                   b.Id,
-		Value:                b.Value,
-		TxHash:               b.TxHash,
-		DCTargetUnitID:       b.DCTargetUnitID,
-		DCTargetUnitBacklink: b.DCTargetUnitBacklink,
-		LastAddFCTxHash:      b.LastAddFCTxHash,
-	}
-}
-
-func (b *Bill) ToGenericBills() *sdk.Bills {
-	return &sdk.Bills{
-		Bills: []*sdk.Bill{
-			b.ToGenericBill(),
-		},
-	}
-}
+//func (ex *ExplorerBackend) GetTxHistoryRecords(dbStartKey []byte, count int) ([]*sdk.TxHistoryRecord, []byte, error) {
+//	return ex.store.Do().GetTxHistoryRecords(dbStartKey, count)
+//}
+//
+//func (ex *ExplorerBackend) GetTxHistoryRecordsByKey(hash sdk.PubKeyHash, dbStartKey []byte, count int) ([]*sdk.TxHistoryRecord, []byte, error) {
+//	return ex.store.Do().GetTxHistoryRecordsByKey(hash, dbStartKey, count)
+//}
 
 func (b *Bill) getTxHash() []byte {
 	if b != nil {

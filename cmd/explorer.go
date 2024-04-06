@@ -15,7 +15,7 @@ func main() {
 	fmt.Println("Starting AB Explorer")
 	args := os.Args
 	if len(args) < 3 {
-		fmt.Println("Usage: explorer <AB Partition url> <AB Explorer url> [<Block number>]")
+		fmt.Println("Usage: explorer <AB Partition RPC url> <AB Explorer url> [<Block number>]")
 		return
 	}
 	workDir := filepath.Dir(args[0]) //"/tmp/"

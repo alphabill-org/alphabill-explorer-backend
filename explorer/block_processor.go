@@ -5,7 +5,9 @@ import (
 	"crypto"
 	"fmt"
 
+	sdk "github.com/alphabill-org/alphabill-wallet/wallet"
 	"github.com/alphabill-org/alphabill/txsystem/fc/transactions"
+	moneytx "github.com/alphabill-org/alphabill/txsystem/money"
 	"github.com/alphabill-org/alphabill/types"
 )
 
@@ -20,7 +22,7 @@ type BlockProcessor struct {
 	//moneySDR *genesis.SystemDescriptionRecord
 }
 
-func NewBlockProcessor(store BillStore, moneySystemID []byte) (*BlockProcessor, error) {
+func NewBlockProcessor(store BillStore, moneySystemID types.SystemID) (*BlockProcessor, error) {
 	//sdrs, err := store.Do().GetSystemDescriptionRecords()
 	//if err != nil {
 	//	return nil, fmt.Errorf("failed to get system description records: %w", err)
@@ -35,7 +37,7 @@ func NewBlockProcessor(store BillStore, moneySystemID []byte) (*BlockProcessor, 
 
 func (p *BlockProcessor) ProcessBlock(_ context.Context, b *types.Block) error {
 	roundNumber := b.GetRoundNumber()
-	wlog.Info("processing block: ", roundNumber)
+	println("processing block: ", roundNumber)
 	return p.store.WithTransaction(func(dbTx BillStoreTx) error {
 		if len(b.Transactions) > 0 {
 			fmt.Printf("Block number: %d has %d transactions\n", roundNumber, len(b.Transactions))
@@ -70,14 +72,14 @@ func (p *BlockProcessor) ProcessBlock(_ context.Context, b *types.Block) error {
 func (p *BlockProcessor) processTx(txr *types.TransactionRecord, b *types.Block, txIdx int, dbTx BillStoreTx) error {
 	txo := txr.TransactionOrder
 	txHash := txo.Hash(crypto.SHA256)
-	proof, err := sdk.NewTxProof(txIdx, b, crypto.SHA256)
+	proof, _, err := types.NewTxProof(b, txIdx, crypto.SHA256)
 	if err != nil {
 		return err
 	}
 
 	switch txo.PayloadType() {
 	case moneytx.PayloadTypeTransfer:
-		wlog.Info(fmt.Sprintf("received transfer order (UnitID=%x)", txo.UnitID()))
+		println(fmt.Sprintf("received transfer order (UnitID=%x)", txo.UnitID()))
 		//if err = p.updateFCB(dbTx, txr); err != nil {
 		//	return err
 		//}
@@ -97,7 +99,7 @@ func (p *BlockProcessor) processTx(txr *types.TransactionRecord, b *types.Block,
 			return err
 		}
 	case moneytx.PayloadTypeTransDC:
-		wlog.Info(fmt.Sprintf("received TransferDC order (UnitID=%x)", txo.UnitID()))
+		println(fmt.Sprintf("received TransferDC order (UnitID=%x)", txo.UnitID()))
 		//err := p.updateFCB(dbTx, txr)
 		//if err != nil {
 		//	return err
@@ -119,7 +121,7 @@ func (p *BlockProcessor) processTx(txr *types.TransactionRecord, b *types.Block,
 		dcBill.Value = attr.Value
 		dcBill.TxHash = txHash
 		dcBill.DCTargetUnitID = attr.TargetUnitID
-		dcBill.DCTargetUnitBacklink = attr.TargetUnitBacklink
+		//dcBill.DCTargetUnitBacklink = attr.TargetUnitBacklink
 		err = dbTx.SetBill(dcBill, proof)
 		if err != nil {
 			return err
@@ -145,7 +147,7 @@ func (p *BlockProcessor) processTx(txr *types.TransactionRecord, b *types.Block,
 			return err
 		}
 		if oldBill != nil {
-			wlog.Info(fmt.Sprintf("received split order (existing UnitID=%x)", txo.UnitID()))
+			println(fmt.Sprintf("received split order (existing UnitID=%x)", txo.UnitID()))
 			err = dbTx.SetBill(&Bill{
 				Id:             txo.UnitID(),
 				Value:          attr.RemainingValue,
@@ -157,22 +159,22 @@ func (p *BlockProcessor) processTx(txr *types.TransactionRecord, b *types.Block,
 			}
 		} else {
 			// we should always have the "previous bill" other than splitting the initial bill or some error condition
-			wlog.Warning(fmt.Sprintf("received split order where existing unit was not found, ignoring tx (unitID=%x)", txo.UnitID()))
+			println(fmt.Sprintf("received split order where existing unit was not found, ignoring tx (unitID=%x)", txo.UnitID()))
 		}
 
 		// new bill
-		newID := moneytx.NewBillID(txo.UnitID(), moneytx.HashForIDCalculation(txo.UnitID(), txo.Payload.Attributes, txo.Timeout(), crypto.SHA256))
-		wlog.Info(fmt.Sprintf("received split order (new UnitID=%x)", newID))
+		newID := moneytx.NewBillID(txo.UnitID(), moneytx.HashForIDCalculation(txo.UnitID(), txo.Payload.Attributes, txo.Timeout(), 0, crypto.SHA256)) // TODO fix
+		println(fmt.Sprintf("received split order (new UnitID=%x)", newID))
 		err = dbTx.SetBill(&Bill{
-			Id:             newID,
-			Value:          attr.Amount,
-			TxHash:         txHash,
-			OwnerPredicate: attr.TargetBearer,
+			Id:     newID,
+			Value:  0, // attr.Amount, TODO fix
+			TxHash: txHash,
+			//OwnerPredicate: attr.TargetBearer, // TODO
 		}, proof)
 		if err != nil {
 			return err
 		}
-		if err = saveTx(dbTx, attr.TargetBearer, txo, txHash); err != nil {
+		if err = saveTx(dbTx, nil, txo, txHash); err != nil { // TODO fix
 			return err
 		}
 	case moneytx.PayloadTypeSwapDC:
@@ -192,7 +194,7 @@ func (p *BlockProcessor) processTx(txr *types.TransactionRecord, b *types.Block,
 		if bill == nil {
 			return fmt.Errorf("existing bill not found for swap tx (UnitID=%x)", txo.UnitID())
 		}
-		wlog.Info(fmt.Sprintf("received swap order (UnitID=%x)", txo.UnitID()))
+		println(fmt.Sprintf("received swap order (UnitID=%x)", txo.UnitID()))
 		bill.Value += attr.TargetValue
 		bill.TxHash = txHash
 		bill.OwnerPredicate = attr.OwnerCondition
@@ -207,7 +209,7 @@ func (p *BlockProcessor) processTx(txr *types.TransactionRecord, b *types.Block,
 			}
 		}
 	//case transactions.PayloadTypeTransferFeeCredit:
-	//	wlog.Info(fmt.Sprintf("received transferFC order (UnitID=%x), hash: '%X'", txo.UnitID(), txHash))
+	//	println(fmt.Sprintf("received transferFC order (UnitID=%x), hash: '%X'", txo.UnitID(), txHash))
 	//	bill, err := dbTx.GetBill(txo.UnitID())
 	//	if err != nil {
 	//		return fmt.Errorf("failed to get bill: %w", err)
@@ -248,7 +250,7 @@ func (p *BlockProcessor) processTx(txr *types.TransactionRecord, b *types.Block,
 	//	}
 	//	return nil
 	//case transactions.PayloadTypeAddFeeCredit:
-	//	wlog.Info(fmt.Sprintf("received addFC order (UnitID=%x), hash: '%X'", txo.UnitID(), txHash))
+	//	println(fmt.Sprintf("received addFC order (UnitID=%x), hash: '%X'", txo.UnitID(), txHash))
 	//	fcb, err := dbTx.GetFeeCreditBill(txo.UnitID())
 	//	if err != nil {
 	//		return err
@@ -270,7 +272,7 @@ func (p *BlockProcessor) processTx(txr *types.TransactionRecord, b *types.Block,
 	//		LastAddFCTxHash: txHash,
 	//	}, proof)
 	//case transactions.PayloadTypeCloseFeeCredit:
-	//	wlog.Info(fmt.Sprintf("received closeFC order (UnitID=%x)", txo.UnitID()))
+	//	println(fmt.Sprintf("received closeFC order (UnitID=%x)", txo.UnitID()))
 	//	fcb, err := dbTx.GetFeeCreditBill(txo.UnitID())
 	//	if err != nil {
 	//		return err
@@ -291,7 +293,7 @@ func (p *BlockProcessor) processTx(txr *types.TransactionRecord, b *types.Block,
 	//		LastAddFCTxHash: fcb.getLastAddFCTxHash(),
 	//	}, proof)
 	case transactions.PayloadTypeReclaimFeeCredit:
-		wlog.Info(fmt.Sprintf("received reclaimFC order (UnitID=%x)", txo.UnitID()))
+		println(fmt.Sprintf("received reclaimFC order (UnitID=%x)", txo.UnitID()))
 		bill, err := dbTx.GetBill(txo.UnitID())
 		if err != nil {
 			return err
@@ -328,26 +330,26 @@ func (p *BlockProcessor) processTx(txr *types.TransactionRecord, b *types.Block,
 		//// 3. add reclaimFC tx fee to money partition fee bill
 		//return p.addTxFeeToMoneyFeeBill(dbTx, txr, proof)
 	default:
-		wlog.Warning(fmt.Sprintf("received unknown transaction type, skipping processing: %s", txo.PayloadType()))
+		println(fmt.Sprintf("received unknown transaction type, skipping processing: %s", txo.PayloadType()))
 		return nil
 	}
 	return nil
 }
 
 func saveTx(dbTx BillStoreTx, bearer sdk.Predicate, txo *types.TransactionOrder, txHash sdk.TxHash) error {
-	bearerKeyHash := extractOwnerHashFromP2pkh(bearer)
-	if bearerKeyHash != nil {
-		if err := dbTx.StoreTxHistoryRecord(bearerKeyHash, &sdk.TxHistoryRecord{
-			UnitID:       txo.UnitID(),
-			TxHash:       txHash,
-			Timeout:      txo.Timeout(),
-			State:        sdk.CONFIRMED,
-			Kind:         sdk.INCOMING,
-			CounterParty: extractOwnerKeyFromProof(txo.OwnerProof),
-		}); err != nil {
-			return err
-		}
-	}
+	//bearerKeyHash := extractOwnerHashFromP2pkh(bearer)
+	//if bearerKeyHash != nil {
+	//	if err := dbTx.StoreTxHistoryRecord(bearerKeyHash, &sdk.TxHistoryRecord{
+	//		UnitID:       txo.UnitID(),
+	//		TxHash:       txHash,
+	//		Timeout:      txo.Timeout(),
+	//		State:        sdk.CONFIRMED,
+	//		Kind:         sdk.INCOMING,
+	//		CounterParty: extractOwnerKeyFromProof(txo.OwnerProof),
+	//	}); err != nil {
+	//		return err
+	//	}
+	//}
 	return nil
 }
 

@@ -1,7 +1,7 @@
 package explorer
 
 import (
-	"github.com/alphabill-org/alphabill/internal/types"
+	"github.com/alphabill-org/alphabill/types"
 )
 
 type (
@@ -26,7 +26,7 @@ type (
 		Hash             string
 		BlockNumber      uint64
 		Timeout          uint64
-		PayloadType      string	
+		PayloadType      string
 		Status           *types.TxStatus
 		TargetUnits      []types.UnitID
 		TransactionOrder *types.TransactionOrder
@@ -56,3 +56,9 @@ type (
 	// 	FeeCreditRecordID []byte
 	// }
 )
+
+type PubKey []byte
+
+type PubKeyHash []byte
+
+type TxHash []byte
