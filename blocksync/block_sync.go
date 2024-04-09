@@ -4,7 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/rand"
+	"time"
 
+	"github.com/alphabill-org/alphabill-wallet/wallet/money/api"
 	"github.com/alphabill-org/alphabill/types"
 	"golang.org/x/sync/errgroup"
 )
@@ -66,19 +69,20 @@ func fetchBlocks(ctx context.Context, getBlock BlockLoaderFunc, blockNumber uint
 			return err
 		}
 		block, err := getBlock(ctx, blockNumber)
-		if err != nil {
+		if err != nil && !errors.Is(err, api.ErrNotFound) {
 			return fmt.Errorf("failed to fetch blocks [%d...]: %w", blockNumber, err)
 		}
-		out <- block
-		blockNumber = block.GetRoundNumber() + 1
-		//if rsp.MaxRoundNumber < blockNumber { // TODO fix
-		//	// we have reached to the last block the source currently has - wait a bit before asking for more
-		//	select {
-		//	case <-ctx.Done():
-		//		return ctx.Err()
-		//	case <-time.After(time.Duration(rand.Int31n(500)+500) * time.Millisecond):
-		//	}
-		//}
+		if block != nil {
+			out <- block
+			blockNumber = block.GetRoundNumber() + 1
+			continue
+		}
+		// we have reached to the last block the source currently has - wait a bit before asking for more
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(time.Duration(rand.Int31n(500)+500) * time.Millisecond):
+		}
 	}
 }
 

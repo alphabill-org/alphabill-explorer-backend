@@ -158,6 +158,7 @@ func Run(ctx context.Context, config *Config) error {
 		}
 		getBlockNumber := func() (uint64, error) {
 			storedBN, err := store.Do().GetBlockNumber()
+			println("stored block number: ", storedBN)
 			if err != nil {
 				return 0, fmt.Errorf("failed to read current block number: %w", err)
 			}
@@ -172,7 +173,7 @@ func Run(ctx context.Context, config *Config) error {
 			println("starting block sync")
 			err := runBlockSync(ctx, moneyClient.GetBlock, getBlockNumber, 100, blockProcessor.ProcessBlock)
 			if err != nil {
-				println("synchronizing blocks returned error: ", err)
+				println(fmt.Errorf("synchronizing blocks returned error: %w", err).Error())
 			}
 			select {
 			case <-ctx.Done():
