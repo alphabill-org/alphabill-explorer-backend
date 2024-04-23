@@ -54,7 +54,7 @@ package restapi
 //	err := storage.Do().SetBlock(b)
 //	require.NoError(t, err)
 //
-//	service := &ExplorerBackend{store: storage, sdk: sdk.New().SetABClient(&clientmock.MockAlphabillClient{}).Build()}
+//	service := &ExplorerBackend{types: storage, sdk: sdk.New().SetABClient(&clientmock.MockAlphabillClient{}).Build()}
 //	port, _ := startServer(t, service)
 //
 //	res := &types.Block{}
@@ -73,11 +73,11 @@ package restapi
 //	}
 //	b := &types.Block{Header: &types.Header{}, Transactions: []*types.TransactionRecord{tx}, UnicityCertificate: &types.UnicityCertificate{InputRecord: &types.InputRecord{RoundNumber: blockNumber}, UnicitySeal: &types.UnicitySeal{}}}
 //
-//	// set block explorer
+//	// set block blocks
 //	err := storage.Do().SetBlockExplorer(b)
 //	require.NoError(t, err)
 //
-//	service := &ExplorerBackend{store: storage, sdk: sdk.New().SetABClient(&clientmock.MockAlphabillClient{}).Build()}
+//	service := &ExplorerBackend{types: storage, sdk: sdk.New().SetABClient(&clientmock.MockAlphabillClient{}).Build()}
 //	port, _ := startServer(t, service)
 //	//set
 //	res := &BlockExplorer{}
@@ -117,7 +117,7 @@ package restapi
 //	err = bs.Do().SetBlockExplorer(b3)
 //	require.NoError(t, err)
 //
-//	service := &ExplorerBackend{store: bs, sdk: sdk.New().SetABClient(&clientmock.MockAlphabillClient{}).Build()}
+//	service := &ExplorerBackend{types: bs, sdk: sdk.New().SetABClient(&clientmock.MockAlphabillClient{}).Build()}
 //	port, _ := startServer(t, service)
 //	//set
 //	var res []*BlockExplorer
@@ -135,7 +135,7 @@ package restapi
 //		ServerMetadata:   &types.ServerMetadata{ActualFee: 10, TargetUnits: []types.UnitID{}, SuccessIndicator: 0, ProcessingDetails: []byte{}},
 //	}
 //
-//	service := &ExplorerBackend{store: bs, sdk: sdk.New().SetABClient(&clientmock.MockAlphabillClient{}).Build()}
+//	service := &ExplorerBackend{types: bs, sdk: sdk.New().SetABClient(&clientmock.MockAlphabillClient{}).Build()}
 //	port, _ := startServer(t, service)
 //
 //	// Set TxExplorer To Bucket
@@ -159,7 +159,7 @@ package restapi
 //
 //func Test_getBlockExplorerTxsByBlockNumber(t *testing.T) {
 //	bs := createTestBillStore(t)
-//	service := &ExplorerBackend{store: bs, sdk: sdk.New().SetABClient(&clientmock.MockAlphabillClient{}).Build()}
+//	service := &ExplorerBackend{types: bs, sdk: sdk.New().SetABClient(&clientmock.MockAlphabillClient{}).Build()}
 //	port, _ := startServer(t, service)
 //
 //	blockNumber := test.RandomUint64()
@@ -221,7 +221,7 @@ package restapi
 //		CounterParty: pubkey2.Hash(),
 //	}
 //	storage.Do().StoreTxHistoryRecord(pubkey1.Hash(), rec)
-//	service := &ExplorerBackend{store: storage, sdk: sdk.New().SetABClient(&clientmock.MockAlphabillClient{}).Build()}
+//	service := &ExplorerBackend{types: storage, sdk: sdk.New().SetABClient(&clientmock.MockAlphabillClient{}).Build()}
 //
 //	port, api := startServer(t, service)
 //
@@ -391,7 +391,7 @@ package restapi
 //	require.NoError(t, err)
 //	require.Equal(t, http.StatusOK, httpRes.StatusCode)
 //	require.Equal(t, "00000000", res.SystemID)
-//	require.Equal(t, "explorer backend", res.Name)
+//	require.Equal(t, "blocks backend", res.Name)
 //}
 //
 //func verifyLinkHeader(t *testing.T, httpRes *http.Response, nextKey []byte) {
@@ -422,7 +422,7 @@ package restapi
 //
 //func newExplorerBackend(t *testing.T, options ...option) *ExplorerBackend {
 //	storage := createTestBillStore(t)
-//	service := &ExplorerBackend{store: storage, sdk: sdk.New().SetABClient(&clientmock.MockAlphabillClient{}).Build()}
+//	service := &ExplorerBackend{types: storage, sdk: sdk.New().SetABClient(&clientmock.MockAlphabillClient{}).Build()}
 //	for _, o := range options {
 //		err := o(service)
 //		require.NoError(t, err)
@@ -432,7 +432,7 @@ package restapi
 //
 //func withBills(bills ...*Bill) option {
 //	return func(s *ExplorerBackend) error {
-//		return s.store.WithTransaction(func(tx BillStoreTx) error {
+//		return s.types.WithTransaction(func(tx BillStoreTx) error {
 //			for _, bill := range bills {
 //				err := tx.SetBill(bill, nil)
 //				if err != nil {
@@ -451,7 +451,7 @@ package restapi
 //
 //func withBillProofs(bills ...*billProof) option {
 //	return func(s *ExplorerBackend) error {
-//		return s.store.WithTransaction(func(tx BillStoreTx) error {
+//		return s.types.WithTransaction(func(tx BillStoreTx) error {
 //			for _, bill := range bills {
 //				err := tx.SetBill(bill.bill, bill.proof)
 //				if err != nil {

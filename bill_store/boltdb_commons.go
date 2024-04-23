@@ -1,4 +1,4 @@
-package store
+package bill_store
 
 import (
 	"fmt"

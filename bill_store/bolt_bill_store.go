@@ -11,18 +11,18 @@ import (
 	"github.com/fxamacker/cbor/v2"
 	bolt "go.etcd.io/bbolt"
 
-	st "github.com/alphabill-org/alphabill-explorer-backend/store"
+	"github.com/alphabill-org/alphabill-explorer-backend/types"
 	"github.com/alphabill-org/alphabill/network/protocol/genesis"
-	"github.com/alphabill-org/alphabill/types"
+	abtypes "github.com/alphabill-org/alphabill/types"
 	"github.com/alphabill-org/alphabill/util"
 )
 
-const BoltExplorerStoreFileName = "explorer.db"
+const BoltExplorerStoreFileName = "blocks.db"
 
 var (
 	blockInfoBucket       = []byte("BlockInfoBucket")       // block_number => BlockInfo
 	blockExplorerBucket   = []byte("BlockExplorerBucket")   // block_number => BlockExplorer
-	txExplorerBucket      = []byte("txExplorerBucket")      // txHash => TxExplorer
+	txExplorerBucket      = []byte("txExplorerBucket")      // txHash => types.TxInfo
 	unitsBucket           = []byte("unitsBucket")           // unitID => unit_bytes
 	predicatesBucket      = []byte("predicatesBucket")      // predicate => bucket[unitID]nil
 	metaBucket            = []byte("metaBucket")            // block_number_key => block_number_val
@@ -43,7 +43,7 @@ var (
 	ErrOwnerPredicateIsNil = errors.New("unit owner predicate is nil")
 )
 
-var _ st.BillStoreTx = (*boltBillStoreTx)(nil)
+var _ BillStoreTx = (*boltBillStoreTx)(nil)
 
 type (
 	boltBillStore struct {
@@ -53,6 +53,35 @@ type (
 	boltBillStoreTx struct {
 		db *boltBillStore
 		tx *bolt.Tx
+	}
+	// BillStore type for creating BillStoreTx transactions
+	BillStore interface {
+		Do() BillStoreTx
+		WithTransaction(func(tx BillStoreTx) error) error
+	}
+	// BillStoreTx type for managing units by their ID and owner condition
+	BillStoreTx interface {
+		//GetBlockExplorerTxsByBlockNumber(blockNumber uint64) (res []*types.TxInfo, err error)
+		GetBlockNumber() (uint64, error)
+		SetBlockNumber(blockNumber uint64) error
+		GetTxExplorerByTxHash(txHash string) (*types.TxInfo, error)
+		SetTxExplorerToBucket(txExplorer *types.TxInfo) error
+		GetBill(unitID []byte) (*types.Bill, error)
+		GetBills(ownerCondition []byte, includeDCBills bool, offsetKey []byte, limit int) ([]*types.Bill, []byte, error)
+		SetBill(bill *types.Bill, proof *abtypes.TxProof) error
+		RemoveBill(unitID []byte) error
+		GetSystemDescriptionRecords() ([]*genesis.SystemDescriptionRecord, error)
+		SetSystemDescriptionRecords(sdrs []*genesis.SystemDescriptionRecord) error
+		GetTxProof(unitID abtypes.UnitID, txHash sdk.TxHash) (*abtypes.TxProof, error)
+		//StoreTxProof(unitID types.UnitID, txHash sdk.TxHash, txProof *types.TxProof) error
+		//GetTxHistoryRecords(dbStartKey []byte, count int) ([]*sdk.TxHistoryRecord, []byte, error)
+		//GetTxHistoryRecordsByKey(hash sdk.PubKeyHash, dbStartKey []byte, count int) ([]*sdk.TxHistoryRecord, []byte, error)
+		//StoreTxHistoryRecord(hash sdk.PubKeyHash, rec *sdk.TxHistoryRecord) error
+
+		GetLastBlockNumber() (uint64, error)
+		SetBlockInfo(b *abtypes.Block) error
+		GetBlockInfoByBlockNumber(blockNumber uint64) (*types.BlockInfo, error)
+		GetBlocksInfo(dbStartBlock uint64, count int) (res []*types.BlockInfo, prevBlockNumber uint64, err error)
 	}
 )
 
@@ -64,7 +93,7 @@ func NewBoltBillStore(dbFile string) (*boltBillStore, error) {
 		return nil, fmt.Errorf("failed to open bolt DB: %w", err)
 	}
 	bbs := &boltBillStore{db: db}
-	err = st.CreateBuckets(db.Update,
+	err = CreateBuckets(db.Update,
 		blockInfoBucket, txExplorerBucket,
 		unitsBucket, predicatesBucket, metaBucket, expiredBillsBucket, feeUnitsBucket,
 		lockedFeeCreditBucket, closedFeeCreditBucket, sdrBucket, txProofsBucket, txHistoryBucket,
@@ -79,18 +108,18 @@ func NewBoltBillStore(dbFile string) (*boltBillStore, error) {
 	return bbs, nil
 }
 
-func (s *boltBillStore) WithTransaction(fn func(txc st.BillStoreTx) error) error {
+func (s *boltBillStore) WithTransaction(fn func(txc BillStoreTx) error) error {
 	return s.db.Update(func(tx *bolt.Tx) error {
 		return fn(&boltBillStoreTx{db: s, tx: tx})
 	})
 }
 
-func (s *boltBillStore) Do() st.BillStoreTx {
+func (s *boltBillStore) Do() BillStoreTx {
 	return &boltBillStoreTx{db: s, tx: nil}
 }
 
-func (s *boltBillStoreTx) GetBill(unitID []byte) (*st.Bill, error) {
-	var unit *st.Bill
+func (s *boltBillStoreTx) GetBill(unitID []byte) (*types.Bill, error) {
+	var unit *types.Bill
 	err := s.withTx(s.tx, func(tx *bolt.Tx) error {
 		bill, err := s.getUnit(tx, unitID)
 		if err != nil {
@@ -108,8 +137,8 @@ func (s *boltBillStoreTx) GetBill(unitID []byte) (*st.Bill, error) {
 	return unit, nil
 }
 
-func (s *boltBillStoreTx) GetTxExplorerByTxHash(txHash string) (*st.TxExplorer, error) {
-	var txEx *st.TxExplorer
+func (s *boltBillStoreTx) GetTxExplorerByTxHash(txHash string) (*types.TxInfo, error) {
+	var txEx *types.TxInfo
 	hashBytes := []byte(txHash)
 	err := s.withTx(s.tx, func(tx *bolt.Tx) error {
 		txExplorerBytes := tx.Bucket(txExplorerBucket).Get(hashBytes)
@@ -120,15 +149,16 @@ func (s *boltBillStoreTx) GetTxExplorerByTxHash(txHash string) (*st.TxExplorer, 
 	}
 	return txEx, nil
 }
-// func (s *boltBillStoreTx) GetBlockExplorerTxsByBlockNumber(blockNumber uint64) (res []*st.TxExplorer, err error) {
+
+// func (s *boltBillStoreTx) GetBlockExplorerTxsByBlockNumber(blockNumber uint64) (res []*st.types.TxInfo, err error) {
 // 	return res, s.withTx(s.tx, func(tx *bolt.Tx) error {
 // 		var err error
 // 		res, err = s.getBlockExplorerTxsByBlockNumber(tx, blockNumber)
 // 		return err
 // 	}, false)
 // }
-// func (s *boltBillStoreTx) getBlockExplorerTxsByBlockNumber(tx *bolt.Tx, blockNumber uint64) ([]*st.TxExplorer, error) {
-// 	var txsEx []*st.TxExplorer
+// func (s *boltBillStoreTx) getBlockExplorerTxsByBlockNumber(tx *bolt.Tx, blockNumber uint64) ([]*st.types.TxInfo, error) {
+// 	var txsEx []*st.types.TxInfo
 // 	blockNumberBytes := util.Uint64ToBytes(blockNumber)
 
 // 	blockExplorerBytes := tx.Bucket(blockExplorerBucket).Get(blockNumberBytes)
@@ -149,16 +179,16 @@ func (s *boltBillStoreTx) GetTxExplorerByTxHash(txHash string) (*st.TxExplorer, 
 // 			continue
 // 		}
 
-// 		t := &st.TxExplorer{}
+// 		t := &st.types.TxInfo{}
 // 		if err := json.Unmarshal(txExBytes, t); err != nil {
 // 			return nil, err
 // 		}
 // 		txsEx = append(txsEx, t)
 // 	}
 
-// 	return txsEx, nil
-// }
-func (s *boltBillStoreTx) SetTxExplorerToBucket(txExplorer *st.TxExplorer) error {
+//		return txsEx, nil
+//	}
+func (s *boltBillStoreTx) SetTxExplorerToBucket(txExplorer *types.TxInfo) error {
 	return s.withTx(s.tx, func(tx *bolt.Tx) error {
 		txExplorerBytes, err := json.Marshal(txExplorer)
 		if err != nil {
@@ -174,8 +204,8 @@ func (s *boltBillStoreTx) SetTxExplorerToBucket(txExplorer *st.TxExplorer) error
 	}, true)
 }
 
-func (s *boltBillStoreTx) GetBills(ownerPredicate []byte, includeDCBills bool, startKey []byte, limit int) ([]*st.Bill, []byte, error) {
-	var units []*st.Bill
+func (s *boltBillStoreTx) GetBills(ownerPredicate []byte, includeDCBills bool, startKey []byte, limit int) ([]*types.Bill, []byte, error) {
+	var units []*types.Bill
 	var nextKey []byte
 	err := s.withTx(s.tx, func(tx *bolt.Tx) error {
 		unitIDBucket := tx.Bucket(predicatesBucket).Bucket(ownerPredicate)
@@ -209,7 +239,7 @@ func (s *boltBillStoreTx) GetBills(ownerPredicate []byte, includeDCBills bool, s
 	return units, nextKey, nil
 }
 
-func (s *boltBillStoreTx) SetBill(bill *st.Bill, proof *types.TxProof) error {
+func (s *boltBillStoreTx) SetBill(bill *types.Bill, proof *abtypes.TxProof) error {
 	return s.withTx(s.tx, func(tx *bolt.Tx) error {
 		billsBucket := tx.Bucket(unitsBucket)
 		if bill.OwnerPredicate == nil {
@@ -222,7 +252,7 @@ func (s *boltBillStoreTx) SetBill(bill *st.Bill, proof *types.TxProof) error {
 			return err
 		}
 		if prevUnit != nil && !bytes.Equal(prevUnit.OwnerPredicate, bill.OwnerPredicate) {
-			prevUnitIDBucket, err := st.EnsureSubBucket(tx, predicatesBucket, prevUnit.OwnerPredicate, false)
+			prevUnitIDBucket, err := EnsureSubBucket(tx, predicatesBucket, prevUnit.OwnerPredicate, false)
 			if err != nil {
 				return err
 			}
@@ -232,7 +262,7 @@ func (s *boltBillStoreTx) SetBill(bill *st.Bill, proof *types.TxProof) error {
 		}
 
 		// add to new owner index
-		unitIDBucket, err := st.EnsureSubBucket(tx, predicatesBucket, bill.OwnerPredicate, false)
+		unitIDBucket, err := EnsureSubBucket(tx, predicatesBucket, bill.OwnerPredicate, false)
 		if err != nil {
 			return err
 		}
@@ -241,7 +271,7 @@ func (s *boltBillStoreTx) SetBill(bill *st.Bill, proof *types.TxProof) error {
 			return err
 		}
 
-		// add to main store
+		// add to main types
 		billBytes, err := json.Marshal(bill)
 		if err != nil {
 			return err
@@ -314,8 +344,8 @@ func (s *boltBillStoreTx) SetBlockNumber(blockNumber uint64) error {
 	}, true)
 }
 
-func (s *boltBillStoreTx) GetTxProof(unitID types.UnitID, txHash sdk.TxHash) (*types.TxProof, error) {
-	var proof *types.TxProof
+func (s *boltBillStoreTx) GetTxProof(unitID abtypes.UnitID, txHash sdk.TxHash) (*abtypes.TxProof, error) {
+	var proof *abtypes.TxProof
 	err := s.withTx(s.tx, func(tx *bolt.Tx) error {
 		var err error
 		proof, err = s.getUnitBlockProof(tx, unitID, txHash)
@@ -324,8 +354,8 @@ func (s *boltBillStoreTx) GetTxProof(unitID types.UnitID, txHash sdk.TxHash) (*t
 	return proof, err
 }
 
-func (s *boltBillStoreTx) GetFeeCreditBill(unitID []byte) (*st.Bill, error) {
-	var b *st.Bill
+func (s *boltBillStoreTx) GetFeeCreditBill(unitID []byte) (*types.Bill, error) {
+	var b *types.Bill
 	err := s.withTx(s.tx, func(tx *bolt.Tx) error {
 		fcbBytes := tx.Bucket(feeUnitsBucket).Get(unitID)
 		if fcbBytes == nil {
@@ -339,7 +369,7 @@ func (s *boltBillStoreTx) GetFeeCreditBill(unitID []byte) (*st.Bill, error) {
 	return b, nil
 }
 
-func (s *boltBillStoreTx) SetFeeCreditBill(fcb *st.Bill, proof *types.TxProof) error {
+func (s *boltBillStoreTx) SetFeeCreditBill(fcb *types.Bill, proof *abtypes.TxProof) error {
 	return s.withTx(s.tx, func(tx *bolt.Tx) error {
 		fcbBytes, err := json.Marshal(fcb)
 		if err != nil {
@@ -352,8 +382,8 @@ func (s *boltBillStoreTx) SetFeeCreditBill(fcb *st.Bill, proof *types.TxProof) e
 	}, true)
 }
 
-func (s *boltBillStoreTx) GetLockedFeeCredit(systemID, fcbID []byte) (*types.TransactionRecord, error) {
-	var res *types.TransactionRecord
+func (s *boltBillStoreTx) GetLockedFeeCredit(systemID, fcbID []byte) (*abtypes.TransactionRecord, error) {
+	var res *abtypes.TransactionRecord
 	err := s.withTx(s.tx, func(tx *bolt.Tx) error {
 		lockedCreditBucket := tx.Bucket(lockedFeeCreditBucket).Bucket(systemID)
 		if lockedCreditBucket == nil {
@@ -371,7 +401,7 @@ func (s *boltBillStoreTx) GetLockedFeeCredit(systemID, fcbID []byte) (*types.Tra
 	return res, nil
 }
 
-func (s *boltBillStoreTx) SetLockedFeeCredit(systemID, fcbID []byte, txr *types.TransactionRecord) error {
+func (s *boltBillStoreTx) SetLockedFeeCredit(systemID, fcbID []byte, txr *abtypes.TransactionRecord) error {
 	return s.withTx(s.tx, func(tx *bolt.Tx) error {
 		txBytes, err := cbor.Marshal(txr)
 		if err != nil {
@@ -385,8 +415,8 @@ func (s *boltBillStoreTx) SetLockedFeeCredit(systemID, fcbID []byte, txr *types.
 	}, true)
 }
 
-func (s *boltBillStoreTx) GetClosedFeeCredit(unitID []byte) (*types.TransactionRecord, error) {
-	var res *types.TransactionRecord
+func (s *boltBillStoreTx) GetClosedFeeCredit(unitID []byte) (*abtypes.TransactionRecord, error) {
+	var res *abtypes.TransactionRecord
 	err := s.withTx(s.tx, func(tx *bolt.Tx) error {
 		txBytes := tx.Bucket(closedFeeCreditBucket).Get(unitID)
 		if txBytes == nil {
@@ -400,7 +430,7 @@ func (s *boltBillStoreTx) GetClosedFeeCredit(unitID []byte) (*types.TransactionR
 	return res, nil
 }
 
-func (s *boltBillStoreTx) SetClosedFeeCredit(unitID []byte, txr *types.TransactionRecord) error {
+func (s *boltBillStoreTx) SetClosedFeeCredit(unitID []byte, txr *abtypes.TransactionRecord) error {
 	return s.withTx(s.tx, func(tx *bolt.Tx) error {
 		txBytes, err := cbor.Marshal(txr)
 		if err != nil {
@@ -462,16 +492,16 @@ func (s *boltBillStoreTx) removeUnit(tx *bolt.Tx, unitID []byte) error {
 			return err
 		}
 	}
-	// delete from main store
+	// delete from main types
 	return tx.Bucket(unitsBucket).Delete(unitID)
 }
 
-func (s *boltBillStoreTx) getUnit(tx *bolt.Tx, unitID []byte) (*st.Bill, error) {
+func (s *boltBillStoreTx) getUnit(tx *bolt.Tx, unitID []byte) (*types.Bill, error) {
 	unitBytes := tx.Bucket(unitsBucket).Get(unitID)
 	if len(unitBytes) == 0 {
 		return nil, nil
 	}
-	var unit *st.Bill
+	var unit *types.Bill
 	err := json.Unmarshal(unitBytes, &unit)
 	if err != nil {
 		return nil, err
@@ -505,7 +535,7 @@ func (s *boltBillStoreTx) addExpiredBill(tx *bolt.Tx, blockNumber uint64, unitID
 	return b.Put(unitID, nil)
 }
 
-func (s *boltBillStoreTx) StoreTxProof(unitID types.UnitID, txHash sdk.TxHash, txProof *types.TxProof) error {
+func (s *boltBillStoreTx) StoreTxProof(unitID abtypes.UnitID, txHash sdk.TxHash, txProof *abtypes.TxProof) error {
 	if unitID == nil {
 		return errors.New("unit id is nil")
 	}
@@ -520,7 +550,7 @@ func (s *boltBillStoreTx) StoreTxProof(unitID types.UnitID, txHash sdk.TxHash, t
 	}, true)
 }
 
-func (s *boltBillStoreTx) storeTxProof(dbTx *bolt.Tx, unitID types.UnitID, txHash sdk.TxHash, txProof *types.TxProof) error {
+func (s *boltBillStoreTx) storeTxProof(dbTx *bolt.Tx, unitID abtypes.UnitID, txHash sdk.TxHash, txProof *abtypes.TxProof) error {
 	if txHash == nil || txProof == nil {
 		return nil
 	}
@@ -528,7 +558,7 @@ func (s *boltBillStoreTx) storeTxProof(dbTx *bolt.Tx, unitID types.UnitID, txHas
 	if err != nil {
 		return fmt.Errorf("failed to serialize tx proof: %w", err)
 	}
-	b, err := st.EnsureSubBucket(dbTx, txProofsBucket, unitID, false)
+	b, err := EnsureSubBucket(dbTx, txProofsBucket, unitID, false)
 	if err != nil {
 		return err
 	}
@@ -643,8 +673,8 @@ func (s *boltBillStoreTx) storeTxProof(dbTx *bolt.Tx, unitID types.UnitID, txHas
 //	return res, prevKey, nil
 //}
 
-func (s *boltBillStoreTx) getUnitBlockProof(dbTx *bolt.Tx, id []byte, txHash sdk.TxHash) (*types.TxProof, error) {
-	b, err := st.EnsureSubBucket(dbTx, txProofsBucket, id, true)
+func (s *boltBillStoreTx) getUnitBlockProof(dbTx *bolt.Tx, id []byte, txHash sdk.TxHash) (*abtypes.TxProof, error) {
+	b, err := EnsureSubBucket(dbTx, txProofsBucket, id, true)
 	if err != nil {
 		return nil, err
 	}
@@ -655,7 +685,7 @@ func (s *boltBillStoreTx) getUnitBlockProof(dbTx *bolt.Tx, id []byte, txHash sdk
 	if proofData == nil {
 		return nil, nil
 	}
-	proof := &types.TxProof{}
+	proof := &abtypes.TxProof{}
 	if err := cbor.Unmarshal(proofData, proof); err != nil {
 		return nil, fmt.Errorf("failed to deserialize proof data: %w", err)
 	}

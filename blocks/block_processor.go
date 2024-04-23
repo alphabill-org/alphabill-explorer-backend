@@ -1,15 +1,15 @@
-package explorer
+package blocks
 
 import (
 	"context"
 	"crypto"
 	"fmt"
 
+	s "github.com/alphabill-org/alphabill-explorer-backend/types"
 	sdk "github.com/alphabill-org/alphabill-wallet/wallet"
 	"github.com/alphabill-org/alphabill/txsystem/fc/transactions"
 	moneytx "github.com/alphabill-org/alphabill/txsystem/money"
 	"github.com/alphabill-org/alphabill/types"
-	s "github.com/alphabill-org/alphabill-explorer-backend/store"
 )
 
 const (
@@ -24,7 +24,7 @@ type BlockProcessor struct {
 }
 
 func NewBlockProcessor(store s.BillStore, moneySystemID types.SystemID) (*BlockProcessor, error) {
-	//sdrs, err := store.Do().GetSystemDescriptionRecords()
+	//sdrs, err := types.Do().GetSystemDescriptionRecords()
 	//if err != nil {
 	//	return nil, fmt.Errorf("failed to get system description records: %w", err)
 	//}
@@ -231,7 +231,7 @@ func (p *BlockProcessor) processTx(txr *types.TransactionRecord, b *types.Block,
 	//		}
 	//	} else {
 	//		if err := dbTx.StoreTxProof(txo.UnitID(), txHash, proof); err != nil {
-	//			return fmt.Errorf("failed to store tx proof zero value bill: %w", err)
+	//			return fmt.Errorf("failed to types tx proof zero value bill: %w", err)
 	//		}
 	//		if err := dbTx.RemoveBill(bill.Id); err != nil {
 	//			return fmt.Errorf("failed to remove zero value bill: %w", err)
@@ -358,7 +358,7 @@ func saveTxExplorerToStorage(dbTx s.BillStoreTx, blockNo uint64, tx *types.Trans
 	if tx == nil {
 		return fmt.Errorf("transaction record is nil")
 	}
-	txExplorer, err := s.CreateTxExplorer(blockNo, tx)
+	txExplorer, err := s.NewTxInfo(blockNo, tx)
 
 	if err != nil {
 		return err

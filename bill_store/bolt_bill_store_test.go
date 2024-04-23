@@ -81,11 +81,11 @@ package bill_store
 //	}
 //	b := &types.Block{Header: &types.Header{}, Transactions: []*types.TransactionRecord{tx}, UnicityCertificate: &types.UnicityCertificate{InputRecord: &types.InputRecord{RoundNumber: blockNumber}, UnicitySeal: &types.UnicitySeal{}}}
 //	txHash := hex.EncodeToString(tx.Hash(crypto.SHA256))
-//	// set block explorer
+//	// set block blocks
 //	err := bs.Do().SetBlockExplorer(b)
 //	require.NoError(t, err)
 //
-//	// get block explorer
+//	// get block blocks
 //	block, err := bs.Do().GetBlockExplorerByBlockNumber(blockNumber)
 //	require.NoError(t, err)
 //	require.EqualValues(t, block.RoundNumber, blockNumber)
@@ -330,7 +330,7 @@ package bill_store
 //	err = bs.Do().RemoveBill(bill.Id)
 //	require.NoError(t, err)
 //
-//	// then bill should be deleted from main store
+//	// then bill should be deleted from main types
 //	b, err = bs.Do().GetBill(bill.Id)
 //	require.NoError(t, err)
 //	require.Nil(t, b)
@@ -386,7 +386,7 @@ package bill_store
 //			TxHash: test.RandomBytes(32),
 //			UnitID: []byte{i},
 //		}
-//		// store tx history record
+//		// types tx history record
 //		err := bs.Do().StoreTxHistoryRecord(randomBytes, txHistoryRecord)
 //		require.NoError(t, err)
 //	}
@@ -502,7 +502,7 @@ package bill_store
 //	unitID := types.UnitID(test.RandomBytes(33))
 //	txHash := test.RandomBytes(32)
 //
-//	// store tx proof
+//	// types tx proof
 //	err := bs.Do().StoreTxProof(unitID, txHash, &sdk.Proof{
 //		TxRecord: testtransaction.NewTransactionRecord(t, testtransaction.WithUnitId(unitID)),
 //	})
@@ -516,9 +516,9 @@ package bill_store
 //
 //func createTestBillStore(t *testing.T) *boltBillStore {
 //	dbFile := filepath.Join(t.TempDir(), BoltExplorerStoreFileName)
-//	store, err := newBoltBillStore(dbFile)
+//	types, err := newBoltBillStore(dbFile)
 //	require.NoError(t, err)
-//	return store
+//	return types
 //}
 //
 //func getOwnerPredicate(pubkey string) []byte {

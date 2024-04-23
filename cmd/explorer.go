@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"github.com/alphabill-org/alphabill-explorer-backend/explorer"
 	"github.com/alphabill-org/alphabill/txsystem/money"
 )
 
@@ -15,7 +14,7 @@ func main() {
 	fmt.Println("Starting AB Explorer")
 	args := os.Args
 	if len(args) < 3 {
-		fmt.Println("Usage: explorer <AB Partition RPC url> <AB Explorer url> [<Block number>]")
+		fmt.Println("Usage: blocks <AB Partition RPC url> <AB Explorer url> [<Block number>]")
 		return
 	}
 	workDir := filepath.Dir(args[0]) //"/tmp/"
@@ -27,11 +26,11 @@ func main() {
 		fmt.Printf("Block number: %s\n", args[3])
 		blockNumber, _ = strconv.ParseUint(args[3], 10, 64)
 	}
-	err := explorer.Run(context.Background(), &explorer.Config{
+	err := Run(context.Background(), &Config{
 		ABMoneySystemIdentifier: money.DefaultSystemIdentifier,
 		AlphabillUrl:            args[1],
 		ServerAddr:              args[2],
-		DbFile:                  filepath.Join(workDir, "explorer.db"),
+		DbFile:                  filepath.Join(workDir, "blocks.db"),
 		BlockNumber:             blockNumber,
 	})
 	if err != nil {

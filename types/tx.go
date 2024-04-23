@@ -1,4 +1,4 @@
-package store
+package types
 
 import (
 	"crypto"
@@ -6,15 +6,26 @@ import (
 	"fmt"
 
 	"github.com/alphabill-org/alphabill/types"
-
 )
 
-func CreateTxExplorer(blockNo uint64, txRecord *types.TransactionRecord) (*TxExplorer, error) {
+type TxInfo struct {
+	_                struct{} `cbor:",toarray"`
+	Hash             string
+	BlockNumber      uint64
+	Timeout          uint64
+	PayloadType      string
+	Status           *types.TxStatus
+	TargetUnits      []types.UnitID
+	TransactionOrder *types.TransactionOrder
+	Fee              uint64
+}
+
+func NewTxInfo(blockNo uint64, txRecord *types.TransactionRecord) (*TxInfo, error) {
 	if txRecord == nil {
 		return nil, fmt.Errorf("transaction record is nil")
 	}
 	hashHex := hex.EncodeToString(txRecord.Hash(crypto.SHA256))
-	txExplorer := &TxExplorer{
+	txExplorer := &TxInfo{
 		Hash:             hashHex,
 		BlockNumber:      blockNo,
 		Timeout:          txRecord.TransactionOrder.Timeout(),
@@ -26,23 +37,4 @@ func CreateTxExplorer(blockNo uint64, txRecord *types.TransactionRecord) (*TxExp
 	}
 	txExplorer.TargetUnits = txRecord.ServerMetadata.TargetUnits
 	return txExplorer, nil
-}
-
-func CreateBlockInfo(b *types.Block) (*BlockInfo, error) {
-	if b == nil {
-		return nil, fmt.Errorf("block is nil")
-	}
-	txHashes := make([]string, 0, len(b.Transactions))
-
-	for _, tx := range b.Transactions {
-		hash := tx.Hash(crypto.SHA256) // crypto.SHA256?
-		hashHex := hex.EncodeToString(hash)
-		txHashes = append(txHashes, hashHex)
-	}
-
-	return &BlockInfo{
-		Header:             b.Header,
-		TxHashes:           txHashes,
-		UnicityCertificate: b.UnicityCertificate,
-	}, nil
 }

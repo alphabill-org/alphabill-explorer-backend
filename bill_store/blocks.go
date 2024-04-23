@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	st "github.com/alphabill-org/alphabill-explorer-backend/store"
+	st "github.com/alphabill-org/alphabill-explorer-backend/types"
 	"github.com/alphabill-org/alphabill/types"
 	"github.com/alphabill-org/alphabill/util"
 	bolt "go.etcd.io/bbolt"
@@ -16,7 +16,7 @@ func (s *boltBillStoreTx) SetBlockInfo(b *types.Block) error {
 		blockNumber := b.UnicityCertificate.InputRecord.RoundNumber
 		blockNumberBytes := util.Uint64ToBytes(blockNumber)
 
-		blockInfo, err := st.CreateBlockInfo(b)
+		blockInfo, err := st.NewBlockInfo(b)
 		if err != nil {
 			return err
 		}

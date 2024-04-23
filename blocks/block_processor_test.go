@@ -1,4 +1,4 @@
-package explorer
+package blocks
 
 //
 //import (
@@ -85,15 +85,15 @@ package explorer
 //		UnicityCertificate: &types.UnicityCertificate{InputRecord: &types.InputRecord{RoundNumber: 1}},
 //	}
 //
-//	store := createTestBillStore(t)
-//	//err := store.Do().SetFeeCreditBill(fcb, nil)
+//	types := createTestBillStore(t)
+//	//err := types.Do().SetFeeCreditBill(fcb, nil)
 //	//require.NoError(t, err)
-//	// store existing bill for dc transfer and swap transfer
-//	err := store.Do().SetBill(&Bill{Id: tx2.TransactionOrder.UnitID(), OwnerPredicate: ownerCondition}, nil)
+//	// types existing bill for dc transfer and swap transfer
+//	err := types.Do().SetBill(&Bill{Id: tx2.TransactionOrder.UnitID(), OwnerPredicate: ownerCondition}, nil)
 //	require.NoError(t, err)
-//	err = store.Do().SetBill(&Bill{Id: tx4.TransactionOrder.UnitID(), OwnerPredicate: ownerCondition}, nil)
+//	err = types.Do().SetBill(&Bill{Id: tx4.TransactionOrder.UnitID(), OwnerPredicate: ownerCondition}, nil)
 //	require.NoError(t, err)
-//	err = store.Do().SetSystemDescriptionRecords([]*genesis.SystemDescriptionRecord{
+//	err = types.Do().SetSystemDescriptionRecords([]*genesis.SystemDescriptionRecord{
 //		{
 //			SystemIdentifier: moneySystemID,
 //			T2Timeout:        2500,
@@ -104,7 +104,7 @@ package explorer
 //		},
 //	})
 //	require.NoError(t, err)
-//	blockProcessor, err := NewBlockProcessor(store, moneySystemID)
+//	blockProcessor, err := NewBlockProcessor(types, moneySystemID)
 //	require.NoError(t, err)
 //
 //	// process transactions
@@ -112,23 +112,23 @@ package explorer
 //	require.NoError(t, err)
 //
 //	// verify bills exist
-//	bills, nextKey, err := store.Do().GetBills(ownerCondition, true, nil, 100)
+//	bills, nextKey, err := types.Do().GetBills(ownerCondition, true, nil, 100)
 //	require.NoError(t, err)
 //	require.Nil(t, nextKey)
 //	require.Len(t, bills, 4)
 //	for _, bill := range bills {
-//		proof, err := store.Do().GetTxProof(bill.Id, bill.TxHash)
+//		proof, err := types.Do().GetTxProof(bill.Id, bill.TxHash)
 //		require.NoError(t, err)
 //		verifyProof(t, bill, proof)
 //	}
 //
 //	// verify tx2 is dcBill
-//	bill, err := store.Do().GetBill(tx2.TransactionOrder.UnitID())
+//	bill, err := types.Do().GetBill(tx2.TransactionOrder.UnitID())
 //	require.NoError(t, err)
 //	require.NotNil(t, bill.DCTargetUnitID)
 //
 //	// verify fcb is reduced by 4x txFee
-//	//fcb, err = store.Do().GetFeeCreditBill(fcbID)
+//	//fcb, err = types.Do().GetFeeCreditBill(fcbID)
 //	//require.NoError(t, err)
 //	//require.EqualValues(t, 96, fcb.Value)
 //
@@ -166,7 +166,7 @@ package explorer
 //	require.NoError(t, err)
 //
 //	// verify fee credit bill value (96) is incremented by transferFC value (100) minus transferFC and addFC txfee (1 + 1)
-//	//fcb, err = store.Do().GetFeeCreditBill(fcbID)
+//	//fcb, err = types.Do().GetFeeCreditBill(fcbID)
 //	//require.NoError(t, err)
 //	//require.EqualValues(t, 194, fcb.Value)
 //
@@ -176,7 +176,7 @@ package explorer
 //	//require.Equal(t, lastAddFCTxHash, fcb.LastAddFCTxHash)
 //
 //	// verify tx1 unit is deleted (whole bill transferred to fee credit)
-//	//unit1, err := store.Do().GetBill(tx1.TransactionOrder.UnitID())
+//	//unit1, err := types.Do().GetBill(tx1.TransactionOrder.UnitID())
 //	//require.NoError(t, err)
 //	//require.Nil(t, unit1)
 //	//
@@ -211,7 +211,7 @@ package explorer
 //	//require.NoError(t, err)
 //	//
 //	//// verify FCB is reduced to zero
-//	////fcb, err = store.Do().GetFeeCreditBill(fcbID)
+//	////fcb, err = types.Do().GetFeeCreditBill(fcbID)
 //	////require.NoError(t, err)
 //	////require.EqualValues(t, 0, fcb.Value)
 //	//
@@ -219,7 +219,7 @@ package explorer
 //	////require.Equal(t, lastAddFCTxHash, fcb.LastAddFCTxHash)
 //	//
 //	//// verify reclaimed fee credits (194) were added to specified unit (tx4 value=100) minus 2x txfee (2)
-//	//unit, err := store.Do().GetBill(tx4.TransactionOrder.UnitID())
+//	//unit, err := types.Do().GetBill(tx4.TransactionOrder.UnitID())
 //	//require.NoError(t, err)
 //	//require.EqualValues(t, 292, unit.Value)
 //	//
@@ -231,7 +231,7 @@ package explorer
 //	//err = blockProcessor.ProcessBlock(context.Background(), b)
 //	//require.NoError(t, err)
 //	//
-//	//unit1, err = store.Do().GetBill(tx1.TransactionOrder.UnitID())
+//	//unit1, err = types.Do().GetBill(tx1.TransactionOrder.UnitID())
 //	//require.NoError(t, err)
 //	//require.Nil(t, unit1)
 //}

@@ -1,4 +1,4 @@
-package explorer
+package main
 
 //
 //func TestWalletBackend_BillsCanBeIndexedByPredicates(t *testing.T) {

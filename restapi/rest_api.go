@@ -11,10 +11,10 @@ import (
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 
+	st "github.com/alphabill-org/alphabill-explorer-backend/types"
 	moneyapi "github.com/alphabill-org/alphabill-wallet/wallet/money/api"
 	"github.com/alphabill-org/alphabill/txsystem/money"
 	"github.com/alphabill-org/alphabill/types"
-	st "github.com/alphabill-org/alphabill-explorer-backend/store"
 )
 
 const (
@@ -27,8 +27,8 @@ type (
 		GetLastBlockNumber() (uint64, error)
 		GetBlockByBlockNumber(blockNumber uint64) (*st.BlockInfo, error)
 		GetBlocks(dbStartBlock uint64, count int) (res []*st.BlockInfo, prevBlockNumber uint64, err error)
-		GetTxExplorerByTxHash(txHash string) (*st.TxExplorer, error)
-		//GetBlockExplorerTxsByBlockNumber(blockNumber uint64) (res []*st.TxExplorer, err error)
+		GetTxExplorerByTxHash(txHash string) (*st.TxInfo, error)
+		//GetBlockExplorerTxsByBlockNumber(blockNumber uint64) (res []*st.TxInfo, err error)
 		GetRoundNumber(ctx context.Context) (uint64, error)
 		GetTxProof(unitID types.UnitID, txHash sdk.TxHash) (*types.TxProof, error)
 		//GetTxHistoryRecords(dbStartKey []byte, count int) ([]*sdk.TxHistoryRecord, []byte, error)
@@ -286,7 +286,7 @@ func (api *MoneyRestAPI) roundNumberFunc(w http.ResponseWriter, r *http.Request)
 func (api *MoneyRestAPI) getInfo(w http.ResponseWriter, _ *http.Request) {
 	res := InfoResponse{
 		SystemID: api.SystemID,
-		Name:     "explorer backend",
+		Name:     "blocks backend",
 	}
 	api.rw.WriteResponse(w, res)
 }

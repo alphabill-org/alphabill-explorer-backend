@@ -1,4 +1,4 @@
-package explorer
+package main
 
 import (
 	"context"
@@ -8,21 +8,20 @@ import (
 	"time"
 
 	"github.com/ainvaltin/httpsrv"
+	bs "github.com/alphabill-org/alphabill-explorer-backend/bill_store"
+	"github.com/alphabill-org/alphabill-explorer-backend/blocks"
 	"github.com/alphabill-org/alphabill-explorer-backend/blocksync"
+	ra "github.com/alphabill-org/alphabill-explorer-backend/restapi"
+	st "github.com/alphabill-org/alphabill-explorer-backend/types"
 	"github.com/alphabill-org/alphabill-wallet/cli/alphabill/cmd/wallet/args"
 	"github.com/alphabill-org/alphabill-wallet/client/rpc"
 	sdk "github.com/alphabill-org/alphabill-wallet/wallet"
 	"github.com/alphabill-org/alphabill-wallet/wallet/account"
 	"github.com/alphabill-org/alphabill/types"
 	"golang.org/x/sync/errgroup"
-	bs "github.com/alphabill-org/alphabill-explorer-backend/explorer/bill_store"
-	st "github.com/alphabill-org/alphabill-explorer-backend/store"
-	ra "github.com/alphabill-org/alphabill-explorer-backend/explorer/restapi"
 )
 
-
 type (
-
 	ExplorerBackend struct {
 		store  st.BillStore
 		client *rpc.Client
@@ -91,7 +90,7 @@ func Run(ctx context.Context, config *Config) error {
 	})
 
 	g.Go(func() error {
-		blockProcessor, err := NewBlockProcessor(store, config.ABMoneySystemIdentifier)
+		blockProcessor, err := blocks.NewBlockProcessor(store, config.ABMoneySystemIdentifier)
 		if err != nil {
 			return fmt.Errorf("failed to create block processor: %w", err)
 		}
@@ -151,7 +150,7 @@ func (ex *ExplorerBackend) GetBlocks(dbStartBlockNumber uint64, count int) (res 
 }
 
 // GetBlocks return amount of blocks provided with count
-func (ex *ExplorerBackend) GetTxExplorerByTxHash(txHash string) (res *st.TxExplorer, err error) {
+func (ex *ExplorerBackend) GetTxExplorerByTxHash(txHash string) (res *st.TxInfo, err error) {
 	return ex.store.Do().GetTxExplorerByTxHash(txHash)
 }
 
@@ -163,8 +162,9 @@ func (ex *ExplorerBackend) GetBill(unitID []byte) (*st.Bill, error) {
 func (ex *ExplorerBackend) GetTxProof(unitID types.UnitID, txHash sdk.TxHash) (*types.TxProof, error) {
 	return ex.store.Do().GetTxProof(unitID, txHash)
 }
-// func (ex *ExplorerBackend) GetBlockExplorerTxsByBlockNumber(blockNumber uint64) (res []*st.TxExplorer, err error) {
-// 	return ex.store.Do().GetBlockExplorerTxsByBlockNumber(blockNumber)
+
+// func (ex *ExplorerBackend) GetBlockExplorerTxsByBlockNumber(blockNumber uint64) (res []*st.TxInfo, err error) {
+// 	return ex.types.Do().GetBlockExplorerTxsByBlockNumber(blockNumber)
 // }
 
 // GetRoundNumber returns latest round number.
@@ -173,11 +173,11 @@ func (ex *ExplorerBackend) GetRoundNumber(ctx context.Context) (uint64, error) {
 }
 
 //func (ex *ExplorerBackend) GetTxHistoryRecords(dbStartKey []byte, count int) ([]*sdk.TxHistoryRecord, []byte, error) {
-//	return ex.store.Do().GetTxHistoryRecords(dbStartKey, count)
+//	return ex.types.Do().GetTxHistoryRecords(dbStartKey, count)
 //}
 //
 //func (ex *ExplorerBackend) GetTxHistoryRecordsByKey(hash sdk.PubKeyHash, dbStartKey []byte, count int) ([]*sdk.TxHistoryRecord, []byte, error) {
-//	return ex.store.Do().GetTxHistoryRecordsByKey(hash, dbStartKey, count)
+//	return ex.types.Do().GetTxHistoryRecordsByKey(hash, dbStartKey, count)
 //}
 
 // func (b *s.Bill) getTxHash() []byte {
