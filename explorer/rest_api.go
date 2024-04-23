@@ -13,6 +13,7 @@ import (
 	moneyapi "github.com/alphabill-org/alphabill-wallet/wallet/money/api"
 	"github.com/alphabill-org/alphabill/txsystem/money"
 	"github.com/alphabill-org/alphabill/types"
+	st "github.com/alphabill-org/alphabill-explorer-backend/store"
 )
 
 const (
@@ -365,7 +366,7 @@ func (api *moneyRestAPI) getTxProof(w http.ResponseWriter, r *http.Request) {
 		api.rw.ErrorResponse(w, http.StatusBadRequest, errInvalidBillIDLength)
 		return
 	}
-	txHash, err := ParseHex[TxHash](vars["txHash"], true)
+	txHash, err := ParseHex[st.TxHash](vars["txHash"], true)
 	if err != nil {
 		api.rw.InvalidParamResponse(w, "txHash", err)
 		return
@@ -402,7 +403,7 @@ func (api *moneyRestAPI) getInfo(w http.ResponseWriter, _ *http.Request) {
 	api.rw.WriteResponse(w, res)
 }
 
-func parsePubKeyQueryParam(r *http.Request) (PubKey, error) {
+func parsePubKeyQueryParam(r *http.Request) (st.PubKey, error) {
 	return DecodePubKeyHex(r.URL.Query().Get(paramPubKey))
 }
 

@@ -14,6 +14,7 @@ import (
 	"github.com/alphabill-org/alphabill/types"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/fxamacker/cbor/v2"
+	s "github.com/alphabill-org/alphabill-explorer-backend/store"
 )
 
 const (
@@ -98,7 +99,7 @@ func (rw *ResponseWriter) ErrorResponse(w http.ResponseWriter, code int, err err
 	}
 }
 
-func ParsePubKey(pubkey string, required bool) (PubKey, error) {
+func ParsePubKey(pubkey string, required bool) (s.PubKey, error) {
 	if pubkey == "" {
 		if required {
 			return nil, fmt.Errorf("parameter is required")
@@ -108,7 +109,7 @@ func ParsePubKey(pubkey string, required bool) (PubKey, error) {
 	return DecodePubKeyHex(pubkey)
 }
 
-func DecodePubKeyHex(pubKey string) (PubKey, error) {
+func DecodePubKeyHex(pubKey string) (s.PubKey, error) {
 	if n := len(pubKey); n != 68 {
 		s := " starting "
 		switch {
@@ -128,7 +129,7 @@ func DecodePubKeyHex(pubKey string) (PubKey, error) {
 	return bytes, nil
 }
 
-func ParseHex[T types.UnitID | TxHash | []byte](value string, required bool) (T, error) {
+func ParseHex[T types.UnitID | s.TxHash | []byte](value string, required bool) (T, error) {
 	if value == "" {
 		if required {
 			return nil, fmt.Errorf("parameter is required")

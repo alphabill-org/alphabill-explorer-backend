@@ -9,6 +9,7 @@ import (
 	"github.com/alphabill-org/alphabill/txsystem/fc/transactions"
 	moneytx "github.com/alphabill-org/alphabill/txsystem/money"
 	"github.com/alphabill-org/alphabill/types"
+	s "github.com/alphabill-org/alphabill-explorer-backend/store"
 )
 
 const (
@@ -17,12 +18,12 @@ const (
 )
 
 type BlockProcessor struct {
-	store BillStore
+	store s.BillStore
 	//sdrs     map[string]*genesis.SystemDescriptionRecord
 	//moneySDR *genesis.SystemDescriptionRecord
 }
 
-func NewBlockProcessor(store BillStore, moneySystemID types.SystemID) (*BlockProcessor, error) {
+func NewBlockProcessor(store s.BillStore, moneySystemID types.SystemID) (*BlockProcessor, error) {
 	//sdrs, err := store.Do().GetSystemDescriptionRecords()
 	//if err != nil {
 	//	return nil, fmt.Errorf("failed to get system description records: %w", err)
@@ -38,7 +39,7 @@ func NewBlockProcessor(store BillStore, moneySystemID types.SystemID) (*BlockPro
 func (p *BlockProcessor) ProcessBlock(_ context.Context, b *types.Block) error {
 	roundNumber := b.GetRoundNumber()
 	println("processing block: ", roundNumber)
-	return p.store.WithTransaction(func(dbTx BillStoreTx) error {
+	return p.store.WithTransaction(func(dbTx s.BillStoreTx) error {
 		if len(b.Transactions) > 0 {
 			fmt.Printf("Block number: %d has %d transactions\n", roundNumber, len(b.Transactions))
 		}
@@ -69,7 +70,7 @@ func (p *BlockProcessor) ProcessBlock(_ context.Context, b *types.Block) error {
 	})
 }
 
-func (p *BlockProcessor) processTx(txr *types.TransactionRecord, b *types.Block, txIdx int, dbTx BillStoreTx) error {
+func (p *BlockProcessor) processTx(txr *types.TransactionRecord, b *types.Block, txIdx int, dbTx s.BillStoreTx) error {
 	txo := txr.TransactionOrder
 	txHash := txo.Hash(crypto.SHA256)
 	proof, _, err := types.NewTxProof(b, txIdx, crypto.SHA256)
@@ -87,7 +88,7 @@ func (p *BlockProcessor) processTx(txr *types.TransactionRecord, b *types.Block,
 		if err = txo.UnmarshalAttributes(attr); err != nil {
 			return err
 		}
-		if err = dbTx.SetBill(&Bill{
+		if err = dbTx.SetBill(&s.Bill{
 			Id:             txo.UnitID(),
 			Value:          attr.TargetValue,
 			TxHash:         txHash,
@@ -148,7 +149,7 @@ func (p *BlockProcessor) processTx(txr *types.TransactionRecord, b *types.Block,
 		}
 		if oldBill != nil {
 			println(fmt.Sprintf("received split order (existing UnitID=%x)", txo.UnitID()))
-			err = dbTx.SetBill(&Bill{
+			err = dbTx.SetBill(&s.Bill{
 				Id:             txo.UnitID(),
 				Value:          attr.RemainingValue,
 				TxHash:         txHash,
@@ -165,7 +166,7 @@ func (p *BlockProcessor) processTx(txr *types.TransactionRecord, b *types.Block,
 		// new bill
 		newID := moneytx.NewBillID(txo.UnitID(), moneytx.HashForIDCalculation(txo.UnitID(), txo.Payload.Attributes, txo.Timeout(), 0, crypto.SHA256)) // TODO fix
 		println(fmt.Sprintf("received split order (new UnitID=%x)", newID))
-		err = dbTx.SetBill(&Bill{
+		err = dbTx.SetBill(&s.Bill{
 			Id:     newID,
 			Value:  0, // attr.Amount, TODO fix
 			TxHash: txHash,
@@ -336,7 +337,7 @@ func (p *BlockProcessor) processTx(txr *types.TransactionRecord, b *types.Block,
 	return nil
 }
 
-func saveTx(dbTx BillStoreTx, bearer sdk.Predicate, txo *types.TransactionOrder, txHash sdk.TxHash) error {
+func saveTx(dbTx s.BillStoreTx, bearer sdk.Predicate, txo *types.TransactionOrder, txHash sdk.TxHash) error {
 	//bearerKeyHash := extractOwnerHashFromP2pkh(bearer)
 	//if bearerKeyHash != nil {
 	//	if err := dbTx.StoreTxHistoryRecord(bearerKeyHash, &sdk.TxHistoryRecord{
@@ -353,11 +354,11 @@ func saveTx(dbTx BillStoreTx, bearer sdk.Predicate, txo *types.TransactionOrder,
 	return nil
 }
 
-func saveTxExplorerToStorage(dbTx BillStoreTx, blockNo uint64, tx *types.TransactionRecord) error {
+func saveTxExplorerToStorage(dbTx s.BillStoreTx, blockNo uint64, tx *types.TransactionRecord) error {
 	if tx == nil {
 		return fmt.Errorf("transaction record is nil")
 	}
-	txExplorer, err := CreateTxExplorer(blockNo, tx)
+	txExplorer, err := s.CreateTxExplorer(blockNo, tx)
 
 	if err != nil {
 		return err
@@ -369,7 +370,7 @@ func saveTxExplorerToStorage(dbTx BillStoreTx, blockNo uint64, tx *types.Transac
 	return nil
 }
 
-func saveBlockToStorage(dbTx BillStoreTx, b *types.Block) error {
+func saveBlockToStorage(dbTx s.BillStoreTx, b *types.Block) error {
 	if b != nil {
 		err := dbTx.SetBlock(b)
 		if err != nil {
