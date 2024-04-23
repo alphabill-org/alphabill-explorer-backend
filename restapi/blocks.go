@@ -8,7 +8,7 @@ import (
 	"github.com/gorilla/mux"
 )
 
-func (api *MoneyRestAPI) getBlockByBlockNumber(w http.ResponseWriter, r *http.Request) {
+func (api *MoneyRestAPI) getBlock(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	blockNumberStr, ok := vars["blockNumber"]
 	if !ok {

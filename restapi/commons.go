@@ -57,12 +57,6 @@ type (
 
 var ErrRecordNotFound = errors.New("not found")
 
-//func (rw *ResponseWriter) logError(err error) {
-//	if rw.LogErr != nil {
-//		rw.LogErr(err)
-//	}
-//}
-
 func (rw *ResponseWriter) WriteResponse(w http.ResponseWriter, data any) {
 	w.Header().Set(ContentType, ApplicationJson)
 	if err := json.NewEncoder(w).Encode(data); err != nil {

@@ -15,7 +15,6 @@ import (
 	st "github.com/alphabill-org/alphabill-explorer-backend/types"
 	"github.com/alphabill-org/alphabill-wallet/cli/alphabill/cmd/wallet/args"
 	"github.com/alphabill-org/alphabill-wallet/client/rpc"
-	sdk "github.com/alphabill-org/alphabill-wallet/wallet"
 	"github.com/alphabill-org/alphabill-wallet/wallet/account"
 	"github.com/alphabill-org/alphabill/types"
 	"golang.org/x/sync/errgroup"
@@ -23,7 +22,7 @@ import (
 
 type (
 	ExplorerBackend struct {
-		store  st.BillStore
+		store  bs.BillStore
 		client *rpc.Client
 	}
 
@@ -159,9 +158,9 @@ func (ex *ExplorerBackend) GetBill(unitID []byte) (*st.Bill, error) {
 	return ex.store.Do().GetBill(unitID)
 }
 
-func (ex *ExplorerBackend) GetTxProof(unitID types.UnitID, txHash sdk.TxHash) (*types.TxProof, error) {
-	return ex.store.Do().GetTxProof(unitID, txHash)
-}
+//func (ex *ExplorerBackend) GetTxProof(unitID types.UnitID, txHash sdk.TxHash) (*types.TxProof, error) {
+//	return ex.store.Do().GetTxProof(unitID, txHash)
+//}
 
 // func (ex *ExplorerBackend) GetBlockExplorerTxsByBlockNumber(blockNumber uint64) (res []*st.TxInfo, err error) {
 // 	return ex.types.Do().GetBlockExplorerTxsByBlockNumber(blockNumber)
@@ -171,39 +170,3 @@ func (ex *ExplorerBackend) GetTxProof(unitID types.UnitID, txHash sdk.TxHash) (*
 func (ex *ExplorerBackend) GetRoundNumber(ctx context.Context) (uint64, error) {
 	return ex.client.GetRoundNumber(ctx)
 }
-
-//func (ex *ExplorerBackend) GetTxHistoryRecords(dbStartKey []byte, count int) ([]*sdk.TxHistoryRecord, []byte, error) {
-//	return ex.types.Do().GetTxHistoryRecords(dbStartKey, count)
-//}
-//
-//func (ex *ExplorerBackend) GetTxHistoryRecordsByKey(hash sdk.PubKeyHash, dbStartKey []byte, count int) ([]*sdk.TxHistoryRecord, []byte, error) {
-//	return ex.types.Do().GetTxHistoryRecordsByKey(hash, dbStartKey, count)
-//}
-
-// func (b *s.Bill) getTxHash() []byte {
-// 	if b != nil {
-// 		return b.TxHash
-// 	}
-// 	return nil
-// }
-
-// func (b *s.Bill) getValue() uint64 {
-// 	if b != nil {
-// 		return b.Value
-// 	}
-// 	return 0
-// }
-
-// func (b *s.Bill) getLastAddFCTxHash() []byte {
-// 	if b != nil {
-// 		return b.LastAddFCTxHash
-// 	}
-// 	return nil
-// }
-
-// func (b *s.Bill) IsDCBill() bool {
-// 	if b != nil {
-// 		return len(b.DCTargetUnitID) > 0
-// 	}
-// 	return false
-// }
