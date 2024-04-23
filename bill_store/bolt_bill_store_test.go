@@ -35,7 +35,7 @@ package bill_store
 //	require.NoError(t, err)
 //
 //	// get block
-//	block, err := bs.Do().GetBlockByBlockNumber(blockNumber)
+//	block, err := bs.Do().GetBlock(blockNumber)
 //	require.NoError(t, err)
 //	require.EqualValues(t, block.UnicityCertificate.InputRecord.RoundNumber, blockNumber)
 //}
@@ -102,13 +102,13 @@ package bill_store
 //	// Set TxExplorer To Bucket
 //	txExplorer, err := CreateTxExplorer(blockNumber, tx)
 //	require.NoError(t, err)
-//	err = bs.Do().SetTxExplorerToBucket(txExplorer)
+//	err = bs.Do().AddTxInfo(txExplorer)
 //	require.NoError(t, err)
 //
 //	// Get TxExplorer By TxHash
 //	//hashHex := hex.EncodeToString(tx.Hash(crypto.SHA256))
 //	hash := hex.EncodeToString(tx.Hash(crypto.SHA256))
-//	txExplorerResult, err := bs.Do().GetTxExplorerByTxHash(hash)
+//	txExplorerResult, err := bs.Do().GetTxInfo(hash)
 //	require.NoError(t, err)
 //	require.EqualValues(t, txExplorerResult.BlockNumber, blockNumber)
 //	require.EqualValues(t, txExplorerResult.Hash, hash)
@@ -187,15 +187,15 @@ package bill_store
 //	// set
 //	txEx1, err := CreateTxExplorer(blockNumber, tx1)
 //	require.NoError(t, err)
-//	err = bs.Do().SetTxExplorerToBucket(txEx1)
+//	err = bs.Do().AddTxInfo(txEx1)
 //	require.NoError(t, err)
 //	txEx2, err := CreateTxExplorer(blockNumber, tx2)
 //	require.NoError(t, err)
-//	err = bs.Do().SetTxExplorerToBucket(txEx2)
+//	err = bs.Do().AddTxInfo(txEx2)
 //	require.NoError(t, err)
 //	txEx3, err := CreateTxExplorer(blockNumber, tx3)
 //	require.NoError(t, err)
-//	err = bs.Do().SetTxExplorerToBucket(txEx3)
+//	err = bs.Do().AddTxInfo(txEx3)
 //	require.NoError(t, err)
 //
 //	err = bs.Do().SetBlockExplorer(b)

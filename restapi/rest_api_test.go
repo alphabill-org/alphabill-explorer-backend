@@ -141,7 +141,7 @@ package restapi
 //	// Set TxExplorer To Bucket
 //	txExplorer, err := CreateTxExplorer(blockNumber, tx)
 //	require.NoError(t, err)
-//	err = bs.Do().SetTxExplorerToBucket(txExplorer)
+//	err = bs.Do().AddTxInfo(txExplorer)
 //	require.NoError(t, err)
 //
 //	// Get
@@ -183,15 +183,15 @@ package restapi
 //	// set
 //	txEx1, err := CreateTxExplorer(blockNumber, tx1)
 //	require.NoError(t, err)
-//	err = bs.Do().SetTxExplorerToBucket(txEx1)
+//	err = bs.Do().AddTxInfo(txEx1)
 //	require.NoError(t, err)
 //	txEx2, err := CreateTxExplorer(blockNumber, tx2)
 //	require.NoError(t, err)
-//	err = bs.Do().SetTxExplorerToBucket(txEx2)
+//	err = bs.Do().AddTxInfo(txEx2)
 //	require.NoError(t, err)
 //	txEx3, err := CreateTxExplorer(blockNumber, tx3)
 //	require.NoError(t, err)
-//	err = bs.Do().SetTxExplorerToBucket(txEx3)
+//	err = bs.Do().AddTxInfo(txEx3)
 //	require.NoError(t, err)
 //
 //	err = bs.Do().SetBlockExplorer(b)
@@ -525,7 +525,7 @@ package restapi
 //	return 0, errors.New("not implemented")
 //}
 //
-//func (m *explorerBackendServiceMock) GetBlockByBlockNumber(blocknumber uint64) (*types.Block, error) {
+//func (m *explorerBackendServiceMock) GetBlock(blocknumber uint64) (*types.Block, error) {
 //	//TODO
 //	return nil, errors.New("not implemented")
 //}
@@ -542,7 +542,7 @@ package restapi
 //	//TODO
 //	return nil, 0, errors.New("not implemented")
 //}
-//func (m *explorerBackendServiceMock) GetTxExplorerByTxHash(txHash string) (res *TxExplorer, err error) {
+//func (m *explorerBackendServiceMock) GetTxInfo(txHash string) (res *TxExplorer, err error) {
 //	//TODO
 //	return nil, errors.New("not implemented")
 //}

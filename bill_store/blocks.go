@@ -10,8 +10,8 @@ import (
 	bolt "go.etcd.io/bbolt"
 )
 
-func (s *boltBillStoreTx) SetBlockInfo(b *types.Block) error {
-	return s.withTx(s.tx, func(tx *bolt.Tx) error {
+func (s *boltBillStore) SetBlockInfo(b *types.Block) error {
+	return s.db.Update(func(tx *bolt.Tx) error {
 		blockInfoBucket := tx.Bucket(blockInfoBucket)
 		blockNumber := b.UnicityCertificate.InputRecord.RoundNumber
 		blockNumberBytes := util.Uint64ToBytes(blockNumber)
@@ -32,12 +32,12 @@ func (s *boltBillStoreTx) SetBlockInfo(b *types.Block) error {
 			return err
 		}
 		return nil
-	}, true)
+	})
 }
 
-func (s boltBillStoreTx) GetLastBlockNumber() (uint64, error) {
+func (s *boltBillStore) GetLastBlockNumber() (uint64, error) {
 	lastBlockNo := uint64(0)
-	err := s.withTx(s.tx, func(tx *bolt.Tx) error {
+	err := s.db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket(blockInfoBucket)
 
 		if b == nil {
@@ -51,35 +51,35 @@ func (s boltBillStoreTx) GetLastBlockNumber() (uint64, error) {
 		}
 		lastBlockNo = util.BytesToUint64(key)
 		return nil
-	}, false)
+	})
 	if err != nil {
 		return 0, err
 	}
 	return lastBlockNo, nil
 }
 
-func (s *boltBillStoreTx) GetBlockInfoByBlockNumber(blockNumber uint64) (*st.BlockInfo, error) {
+func (s *boltBillStore) GetBlockInfo(blockNumber uint64) (*st.BlockInfo, error) {
 	var b *st.BlockInfo
 	blockNumberBytes := util.Uint64ToBytes(blockNumber)
-	err := s.withTx(s.tx, func(tx *bolt.Tx) error {
+	err := s.db.View(func(tx *bolt.Tx) error {
 		blockInfoBytes := tx.Bucket(blockInfoBucket).Get(blockNumberBytes)
 		return json.Unmarshal(blockInfoBytes, &b)
-	}, false)
+	})
 	if err != nil {
 		return nil, err
 	}
 	return b, nil
 }
 
-func (s *boltBillStoreTx) GetBlocksInfo(dbStartBlock uint64, count int) (res []*st.BlockInfo, prevBlockNumber uint64, err error) {
-	return res, prevBlockNumber, s.withTx(s.tx, func(tx *bolt.Tx) error {
+func (s *boltBillStore) GetBlocksInfo(dbStartBlock uint64, count int) (res []*st.BlockInfo, prevBlockNumber uint64, err error) {
+	return res, prevBlockNumber, s.db.View(func(tx *bolt.Tx) error {
 		var err error
 		res, prevBlockNumber, err = s.getBlocksInfo(tx, dbStartBlock, count)
 		return err
-	}, false)
+	})
 }
 
-func (s *boltBillStoreTx) getBlocksInfo(tx *bolt.Tx, dbStartBlock uint64, count int) ([]*st.BlockInfo, uint64, error) {
+func (s *boltBillStore) getBlocksInfo(tx *bolt.Tx, dbStartBlock uint64, count int) ([]*st.BlockInfo, uint64, error) {
 	pb := tx.Bucket(blockInfoBucket)
 
 	if pb == nil {

@@ -22,7 +22,7 @@ func (api *MoneyRestAPI) getBlock(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	block, err := api.Service.GetBlockByBlockNumber(blockNumber)
+	block, err := api.Service.GetBlock(blockNumber)
 	if err != nil {
 		api.rw.WriteErrorResponse(w, fmt.Errorf("failed to load block with block number %d : %w", blockNumber, err))
 		return

@@ -12,48 +12,42 @@ import (
 	"github.com/alphabill-org/alphabill-explorer-backend/blocks"
 	"github.com/alphabill-org/alphabill-explorer-backend/blocksync"
 	ra "github.com/alphabill-org/alphabill-explorer-backend/restapi"
-	st "github.com/alphabill-org/alphabill-explorer-backend/types"
+	"github.com/alphabill-org/alphabill-explorer-backend/types"
 	"github.com/alphabill-org/alphabill-wallet/cli/alphabill/cmd/wallet/args"
 	"github.com/alphabill-org/alphabill-wallet/client/rpc"
-	"github.com/alphabill-org/alphabill-wallet/wallet/account"
-	"github.com/alphabill-org/alphabill/types"
+	abtypes "github.com/alphabill-org/alphabill/types"
 	"golang.org/x/sync/errgroup"
 )
 
 type (
+	BillStore interface {
+		GetBlockNumber() (uint64, error)
+		SetBlockNumber(blockNumber uint64) error
+		AddTxInfo(txExplorer *types.TxInfo) error
+		GetTxInfo(txHash string) (*types.TxInfo, error)
+		SetBlockInfo(b *abtypes.Block) error
+		GetLastBlockNumber() (uint64, error)
+		GetBlockInfo(blockNumber uint64) (*types.BlockInfo, error)
+		GetBlocksInfo(dbStartBlock uint64, count int) (res []*types.BlockInfo, prevBlockNumber uint64, err error)
+	}
+
 	ExplorerBackend struct {
-		store  bs.BillStore
+		store  BillStore
 		client *rpc.Client
 	}
 
-	Pubkey struct {
-		Pubkey     []byte             `json:"pubkey"`
-		PubkeyHash *account.KeyHashes `json:"pubkeyHash"`
-	}
-
-	p2pkhOwnerPredicates struct {
-		sha256 []byte
-		sha512 []byte
-	}
-
 	Config struct {
-		ABMoneySystemIdentifier types.SystemID
+		ABMoneySystemIdentifier abtypes.SystemID
 		AlphabillUrl            string
 		ServerAddr              string
 		DbFile                  string
 		ListBillsPageLimit      int
 		BlockNumber             uint64
 	}
-
-	InitialBill struct {
-		ID        []byte
-		Value     uint64
-		Predicate []byte
-	}
 )
 
 func Run(ctx context.Context, config *Config) error {
-	println("starting money backend")
+	println("starting money partition explorer")
 	store, err := bs.NewBoltBillStore(config.DbFile)
 	if err != nil {
 		return fmt.Errorf("failed to get storage: %w", err)
@@ -94,7 +88,7 @@ func Run(ctx context.Context, config *Config) error {
 			return fmt.Errorf("failed to create block processor: %w", err)
 		}
 		getBlockNumber := func() (uint64, error) {
-			storedBN, err := store.Do().GetBlockNumber()
+			storedBN, err := store.GetBlockNumber()
 			println("stored block number: ", storedBN)
 			if err != nil {
 				return 0, fmt.Errorf("failed to read current block number: %w", err)
@@ -133,38 +127,24 @@ func runBlockSync(ctx context.Context, getBlocks blocksync.BlockLoaderFunc, getB
 	return blocksync.Run(ctx, getBlocks, blockNumber+1, 0, batchSize, processor)
 }
 
-// GetBlockByBlockNumber returns block with given block number.
+// GetLastBlockNumber returns last processed block
 func (ex *ExplorerBackend) GetLastBlockNumber() (uint64, error) {
-	return ex.store.Do().GetLastBlockNumber()
+	return ex.store.GetLastBlockNumber()
 }
 
-// GetBlockByBlockNumber returns block with given block number.
-func (ex *ExplorerBackend) GetBlockByBlockNumber(blockNumber uint64) (*st.BlockInfo, error) {
-	return ex.store.Do().GetBlockInfoByBlockNumber(blockNumber)
-}
-
-// GetBlocks return amount of blocks provided with count
-func (ex *ExplorerBackend) GetBlocks(dbStartBlockNumber uint64, count int) (res []*st.BlockInfo, prevBlockNUmber uint64, err error) {
-	return ex.store.Do().GetBlocksInfo(dbStartBlockNumber, count)
+// GetBlock returns block with given block number.
+func (ex *ExplorerBackend) GetBlock(blockNumber uint64) (*types.BlockInfo, error) {
+	return ex.store.GetBlockInfo(blockNumber)
 }
 
 // GetBlocks return amount of blocks provided with count
-func (ex *ExplorerBackend) GetTxExplorerByTxHash(txHash string) (res *st.TxInfo, err error) {
-	return ex.store.Do().GetTxExplorerByTxHash(txHash)
+func (ex *ExplorerBackend) GetBlocks(dbStartBlockNumber uint64, count int) (res []*types.BlockInfo, prevBlockNUmber uint64, err error) {
+	return ex.store.GetBlocksInfo(dbStartBlockNumber, count)
 }
 
-// GetBill returns most recently seen bill with given unit id.
-func (ex *ExplorerBackend) GetBill(unitID []byte) (*st.Bill, error) {
-	return ex.store.Do().GetBill(unitID)
+func (ex *ExplorerBackend) GetTxInfo(txHash string) (res *types.TxInfo, err error) {
+	return ex.store.GetTxInfo(txHash)
 }
-
-//func (ex *ExplorerBackend) GetTxProof(unitID types.UnitID, txHash sdk.TxHash) (*types.TxProof, error) {
-//	return ex.store.Do().GetTxProof(unitID, txHash)
-//}
-
-// func (ex *ExplorerBackend) GetBlockExplorerTxsByBlockNumber(blockNumber uint64) (res []*st.TxInfo, err error) {
-// 	return ex.types.Do().GetBlockExplorerTxsByBlockNumber(blockNumber)
-// }
 
 // GetRoundNumber returns latest round number.
 func (ex *ExplorerBackend) GetRoundNumber(ctx context.Context) (uint64, error) {

@@ -17,7 +17,7 @@ const (
 type (
 	ExplorerBackendService interface {
 		GetLastBlockNumber() (uint64, error)
-		GetBlockByBlockNumber(blockNumber uint64) (*st.BlockInfo, error)
+		GetBlock(blockNumber uint64) (*st.BlockInfo, error)
 		GetBlocks(dbStartBlock uint64, count int) (res []*st.BlockInfo, prevBlockNumber uint64, err error)
 		GetRoundNumber(ctx context.Context) (uint64, error)
 	}
