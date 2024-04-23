@@ -14,14 +14,7 @@ type (
 	}
 	// BillStoreTx type for managing units by their ID and owner condition
 	BillStoreTx interface {
-		GetLastBlockNumber() (uint64, error)
-		GetBlockByBlockNumber(blockNumber uint64) (*types.Block, error)
-		GetBlocks(dbStartBlock uint64, count int) (res []*types.Block, prevBlockNumber uint64, err error)
-		SetBlock(b *types.Block) error
-		GetBlockExplorerByBlockNumber(blockNumber uint64) (*BlockExplorer, error)
-		GetBlocksExplorer(dbStartBlock uint64, count int) (res []*BlockExplorer, prevBlockNumber uint64, err error)
-		SetBlockExplorer(b *types.Block) error
-		GetBlockExplorerTxsByBlockNumber(blockNumber uint64) (res []*TxExplorer, err error)
+		//GetBlockExplorerTxsByBlockNumber(blockNumber uint64) (res []*TxExplorer, err error)
 		GetBlockNumber() (uint64, error)
 		SetBlockNumber(blockNumber uint64) error
 		GetTxExplorerByTxHash(txHash string) (*TxExplorer, error)
@@ -37,6 +30,12 @@ type (
 		//GetTxHistoryRecords(dbStartKey []byte, count int) ([]*sdk.TxHistoryRecord, []byte, error)
 		//GetTxHistoryRecordsByKey(hash sdk.PubKeyHash, dbStartKey []byte, count int) ([]*sdk.TxHistoryRecord, []byte, error)
 		//StoreTxHistoryRecord(hash sdk.PubKeyHash, rec *sdk.TxHistoryRecord) error
+
+
+		GetLastBlockNumber() (uint64, error)
+		SetBlockInfo(b *types.Block) error
+		GetBlockInfoByBlockNumber(blockNumber uint64) (*BlockInfo, error)
+		GetBlocksInfo(dbStartBlock uint64, count int) (res []*BlockInfo, prevBlockNumber uint64, err error)
 	}
 
 	Bills struct {
@@ -56,22 +55,6 @@ type (
 		LastAddFCTxHash []byte `json:"lastAddFcTxHash,omitempty"`
 	}
 
-	BlockExplorer struct {
-		_               struct{} `cbor:",toarray"`
-		SystemID        *types.SystemID
-		RoundNumber     uint64
-		Header          *HeaderExplorer
-		TxHashes        []string
-		SummaryValue    []byte // summary value to certified
-		SumOfEarnedFees uint64 // sum of the actual fees over all transaction records in the block
-	}
-	HeaderExplorer struct {
-		_                 struct{} `cbor:",toarray"`
-		Timestamp         uint64
-		BlockHash         []byte
-		PreviousBlockHash []byte
-		ProposerID        string // validator
-	}
 	TxExplorer struct {
 		_                struct{} `cbor:",toarray"`
 		Hash             string

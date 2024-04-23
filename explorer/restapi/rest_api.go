@@ -25,12 +25,10 @@ const (
 type (
 	ExplorerBackendService interface {
 		GetLastBlockNumber() (uint64, error)
-		GetBlockByBlockNumber(blockNumber uint64) (*types.Block, error)
-		GetBlocks(dbStartBlock uint64, count int) (res []*types.Block, prevBlockNumber uint64, err error)
-		GetBlockExplorerByBlockNumber(blockNumber uint64) (*st.BlockExplorer, error)
-		GetBlocksExplorer(dbStartBlock uint64, count int) (res []*st.BlockExplorer, prevBlockNumber uint64, err error)
+		GetBlockByBlockNumber(blockNumber uint64) (*st.BlockInfo, error)
+		GetBlocks(dbStartBlock uint64, count int) (res []*st.BlockInfo, prevBlockNumber uint64, err error)
 		GetTxExplorerByTxHash(txHash string) (*st.TxExplorer, error)
-		GetBlockExplorerTxsByBlockNumber(blockNumber uint64) (res []*st.TxExplorer, err error)
+		//GetBlockExplorerTxsByBlockNumber(blockNumber uint64) (res []*st.TxExplorer, err error)
 		GetRoundNumber(ctx context.Context) (uint64, error)
 		GetTxProof(unitID types.UnitID, txHash sdk.TxHash) (*types.TxProof, error)
 		//GetTxHistoryRecords(dbStartKey []byte, count int) ([]*sdk.TxHistoryRecord, []byte, error)
@@ -82,9 +80,11 @@ func (api *MoneyRestAPI) Router() *mux.Router {
 	apiV1 := apiRouter.PathPrefix("/v1").Subrouter()
 	apiV1.HandleFunc("/blocks/{blockNumber}", api.getBlockByBlockNumber).Methods("GET", "OPTIONS")
 	apiV1.HandleFunc("/blocks", api.getBlocks).Methods("GET", "OPTIONS")
-	apiV1.HandleFunc("/blocksExp/{blockNumber}", api.getBlockExplorerByBlockNumber).Methods("GET", "OPTIONS")
-	apiV1.HandleFunc("/blocksExp", api.getBlocksExplorer).Methods("GET", "OPTIONS")
-	apiV1.HandleFunc("/blocksExp/{blockNumber}/txsExp/", api.getBlockExplorerTxsByBlockNumber).Methods("GET", "OPTIONS")
+	//apiV1.HandleFunc("/blocksExp/{blockNumber}", api.getBlockExplorerByBlockNumber).Methods("GET", "OPTIONS")
+	//apiV1.HandleFunc("/blocksExp", api.getBlocksExplorer).Methods("GET", "OPTIONS")
+
+	//apiV1.HandleFunc("/blocksExp/{blockNumber}/txsExp/", api.getBlockExplorerTxsByBlockNumber).Methods("GET", "OPTIONS")
+
 	apiV1.HandleFunc("/txsExp/{txHash}", api.getTxExplorerByTxHash).Methods("GET", "OPTIONS")
 	apiV1.HandleFunc("/tx-history", api.getTxHistory).Methods("GET", "OPTIONS")
 	apiV1.HandleFunc("/tx-history/{pubkey}", api.getTxHistoryByKey).Methods("GET", "OPTIONS")
@@ -93,132 +93,6 @@ func (api *MoneyRestAPI) Router() *mux.Router {
 	apiV1.HandleFunc("/info", api.getInfo).Methods("GET", "OPTIONS")
 
 	return router
-}
-
-func (api *MoneyRestAPI) getBlockByBlockNumber(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	blockNumberStr, ok := vars["blockNumber"]
-	if !ok {
-		http.Error(w, "Missing 'blockNumber' variable in the URL", http.StatusBadRequest)
-		return
-	}
-
-	blockNumber, err := strconv.ParseUint(blockNumberStr, 10, 64)
-	if err != nil {
-		http.Error(w, "Invalid 'blockNumber' format", http.StatusBadRequest)
-		return
-	}
-
-	block, err := api.Service.GetBlockByBlockNumber(blockNumber)
-	if err != nil {
-		api.rw.WriteErrorResponse(w, fmt.Errorf("failed to load block with block number %d : %w", blockNumber, err))
-		return
-	}
-
-	if block == nil {
-		api.rw.ErrorResponse(w, http.StatusNotFound, fmt.Errorf("block with block number %x not found", blockNumber))
-		return
-	}
-
-	api.rw.WriteResponse(w, block)
-}
-
-func (api *MoneyRestAPI) getBlocks(w http.ResponseWriter, r *http.Request) {
-
-	qp := r.URL.Query()
-
-	startBlockStr := qp.Get("startBlock")
-	limitStr := qp.Get("limit")
-
-	startBlock, err := strconv.ParseUint(startBlockStr, 10, 64)
-	if err != nil {
-		http.Error(w, "Invalid 'startBlock' format", http.StatusBadRequest)
-		return
-	}
-
-	limit, err := strconv.Atoi(limitStr)
-	if err != nil {
-		http.Error(w, "Invalid 'limit' format", http.StatusBadRequest)
-		return
-	}
-
-	recs, prevBlockNumber, err := api.Service.GetBlocks(startBlock, limit)
-	if err != nil {
-		println("error on GET /blocks: ", err)
-		api.rw.WriteErrorResponse(w, fmt.Errorf("unable to fetch blocks: %w", err))
-		return
-	}
-	prevBlockNumberStr := strconv.FormatUint(prevBlockNumber, 10)
-	SetLinkHeader(r.URL, w, prevBlockNumberStr)
-	api.rw.WriteResponse(w, recs)
-}
-func (api *MoneyRestAPI) getBlockExplorerByBlockNumber(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	blockNumberStr, ok := vars["blockNumber"]
-	if !ok {
-		http.Error(w, "Missing 'blockNumber' variable in the URL", http.StatusBadRequest)
-		return
-	}
-
-	blockNumber, err := strconv.ParseUint(blockNumberStr, 10, 64)
-	if err != nil {
-		http.Error(w, "Invalid 'blockNumber' format", http.StatusBadRequest)
-		return
-	}
-
-	block, err := api.Service.GetBlockExplorerByBlockNumber(blockNumber)
-	if err != nil {
-		api.rw.WriteErrorResponse(w, fmt.Errorf("failed to load block with block number %d : %w", blockNumber, err))
-		return
-	}
-
-	if block == nil {
-		api.rw.ErrorResponse(w, http.StatusNotFound, fmt.Errorf("block with block number %d not found", blockNumber))
-		return
-	}
-
-	api.rw.WriteResponse(w, block)
-}
-func (api *MoneyRestAPI) getBlocksExplorer(w http.ResponseWriter, r *http.Request) {
-
-	qp := r.URL.Query()
-
-	startBlockStr := qp.Get("startBlock")
-	limitStr := qp.Get("limit")
-
-	startBlock, err := api.Service.GetLastBlockNumber()
-	if err != nil {
-		http.Error(w, "unable to get last block number", http.StatusBadRequest)
-		return
-	}
-
-	if startBlockStr != "" {
-		startBlock, err = strconv.ParseUint(startBlockStr, 10, 64)
-		if err != nil {
-			http.Error(w, "Invalid 'startBlock' format", http.StatusBadRequest)
-			return
-		}
-	}
-
-	limit := 10
-
-	if limitStr != "" {
-		limit, err = strconv.Atoi(limitStr)
-		if err != nil {
-			http.Error(w, "Invalid 'limit' format", http.StatusBadRequest)
-			return
-		}
-	}
-
-	recs, prevBlockNumber, err := api.Service.GetBlocksExplorer(startBlock, limit)
-	if err != nil {
-		println("error on GET /blocks: ", err)
-		api.rw.WriteErrorResponse(w, fmt.Errorf("unable to fetch blocks: %w", err))
-		return
-	}
-	prevBlockNumberStr := strconv.FormatUint(prevBlockNumber, 10)
-	SetLinkHeader(r.URL, w, prevBlockNumberStr)
-	api.rw.WriteResponse(w, recs)
 }
 
 func (api *MoneyRestAPI) getTxExplorerByTxHash(w http.ResponseWriter, r *http.Request) {
@@ -241,32 +115,32 @@ func (api *MoneyRestAPI) getTxExplorerByTxHash(w http.ResponseWriter, r *http.Re
 	api.rw.WriteResponse(w, txExplorer)
 }
 
-func (api *MoneyRestAPI) getBlockExplorerTxsByBlockNumber(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	blockNumberStr, ok := vars["blockNumber"]
-	if !ok {
-		http.Error(w, "Missing 'blockNumber' variable in the URL", http.StatusBadRequest)
-		return
-	}
+// func (api *MoneyRestAPI) getBlockExplorerTxsByBlockNumber(w http.ResponseWriter, r *http.Request) {
+// 	vars := mux.Vars(r)
+// 	blockNumberStr, ok := vars["blockNumber"]
+// 	if !ok {
+// 		http.Error(w, "Missing 'blockNumber' variable in the URL", http.StatusBadRequest)
+// 		return
+// 	}
 
-	blockNumber, err := strconv.ParseUint(blockNumberStr, 10, 64)
-	if err != nil {
-		http.Error(w, "Invalid 'blockNumber' format", http.StatusBadRequest)
-		return
-	}
+// 	blockNumber, err := strconv.ParseUint(blockNumberStr, 10, 64)
+// 	if err != nil {
+// 		http.Error(w, "Invalid 'blockNumber' format", http.StatusBadRequest)
+// 		return
+// 	}
 
-	txsExplorer, err := api.Service.GetBlockExplorerTxsByBlockNumber(blockNumber)
-	if err != nil {
-		api.rw.WriteErrorResponse(w, fmt.Errorf("failed to load txs with blockNumber %d : %w", blockNumber, err))
-		return
-	}
+// 	txsExplorer, err := api.Service.GetBlockExplorerTxsByBlockNumber(blockNumber)
+// 	if err != nil {
+// 		api.rw.WriteErrorResponse(w, fmt.Errorf("failed to load txs with blockNumber %d : %w", blockNumber, err))
+// 		return
+// 	}
 
-	if txsExplorer == nil {
-		api.rw.ErrorResponse(w, http.StatusNotFound, fmt.Errorf("tx with txHash %d not found", blockNumber))
-		return
-	}
-	api.rw.WriteResponse(w, txsExplorer)
-}
+// 	if txsExplorer == nil {
+// 		api.rw.ErrorResponse(w, http.StatusNotFound, fmt.Errorf("tx with txHash %d not found", blockNumber))
+// 		return
+// 	}
+// 	api.rw.WriteResponse(w, txsExplorer)
+// }
 
 func (api *MoneyRestAPI) getTxHistory(w http.ResponseWriter, r *http.Request) {
 
