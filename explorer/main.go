@@ -17,22 +17,24 @@ import (
 	"golang.org/x/sync/errgroup"
 	bs "github.com/alphabill-org/alphabill-explorer-backend/explorer/bill_store"
 	s "github.com/alphabill-org/alphabill-explorer-backend/store"
+	ra "github.com/alphabill-org/alphabill-explorer-backend/explorer/restapi"
 )
 
+
 type (
-	ExplorerBackendService interface {
-		GetLastBlockNumber() (uint64, error)
-		GetBlockByBlockNumber(blockNumber uint64) (*types.Block, error)
-		GetBlocks(dbStartBlock uint64, count int) (res []*types.Block, prevBlockNumber uint64, err error)
-		GetBlockExplorerByBlockNumber(blockNumber uint64) (*s.BlockExplorer, error)
-		GetBlocksExplorer(dbStartBlock uint64, count int) (res []*s.BlockExplorer, prevBlockNumber uint64, err error)
-		GetTxExplorerByTxHash(txHash string) (*s.TxExplorer, error)
-		GetBlockExplorerTxsByBlockNumber(blockNumber uint64) (res []*s.TxExplorer, err error)
-		GetRoundNumber(ctx context.Context) (uint64, error)
-		GetTxProof(unitID types.UnitID, txHash sdk.TxHash) (*types.TxProof, error)
-		//GetTxHistoryRecords(dbStartKey []byte, count int) ([]*sdk.TxHistoryRecord, []byte, error)
-		//GetTxHistoryRecordsByKey(hash sdk.PubKeyHash, dbStartKey []byte, count int) ([]*sdk.TxHistoryRecord, []byte, error)
-	}
+	// ExplorerBackendService interface {
+	// 	GetLastBlockNumber() (uint64, error)
+	// 	GetBlockByBlockNumber(blockNumber uint64) (*types.Block, error)
+	// 	GetBlocks(dbStartBlock uint64, count int) (res []*types.Block, prevBlockNumber uint64, err error)
+	// 	GetBlockExplorerByBlockNumber(blockNumber uint64) (*s.BlockExplorer, error)
+	// 	GetBlocksExplorer(dbStartBlock uint64, count int) (res []*s.BlockExplorer, prevBlockNumber uint64, err error)
+	// 	GetTxExplorerByTxHash(txHash string) (*s.TxExplorer, error)
+	// 	GetBlockExplorerTxsByBlockNumber(blockNumber uint64) (res []*s.TxExplorer, err error)
+	// 	GetRoundNumber(ctx context.Context) (uint64, error)
+	// 	GetTxProof(unitID types.UnitID, txHash sdk.TxHash) (*types.TxProof, error)
+	// 	//GetTxHistoryRecords(dbStartKey []byte, count int) ([]*sdk.TxHistoryRecord, []byte, error)
+	// 	//GetTxHistoryRecordsByKey(hash sdk.PubKeyHash, dbStartKey []byte, count int) ([]*sdk.TxHistoryRecord, []byte, error)
+	// }
 
 	ExplorerBackend struct {
 		store  s.BillStore
@@ -134,11 +136,10 @@ func Run(ctx context.Context, config *Config) error {
 		explorerBackend := &ExplorerBackend{store: store, client: moneyClient}
 		defer moneyClient.Close()
 
-		handler := &moneyRestAPI{
+		handler := &ra.MoneyRestAPI{
 			Service:            explorerBackend,
 			ListBillsPageLimit: config.ListBillsPageLimit,
 			SystemID:           config.ABMoneySystemIdentifier,
-			rw:                 &ResponseWriter{},
 		}
 		server := http.Server{
 			Addr:              config.ServerAddr,

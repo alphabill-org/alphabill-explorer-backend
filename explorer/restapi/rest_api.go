@@ -1,6 +1,7 @@
-package explorer
+package restapi
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -22,7 +23,20 @@ const (
 )
 
 type (
-	moneyRestAPI struct {
+	ExplorerBackendService interface {
+		GetLastBlockNumber() (uint64, error)
+		GetBlockByBlockNumber(blockNumber uint64) (*types.Block, error)
+		GetBlocks(dbStartBlock uint64, count int) (res []*types.Block, prevBlockNumber uint64, err error)
+		GetBlockExplorerByBlockNumber(blockNumber uint64) (*st.BlockExplorer, error)
+		GetBlocksExplorer(dbStartBlock uint64, count int) (res []*st.BlockExplorer, prevBlockNumber uint64, err error)
+		GetTxExplorerByTxHash(txHash string) (*st.TxExplorer, error)
+		GetBlockExplorerTxsByBlockNumber(blockNumber uint64) (res []*st.TxExplorer, err error)
+		GetRoundNumber(ctx context.Context) (uint64, error)
+		GetTxProof(unitID types.UnitID, txHash sdk.TxHash) (*types.TxProof, error)
+		//GetTxHistoryRecords(dbStartKey []byte, count int) ([]*sdk.TxHistoryRecord, []byte, error)
+		//GetTxHistoryRecordsByKey(hash sdk.PubKeyHash, dbStartKey []byte, count int) ([]*sdk.TxHistoryRecord, []byte, error)
+	}
+	MoneyRestAPI struct {
 		Service            ExplorerBackendService
 		ListBillsPageLimit int
 		rw                 *ResponseWriter
@@ -50,7 +64,7 @@ var (
 	errInvalidBillIDLength = errors.New("bill_id hex string must be 68 characters long (with 0x prefix)")
 )
 
-func (api *moneyRestAPI) Router() *mux.Router {
+func (api *MoneyRestAPI) Router() *mux.Router {
 	// TODO add request/response headers middleware
 	router := mux.NewRouter().StrictSlash(true)
 
@@ -81,7 +95,7 @@ func (api *moneyRestAPI) Router() *mux.Router {
 	return router
 }
 
-func (api *moneyRestAPI) getBlockByBlockNumber(w http.ResponseWriter, r *http.Request) {
+func (api *MoneyRestAPI) getBlockByBlockNumber(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	blockNumberStr, ok := vars["blockNumber"]
 	if !ok {
@@ -109,7 +123,7 @@ func (api *moneyRestAPI) getBlockByBlockNumber(w http.ResponseWriter, r *http.Re
 	api.rw.WriteResponse(w, block)
 }
 
-func (api *moneyRestAPI) getBlocks(w http.ResponseWriter, r *http.Request) {
+func (api *MoneyRestAPI) getBlocks(w http.ResponseWriter, r *http.Request) {
 
 	qp := r.URL.Query()
 
@@ -138,7 +152,7 @@ func (api *moneyRestAPI) getBlocks(w http.ResponseWriter, r *http.Request) {
 	SetLinkHeader(r.URL, w, prevBlockNumberStr)
 	api.rw.WriteResponse(w, recs)
 }
-func (api *moneyRestAPI) getBlockExplorerByBlockNumber(w http.ResponseWriter, r *http.Request) {
+func (api *MoneyRestAPI) getBlockExplorerByBlockNumber(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	blockNumberStr, ok := vars["blockNumber"]
 	if !ok {
@@ -165,7 +179,7 @@ func (api *moneyRestAPI) getBlockExplorerByBlockNumber(w http.ResponseWriter, r 
 
 	api.rw.WriteResponse(w, block)
 }
-func (api *moneyRestAPI) getBlocksExplorer(w http.ResponseWriter, r *http.Request) {
+func (api *MoneyRestAPI) getBlocksExplorer(w http.ResponseWriter, r *http.Request) {
 
 	qp := r.URL.Query()
 
@@ -207,7 +221,7 @@ func (api *moneyRestAPI) getBlocksExplorer(w http.ResponseWriter, r *http.Reques
 	api.rw.WriteResponse(w, recs)
 }
 
-func (api *moneyRestAPI) getTxExplorerByTxHash(w http.ResponseWriter, r *http.Request) {
+func (api *MoneyRestAPI) getTxExplorerByTxHash(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	txHash, ok := vars["txHash"]
 	if !ok {
@@ -227,7 +241,7 @@ func (api *moneyRestAPI) getTxExplorerByTxHash(w http.ResponseWriter, r *http.Re
 	api.rw.WriteResponse(w, txExplorer)
 }
 
-func (api *moneyRestAPI) getBlockExplorerTxsByBlockNumber(w http.ResponseWriter, r *http.Request) {
+func (api *MoneyRestAPI) getBlockExplorerTxsByBlockNumber(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	blockNumberStr, ok := vars["blockNumber"]
 	if !ok {
@@ -254,7 +268,7 @@ func (api *moneyRestAPI) getBlockExplorerTxsByBlockNumber(w http.ResponseWriter,
 	api.rw.WriteResponse(w, txsExplorer)
 }
 
-func (api *moneyRestAPI) getTxHistory(w http.ResponseWriter, r *http.Request) {
+func (api *MoneyRestAPI) getTxHistory(w http.ResponseWriter, r *http.Request) {
 
 	//qp := r.URL.Query()
 	//startKey, err := ParseHex[[]byte](qp.Get(QueryParamOffsetKey), false)
@@ -302,7 +316,7 @@ func (api *moneyRestAPI) getTxHistory(w http.ResponseWriter, r *http.Request) {
 	//api.rw.WriteCborResponse(w, recs)
 }
 
-func (api *moneyRestAPI) getTxHistoryByKey(w http.ResponseWriter, r *http.Request) {
+func (api *MoneyRestAPI) getTxHistoryByKey(w http.ResponseWriter, r *http.Request) {
 	//vars := mux.Vars(r)
 	//senderPubkey, err := DecodePubKeyHex(vars["pubkey"])
 	//if err != nil {
@@ -355,7 +369,7 @@ func (api *moneyRestAPI) getTxHistoryByKey(w http.ResponseWriter, r *http.Reques
 	//api.rw.WriteCborResponse(w, recs)
 }
 
-func (api *moneyRestAPI) getTxProof(w http.ResponseWriter, r *http.Request) {
+func (api *MoneyRestAPI) getTxProof(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	unitID, err := ParseHex[types.UnitID](vars["unitId"], true)
 	if err != nil {
@@ -385,7 +399,7 @@ func (api *moneyRestAPI) getTxProof(w http.ResponseWriter, r *http.Request) {
 	api.rw.WriteCborResponse(w, proof)
 }
 
-func (api *moneyRestAPI) roundNumberFunc(w http.ResponseWriter, r *http.Request) {
+func (api *MoneyRestAPI) roundNumberFunc(w http.ResponseWriter, r *http.Request) {
 	lastRoundNumber, err := api.Service.GetRoundNumber(r.Context())
 	if err != nil {
 		println("GET /round-number error fetching round number", err)
@@ -395,7 +409,7 @@ func (api *moneyRestAPI) roundNumberFunc(w http.ResponseWriter, r *http.Request)
 	}
 }
 
-func (api *moneyRestAPI) getInfo(w http.ResponseWriter, _ *http.Request) {
+func (api *MoneyRestAPI) getInfo(w http.ResponseWriter, _ *http.Request) {
 	res := InfoResponse{
 		SystemID: api.SystemID,
 		Name:     "explorer backend",
