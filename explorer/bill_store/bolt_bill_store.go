@@ -1,4 +1,4 @@
-package explorer
+package bill_store
 
 import (
 	"bytes"
@@ -7,10 +7,11 @@ import (
 	"fmt"
 	"time"
 
+	sdk "github.com/alphabill-org/alphabill-wallet/wallet"
 	"github.com/fxamacker/cbor/v2"
 	bolt "go.etcd.io/bbolt"
 
-	sdk "github.com/alphabill-org/alphabill-wallet/wallet"
+	st "github.com/alphabill-org/alphabill-explorer-backend/store"
 	"github.com/alphabill-org/alphabill/network/protocol/genesis"
 	"github.com/alphabill-org/alphabill/types"
 	"github.com/alphabill-org/alphabill/util"
@@ -19,7 +20,7 @@ import (
 const BoltExplorerStoreFileName = "explorer.db"
 
 var (
-	blockBucket           = []byte("BlockBucket")           // block_number => Block
+	blockInfoBucket       = []byte("BlockInfoBucket")       // block_number => BlockInfo
 	blockExplorerBucket   = []byte("BlockExplorerBucket")   // block_number => BlockExplorer
 	txExplorerBucket      = []byte("txExplorerBucket")      // txHash => TxExplorer
 	unitsBucket           = []byte("unitsBucket")           // unitID => unit_bytes
@@ -42,7 +43,7 @@ var (
 	ErrOwnerPredicateIsNil = errors.New("unit owner predicate is nil")
 )
 
-var _ BillStoreTx = (*boltBillStoreTx)(nil)
+var _ st.BillStoreTx = (*boltBillStoreTx)(nil)
 
 type (
 	boltBillStore struct {
@@ -57,60 +58,39 @@ type (
 
 // newBoltBillStore creates new on-disk persistent storage for bills and proofs using bolt db.
 // If the file does not exist then it will be created, however, parent directories must exist beforehand.
-func newBoltBillStore(dbFile string) (*boltBillStore, error) {
+func NewBoltBillStore(dbFile string) (*boltBillStore, error) {
 	db, err := bolt.Open(dbFile, 0600, &bolt.Options{Timeout: 3 * time.Second}) // -rw-------
 	if err != nil {
 		return nil, fmt.Errorf("failed to open bolt DB: %w", err)
 	}
-	s := &boltBillStore{db: db}
-	err = CreateBuckets(db.Update,
-		blockBucket, blockExplorerBucket, txExplorerBucket,
+	bbs := &boltBillStore{db: db}
+	err = st.CreateBuckets(db.Update,
+		blockInfoBucket, txExplorerBucket,
 		unitsBucket, predicatesBucket, metaBucket, expiredBillsBucket, feeUnitsBucket,
 		lockedFeeCreditBucket, closedFeeCreditBucket, sdrBucket, txProofsBucket, txHistoryBucket,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create db buckets: %w", err)
 	}
-	err = s.initMetaData()
+	err = bbs.initMetaData()
 	if err != nil {
 		return nil, fmt.Errorf("failed to init db metadata: %w", err)
 	}
-	return s, nil
+	return bbs, nil
 }
 
-func (s *boltBillStore) WithTransaction(fn func(txc BillStoreTx) error) error {
+func (s *boltBillStore) WithTransaction(fn func(txc st.BillStoreTx) error) error {
 	return s.db.Update(func(tx *bolt.Tx) error {
 		return fn(&boltBillStoreTx{db: s, tx: tx})
 	})
 }
 
-func (s *boltBillStore) Do() BillStoreTx {
+func (s *boltBillStore) Do() st.BillStoreTx {
 	return &boltBillStoreTx{db: s, tx: nil}
 }
-func (s *boltBillStoreTx) GetLastBlockNumber() (uint64, error) {
-	lastBlockNo := uint64(0)
-	err := s.withTx(s.tx, func(tx *bolt.Tx) error {
-		b := tx.Bucket(blockExplorerBucket)
 
-		if b == nil {
-			return fmt.Errorf("bucket %s not found", blockExplorerBucket)
-		}
-
-		c := b.Cursor()
-		key, _ := c.Last()
-		if key == nil {
-			return fmt.Errorf("no entries in the bucket  %s", blockExplorerBucket)
-		}
-		lastBlockNo = util.BytesToUint64(key)
-		return nil
-	}, false)
-	if err != nil {
-		return 0, err
-	}
-	return lastBlockNo, nil
-}
-func (s *boltBillStoreTx) GetBill(unitID []byte) (*Bill, error) {
-	var unit *Bill
+func (s *boltBillStoreTx) GetBill(unitID []byte) (*st.Bill, error) {
+	var unit *st.Bill
 	err := s.withTx(s.tx, func(tx *bolt.Tx) error {
 		bill, err := s.getUnit(tx, unitID)
 		if err != nil {
@@ -128,152 +108,8 @@ func (s *boltBillStoreTx) GetBill(unitID []byte) (*Bill, error) {
 	return unit, nil
 }
 
-func (s *boltBillStoreTx) GetBlockByBlockNumber(blockNumber uint64) (*types.Block, error) {
-	var b *types.Block
-	blockNumberBytes := util.Uint64ToBytes(blockNumber)
-	err := s.withTx(s.tx, func(tx *bolt.Tx) error {
-		blockBytes := tx.Bucket(blockBucket).Get(blockNumberBytes)
-		return json.Unmarshal(blockBytes, &b)
-	}, false)
-	if err != nil {
-		return nil, err
-	}
-	return b, nil
-}
-
-func (s *boltBillStoreTx) SetBlock(b *types.Block) error {
-	return s.withTx(s.tx, func(tx *bolt.Tx) error {
-		blockNumber := b.UnicityCertificate.InputRecord.RoundNumber
-		blockNumberBytes := util.Uint64ToBytes(blockNumber)
-		blockBytes, err := json.Marshal(b)
-		if err != nil {
-			return err
-		}
-		err = tx.Bucket(blockBucket).Put(blockNumberBytes, blockBytes)
-		if err != nil {
-			return err
-		}
-		return nil
-	}, true)
-}
-
-func (s *boltBillStoreTx) GetBlocks(dbStartBlock uint64, count int) (res []*types.Block, prevBlockNumber uint64, err error) {
-	return res, prevBlockNumber, s.withTx(s.tx, func(tx *bolt.Tx) error {
-		var err error
-		res, prevBlockNumber, err = s.getBlocks(tx, dbStartBlock, count)
-		return err
-	}, false)
-}
-func (s *boltBillStoreTx) getBlocks(tx *bolt.Tx, dbStartBlock uint64, count int) ([]*types.Block, uint64, error) {
-	pb := tx.Bucket(blockBucket)
-
-	if pb == nil {
-		return nil, 0, fmt.Errorf("bucket %s not found", blockBucket)
-	}
-
-	dbStartKeyBytes := util.Uint64ToBytes(dbStartBlock)
-	c := pb.Cursor()
-
-	var res []*types.Block
-	var prevBlockNumberBytes []byte
-	var prevBlockNumber uint64
-
-	for k, v := c.Seek(dbStartKeyBytes); k != nil && count > 0; k, v = c.Prev() {
-		rec := &types.Block{}
-		if err := json.Unmarshal(v, rec); err != nil {
-			return nil, 0, fmt.Errorf("failed to deserialize tx history record: %w", err)
-		}
-		res = append(res, rec)
-		if count--; count == 0 {
-			prevBlockNumberBytes, _ = c.Prev()
-			break
-		}
-	}
-	if len(prevBlockNumberBytes) != 0 {
-		prevBlockNumber = util.BytesToUint64(prevBlockNumberBytes)
-	} else {
-		prevBlockNumber = 0
-	}
-	return res, prevBlockNumber, nil
-}
-func (s *boltBillStoreTx) GetBlockExplorerByBlockNumber(blockNumber uint64) (*BlockExplorer, error) {
-	var b *BlockExplorer
-	blockNumberBytes := util.Uint64ToBytes(blockNumber)
-	err := s.withTx(s.tx, func(tx *bolt.Tx) error {
-		blockExplorerBytes := tx.Bucket(blockExplorerBucket).Get(blockNumberBytes)
-		return json.Unmarshal(blockExplorerBytes, &b)
-	}, false)
-	if err != nil {
-		return nil, err
-	}
-	return b, nil
-}
-func (s *boltBillStoreTx) GetBlocksExplorer(dbStartBlock uint64, count int) (res []*BlockExplorer, prevBlockNumber uint64, err error) {
-	return res, prevBlockNumber, s.withTx(s.tx, func(tx *bolt.Tx) error {
-		var err error
-		res, prevBlockNumber, err = s.getBlocksExplorer(tx, dbStartBlock, count)
-		return err
-	}, false)
-}
-func (s *boltBillStoreTx) getBlocksExplorer(tx *bolt.Tx, dbStartBlock uint64, count int) ([]*BlockExplorer, uint64, error) {
-	pb := tx.Bucket(blockExplorerBucket)
-
-	if pb == nil {
-		return nil, 0, fmt.Errorf("bucket %s not found", blockExplorerBucket)
-	}
-
-	dbStartKeyBytes := util.Uint64ToBytes(dbStartBlock)
-	c := pb.Cursor()
-
-	var res []*BlockExplorer
-	var prevBlockNumberBytes []byte
-	var prevBlockNumber uint64
-
-	for k, v := c.Seek(dbStartKeyBytes); k != nil && count > 0; k, v = c.Prev() {
-		rec := &BlockExplorer{}
-		if err := json.Unmarshal(v, rec); err != nil {
-			return nil, 0, fmt.Errorf("failed to deserialize tx history record: %w", err)
-		}
-		res = append(res, rec)
-		if count--; count == 0 {
-			prevBlockNumberBytes, _ = c.Prev()
-			break
-		}
-	}
-	if len(prevBlockNumberBytes) != 0 {
-		prevBlockNumber = util.BytesToUint64(prevBlockNumberBytes)
-	} else {
-		prevBlockNumber = 0
-	}
-	return res, prevBlockNumber, nil
-}
-func (s *boltBillStoreTx) SetBlockExplorer(b *types.Block) error {
-	return s.withTx(s.tx, func(tx *bolt.Tx) error {
-		blockExplorerBucket := tx.Bucket(blockExplorerBucket)
-		blockNumber := b.UnicityCertificate.InputRecord.RoundNumber
-		blockNumberBytes := util.Uint64ToBytes(blockNumber)
-
-		blockExplorer, err := CreateBlockExplorer(b)
-		if err != nil {
-			return err
-		}
-
-		blockExplorerBytes, err := json.Marshal(blockExplorer)
-
-		if err != nil {
-			return err
-		}
-
-		err = blockExplorerBucket.Put(blockNumberBytes, blockExplorerBytes)
-		if err != nil {
-			return err
-		}
-		return nil
-	}, true)
-}
-
-func (s *boltBillStoreTx) GetTxExplorerByTxHash(txHash string) (*TxExplorer, error) {
-	var txEx *TxExplorer
+func (s *boltBillStoreTx) GetTxExplorerByTxHash(txHash string) (*st.TxExplorer, error) {
+	var txEx *st.TxExplorer
 	hashBytes := []byte(txHash)
 	err := s.withTx(s.tx, func(tx *bolt.Tx) error {
 		txExplorerBytes := tx.Bucket(txExplorerBucket).Get(hashBytes)
@@ -284,45 +120,45 @@ func (s *boltBillStoreTx) GetTxExplorerByTxHash(txHash string) (*TxExplorer, err
 	}
 	return txEx, nil
 }
-func (s *boltBillStoreTx) GetBlockExplorerTxsByBlockNumber(blockNumber uint64) (res []*TxExplorer, err error) {
-	return res, s.withTx(s.tx, func(tx *bolt.Tx) error {
-		var err error
-		res, err = s.getBlockExplorerTxsByBlockNumber(tx, blockNumber)
-		return err
-	}, false)
-}
-func (s *boltBillStoreTx) getBlockExplorerTxsByBlockNumber(tx *bolt.Tx, blockNumber uint64) ([]*TxExplorer, error) {
-	var txsEx []*TxExplorer
-	blockNumberBytes := util.Uint64ToBytes(blockNumber)
+// func (s *boltBillStoreTx) GetBlockExplorerTxsByBlockNumber(blockNumber uint64) (res []*st.TxExplorer, err error) {
+// 	return res, s.withTx(s.tx, func(tx *bolt.Tx) error {
+// 		var err error
+// 		res, err = s.getBlockExplorerTxsByBlockNumber(tx, blockNumber)
+// 		return err
+// 	}, false)
+// }
+// func (s *boltBillStoreTx) getBlockExplorerTxsByBlockNumber(tx *bolt.Tx, blockNumber uint64) ([]*st.TxExplorer, error) {
+// 	var txsEx []*st.TxExplorer
+// 	blockNumberBytes := util.Uint64ToBytes(blockNumber)
 
-	blockExplorerBytes := tx.Bucket(blockExplorerBucket).Get(blockNumberBytes)
-	if blockExplorerBytes == nil {
-		return nil, fmt.Errorf("no block data found for block number %d", blockNumber)
-	}
+// 	blockExplorerBytes := tx.Bucket(blockExplorerBucket).Get(blockNumberBytes)
+// 	if blockExplorerBytes == nil {
+// 		return nil, fmt.Errorf("no block data found for block number %d", blockNumber)
+// 	}
 
-	var b BlockExplorer
-	if err := json.Unmarshal(blockExplorerBytes, &b); err != nil {
-		return nil, err
-	}
+// 	var b st.BlockExplorer
+// 	if err := json.Unmarshal(blockExplorerBytes, &b); err != nil {
+// 		return nil, err
+// 	}
 
-	txExBucket := tx.Bucket(txExplorerBucket)
-	for _, hash := range b.TxHashes {
-		hashBytes := []byte(hash)
-		txExBytes := txExBucket.Get(hashBytes)
-		if txExBytes == nil {
-			continue
-		}
+// 	txExBucket := tx.Bucket(txExplorerBucket)
+// 	for _, hash := range b.TxHashes {
+// 		hashBytes := []byte(hash)
+// 		txExBytes := txExBucket.Get(hashBytes)
+// 		if txExBytes == nil {
+// 			continue
+// 		}
 
-		t := &TxExplorer{}
-		if err := json.Unmarshal(txExBytes, t); err != nil {
-			return nil, err
-		}
-		txsEx = append(txsEx, t)
-	}
+// 		t := &st.TxExplorer{}
+// 		if err := json.Unmarshal(txExBytes, t); err != nil {
+// 			return nil, err
+// 		}
+// 		txsEx = append(txsEx, t)
+// 	}
 
-	return txsEx, nil
-}
-func (s *boltBillStoreTx) SetTxExplorerToBucket(txExplorer *TxExplorer) error {
+// 	return txsEx, nil
+// }
+func (s *boltBillStoreTx) SetTxExplorerToBucket(txExplorer *st.TxExplorer) error {
 	return s.withTx(s.tx, func(tx *bolt.Tx) error {
 		txExplorerBytes, err := json.Marshal(txExplorer)
 		if err != nil {
@@ -338,8 +174,8 @@ func (s *boltBillStoreTx) SetTxExplorerToBucket(txExplorer *TxExplorer) error {
 	}, true)
 }
 
-func (s *boltBillStoreTx) GetBills(ownerPredicate []byte, includeDCBills bool, startKey []byte, limit int) ([]*Bill, []byte, error) {
-	var units []*Bill
+func (s *boltBillStoreTx) GetBills(ownerPredicate []byte, includeDCBills bool, startKey []byte, limit int) ([]*st.Bill, []byte, error) {
+	var units []*st.Bill
 	var nextKey []byte
 	err := s.withTx(s.tx, func(tx *bolt.Tx) error {
 		unitIDBucket := tx.Bucket(predicatesBucket).Bucket(ownerPredicate)
@@ -373,7 +209,7 @@ func (s *boltBillStoreTx) GetBills(ownerPredicate []byte, includeDCBills bool, s
 	return units, nextKey, nil
 }
 
-func (s *boltBillStoreTx) SetBill(bill *Bill, proof *types.TxProof) error {
+func (s *boltBillStoreTx) SetBill(bill *st.Bill, proof *types.TxProof) error {
 	return s.withTx(s.tx, func(tx *bolt.Tx) error {
 		billsBucket := tx.Bucket(unitsBucket)
 		if bill.OwnerPredicate == nil {
@@ -386,7 +222,7 @@ func (s *boltBillStoreTx) SetBill(bill *Bill, proof *types.TxProof) error {
 			return err
 		}
 		if prevUnit != nil && !bytes.Equal(prevUnit.OwnerPredicate, bill.OwnerPredicate) {
-			prevUnitIDBucket, err := EnsureSubBucket(tx, predicatesBucket, prevUnit.OwnerPredicate, false)
+			prevUnitIDBucket, err := st.EnsureSubBucket(tx, predicatesBucket, prevUnit.OwnerPredicate, false)
 			if err != nil {
 				return err
 			}
@@ -396,7 +232,7 @@ func (s *boltBillStoreTx) SetBill(bill *Bill, proof *types.TxProof) error {
 		}
 
 		// add to new owner index
-		unitIDBucket, err := EnsureSubBucket(tx, predicatesBucket, bill.OwnerPredicate, false)
+		unitIDBucket, err := st.EnsureSubBucket(tx, predicatesBucket, bill.OwnerPredicate, false)
 		if err != nil {
 			return err
 		}
@@ -488,8 +324,8 @@ func (s *boltBillStoreTx) GetTxProof(unitID types.UnitID, txHash sdk.TxHash) (*t
 	return proof, err
 }
 
-func (s *boltBillStoreTx) GetFeeCreditBill(unitID []byte) (*Bill, error) {
-	var b *Bill
+func (s *boltBillStoreTx) GetFeeCreditBill(unitID []byte) (*st.Bill, error) {
+	var b *st.Bill
 	err := s.withTx(s.tx, func(tx *bolt.Tx) error {
 		fcbBytes := tx.Bucket(feeUnitsBucket).Get(unitID)
 		if fcbBytes == nil {
@@ -503,7 +339,7 @@ func (s *boltBillStoreTx) GetFeeCreditBill(unitID []byte) (*Bill, error) {
 	return b, nil
 }
 
-func (s *boltBillStoreTx) SetFeeCreditBill(fcb *Bill, proof *types.TxProof) error {
+func (s *boltBillStoreTx) SetFeeCreditBill(fcb *st.Bill, proof *types.TxProof) error {
 	return s.withTx(s.tx, func(tx *bolt.Tx) error {
 		fcbBytes, err := json.Marshal(fcb)
 		if err != nil {
@@ -630,12 +466,12 @@ func (s *boltBillStoreTx) removeUnit(tx *bolt.Tx, unitID []byte) error {
 	return tx.Bucket(unitsBucket).Delete(unitID)
 }
 
-func (s *boltBillStoreTx) getUnit(tx *bolt.Tx, unitID []byte) (*Bill, error) {
+func (s *boltBillStoreTx) getUnit(tx *bolt.Tx, unitID []byte) (*st.Bill, error) {
 	unitBytes := tx.Bucket(unitsBucket).Get(unitID)
 	if len(unitBytes) == 0 {
 		return nil, nil
 	}
-	var unit *Bill
+	var unit *st.Bill
 	err := json.Unmarshal(unitBytes, &unit)
 	if err != nil {
 		return nil, err
@@ -692,7 +528,7 @@ func (s *boltBillStoreTx) storeTxProof(dbTx *bolt.Tx, unitID types.UnitID, txHas
 	if err != nil {
 		return fmt.Errorf("failed to serialize tx proof: %w", err)
 	}
-	b, err := EnsureSubBucket(dbTx, txProofsBucket, unitID, false)
+	b, err := st.EnsureSubBucket(dbTx, txProofsBucket, unitID, false)
 	if err != nil {
 		return err
 	}
@@ -808,7 +644,7 @@ func (s *boltBillStoreTx) storeTxProof(dbTx *bolt.Tx, unitID types.UnitID, txHas
 //}
 
 func (s *boltBillStoreTx) getUnitBlockProof(dbTx *bolt.Tx, id []byte, txHash sdk.TxHash) (*types.TxProof, error) {
-	b, err := EnsureSubBucket(dbTx, txProofsBucket, id, true)
+	b, err := st.EnsureSubBucket(dbTx, txProofsBucket, id, true)
 	if err != nil {
 		return nil, err
 	}

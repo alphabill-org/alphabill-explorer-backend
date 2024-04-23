@@ -1,4 +1,4 @@
-package explorer
+package bill_store
 
 //
 //import (
