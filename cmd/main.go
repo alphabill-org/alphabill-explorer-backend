@@ -17,22 +17,13 @@ import (
 	"github.com/alphabill-org/alphabill-wallet/client/rpc"
 	abtypes "github.com/alphabill-org/alphabill/types"
 	"golang.org/x/sync/errgroup"
+	exTypes "github.com/alphabill-org/alphabill-explorer-backend/types"
 )
 
 type (
-	BillStore interface {
-		GetBlockNumber() (uint64, error)
-		SetBlockNumber(blockNumber uint64) error
-		AddTxInfo(txExplorer *types.TxInfo) error
-		GetTxInfo(txHash string) (*types.TxInfo, error)
-		SetBlockInfo(b *abtypes.Block) error
-		GetLastBlockNumber() (uint64, error)
-		GetBlockInfo(blockNumber uint64) (*types.BlockInfo, error)
-		GetBlocksInfo(dbStartBlock uint64, count int) (res []*types.BlockInfo, prevBlockNumber uint64, err error)
-	}
 
 	ExplorerBackend struct {
-		store  BillStore
+		store  exTypes.BillStore
 		client *rpc.Client
 	}
 

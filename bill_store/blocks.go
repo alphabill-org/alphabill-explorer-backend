@@ -4,22 +4,21 @@ import (
 	"encoding/json"
 	"fmt"
 
-	st "github.com/alphabill-org/alphabill-explorer-backend/types"
-	"github.com/alphabill-org/alphabill/types"
+	exTypes "github.com/alphabill-org/alphabill-explorer-backend/types"
 	"github.com/alphabill-org/alphabill/util"
 	bolt "go.etcd.io/bbolt"
 )
 
-func (s *boltBillStore) SetBlockInfo(b *types.Block) error {
+func (s *boltBillStore) SetBlockInfo(blockInfo *exTypes.BlockInfo) error {
 	return s.db.Update(func(tx *bolt.Tx) error {
-		blockInfoBucket := tx.Bucket(blockInfoBucket)
-		blockNumber := b.UnicityCertificate.InputRecord.RoundNumber
-		blockNumberBytes := util.Uint64ToBytes(blockNumber)
+		bucket := tx.Bucket(blockInfoBucket)
 
-		blockInfo, err := st.NewBlockInfo(b)
-		if err != nil {
-			return err
+		if blockInfoBucket == nil {
+			return fmt.Errorf("bucket %s not found", blockInfoBucket)
 		}
+
+		blockNumber := blockInfo.UnicityCertificate.InputRecord.RoundNumber
+		blockNumberBytes := util.Uint64ToBytes(blockNumber)
 
 		blockInfoBytes, err := json.Marshal(blockInfo)
 
@@ -27,7 +26,7 @@ func (s *boltBillStore) SetBlockInfo(b *types.Block) error {
 			return err
 		}
 
-		err = blockInfoBucket.Put(blockNumberBytes, blockInfoBytes)
+		err = bucket.Put(blockNumberBytes, blockInfoBytes)
 		if err != nil {
 			return err
 		}
@@ -58,8 +57,8 @@ func (s *boltBillStore) GetLastBlockNumber() (uint64, error) {
 	return lastBlockNo, nil
 }
 
-func (s *boltBillStore) GetBlockInfo(blockNumber uint64) (*st.BlockInfo, error) {
-	var b *st.BlockInfo
+func (s *boltBillStore) GetBlockInfo(blockNumber uint64) (*exTypes.BlockInfo, error) {
+	var b *exTypes.BlockInfo
 	blockNumberBytes := util.Uint64ToBytes(blockNumber)
 	err := s.db.View(func(tx *bolt.Tx) error {
 		blockInfoBytes := tx.Bucket(blockInfoBucket).Get(blockNumberBytes)
@@ -71,7 +70,7 @@ func (s *boltBillStore) GetBlockInfo(blockNumber uint64) (*st.BlockInfo, error) 
 	return b, nil
 }
 
-func (s *boltBillStore) GetBlocksInfo(dbStartBlock uint64, count int) (res []*st.BlockInfo, prevBlockNumber uint64, err error) {
+func (s *boltBillStore) GetBlocksInfo(dbStartBlock uint64, count int) (res []*exTypes.BlockInfo, prevBlockNumber uint64, err error) {
 	return res, prevBlockNumber, s.db.View(func(tx *bolt.Tx) error {
 		var err error
 		res, prevBlockNumber, err = s.getBlocksInfo(tx, dbStartBlock, count)
@@ -79,7 +78,7 @@ func (s *boltBillStore) GetBlocksInfo(dbStartBlock uint64, count int) (res []*st
 	})
 }
 
-func (s *boltBillStore) getBlocksInfo(tx *bolt.Tx, dbStartBlock uint64, count int) ([]*st.BlockInfo, uint64, error) {
+func (s *boltBillStore) getBlocksInfo(tx *bolt.Tx, dbStartBlock uint64, count int) ([]*exTypes.BlockInfo, uint64, error) {
 	pb := tx.Bucket(blockInfoBucket)
 
 	if pb == nil {
@@ -89,12 +88,12 @@ func (s *boltBillStore) getBlocksInfo(tx *bolt.Tx, dbStartBlock uint64, count in
 	dbStartKeyBytes := util.Uint64ToBytes(dbStartBlock)
 	c := pb.Cursor()
 
-	var res []*st.BlockInfo
+	var res []*exTypes.BlockInfo
 	var prevBlockNumberBytes []byte
 	var prevBlockNumber uint64
 
 	for k, v := c.Seek(dbStartKeyBytes); k != nil && count > 0; k, v = c.Prev() {
-		rec := &st.BlockInfo{}
+		rec := &exTypes.BlockInfo{}
 		if err := json.Unmarshal(v, rec); err != nil {
 			return nil, 0, fmt.Errorf("failed to deserialize tx history record: %w", err)
 		}
