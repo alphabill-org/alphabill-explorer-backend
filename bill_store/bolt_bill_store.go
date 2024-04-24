@@ -2,22 +2,20 @@ package bill_store
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
 
-	bolt "go.etcd.io/bbolt"
-
 	"github.com/alphabill-org/alphabill-explorer-backend/types"
 	"github.com/alphabill-org/alphabill/util"
+	bolt "go.etcd.io/bbolt"
 )
 
 const BoltExplorerStoreFileName = "blocks.db"
 
 var (
-	blockInfoBucket = []byte("BlockInfoBucket") // block_number => BlockInfo
-	txInfoBucket    = []byte("txInfoBucket")    // txHash => types.TxInfo
+	blockInfoBucket = []byte("BlockInfoBucket") // block_number => exTypes.BlockInfo
+	txInfoBucket    = []byte("txInfoBucket")    // txHash => exTypes.TxInfo
 	metaBucket      = []byte("metaBucket")      // block_number_key => block_number_val
 )
 
@@ -34,6 +32,11 @@ type (
 		db *bolt.DB
 	}
 )
+
+// AddTxInfo implements blocks.Store.
+func (*boltBillStore) AddTxInfo(txExplorer *types.TxInfo) error {
+	panic("unimplemented")
+}
 
 // NewBoltBillStore creates new on-disk persistent storage for bills and proofs using bolt db.
 // If the file does not exist then it will be created, however, parent directories must exist beforehand.
@@ -54,35 +57,6 @@ func NewBoltBillStore(dbFile string) (*boltBillStore, error) {
 		return nil, fmt.Errorf("failed to init db metadata: %w", err)
 	}
 	return bbs, nil
-}
-
-func (s *boltBillStore) GetTxInfo(txHash string) (*types.TxInfo, error) {
-	var txEx *types.TxInfo
-	hashBytes := []byte(txHash)
-	err := s.db.Update(func(tx *bolt.Tx) error {
-		txExplorerBytes := tx.Bucket(txInfoBucket).Get(hashBytes)
-		return json.Unmarshal(txExplorerBytes, &txEx)
-	})
-	if err != nil {
-		return nil, err
-	}
-	return txEx, nil
-}
-
-func (s *boltBillStore) AddTxInfo(txExplorer *types.TxInfo) error {
-	return s.db.Update(func(tx *bolt.Tx) error {
-		txExplorerBytes, err := json.Marshal(txExplorer)
-		if err != nil {
-			return err
-		}
-		txExplorerBucket := tx.Bucket(txInfoBucket)
-		hashBytes := []byte(txExplorer.Hash)
-		err = txExplorerBucket.Put(hashBytes, txExplorerBytes)
-		if err != nil {
-			return err
-		}
-		return nil
-	})
 }
 
 func (s *boltBillStore) GetBlockNumber() (uint64, error) {
