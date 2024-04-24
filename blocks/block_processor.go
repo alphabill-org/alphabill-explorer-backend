@@ -340,6 +340,20 @@ func (p *BlockProcessor) saveTx(blockNo uint64, tx *abtypes.TransactionRecord) e
 	return nil
 }
 
+func (p *BlockProcessor) saveUnit(tx *abtypes.TransactionRecord) error {
+	if tx == nil {
+		return fmt.Errorf("transaction record is nil")
+	}
+	for _, unit := range tx.ServerMetadata.TargetUnits {
+		txHash := tx.Hash(crypto.SHA256);
+		err := p.store.SetUnit(unit , txHash);
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (p *BlockProcessor) saveBlock(b *abtypes.Block) error {
 	if b == nil {
 		return fmt.Errorf("block is nil")
