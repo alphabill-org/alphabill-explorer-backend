@@ -5,8 +5,8 @@ import (
 	"crypto"
 	"fmt"
 
-	"github.com/alphabill-org/alphabill-explorer-backend/types"
 	abtypes "github.com/alphabill-org/alphabill/types"
+	exTypes "github.com/alphabill-org/alphabill-explorer-backend/types"
 )
 
 const (
@@ -14,18 +14,11 @@ const (
 	ExpiredBillDeletionTimeout = 65536
 )
 
-type Store interface {
-	GetBlockNumber() (uint64, error)
-	SetBlockNumber(blockNumber uint64) error
-	AddTxInfo(txExplorer *types.TxInfo) error
-	SetBlockInfo(b *abtypes.Block) error
-}
-
 type BlockProcessor struct {
-	store Store
+	store exTypes.BillStore
 }
 
-func NewBlockProcessor(store Store, moneySystemID abtypes.SystemID) (*BlockProcessor, error) {
+func NewBlockProcessor(store exTypes.BillStore, moneySystemID abtypes.SystemID) (*BlockProcessor, error) {
 	return &BlockProcessor{store: store}, nil
 }
 
@@ -335,12 +328,12 @@ func (p *BlockProcessor) saveTx(blockNo uint64, tx *abtypes.TransactionRecord) e
 	if tx == nil {
 		return fmt.Errorf("transaction record is nil")
 	}
-	txInfo, err := types.NewTxInfo(blockNo, tx)
+	txInfo, err := exTypes.NewTxInfo(blockNo, tx)
 
 	if err != nil {
 		return err
 	}
-	err = p.store.AddTxInfo(txInfo)
+	err = p.store.SetTxInfo(txInfo)
 	if err != nil {
 		return err
 	}
@@ -348,11 +341,16 @@ func (p *BlockProcessor) saveTx(blockNo uint64, tx *abtypes.TransactionRecord) e
 }
 
 func (p *BlockProcessor) saveBlock(b *abtypes.Block) error {
-	if b != nil {
-		err := p.store.SetBlockInfo(b)
-		if err != nil {
-			return err
-		}
+	if b == nil {
+		return fmt.Errorf("block is nil")
+	}
+	blockInfo, err := exTypes.NewBlockInfo(b)
+	if err != nil {
+		return err
+	}
+	err = p.store.SetBlockInfo(blockInfo)
+	if err != nil {
+		return err
 	}
 	return nil
 }
