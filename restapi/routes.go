@@ -23,6 +23,7 @@ func (api *MoneyRestAPI) Router() *mux.Router {
 	apiV1 := apiRouter.PathPrefix("/v1").Subrouter()
 	apiV1.HandleFunc("/blocks/{blockNumber}", api.getBlock).Methods("GET", "OPTIONS")
 	apiV1.HandleFunc("/blocks", api.getBlocks).Methods("GET", "OPTIONS")
+	apiV1.HandleFunc("/txs/{txHash}", api.getTx).Methods("GET", "OPTIONS")
 
 	return router
 }
