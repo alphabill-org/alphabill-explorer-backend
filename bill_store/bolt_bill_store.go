@@ -16,6 +16,7 @@ const BoltExplorerStoreFileName = "blocks.db"
 var (
 	blockInfoBucket = []byte("BlockInfoBucket") // block_number => exTypes.BlockInfo
 	txInfoBucket    = []byte("txInfoBucket")    // txHash => exTypes.TxInfo
+	unitBucket    = []byte("unitBucket")    // unitString => txHash
 	metaBucket      = []byte("metaBucket")      // block_number_key => block_number_val
 )
 
@@ -47,7 +48,7 @@ func NewBoltBillStore(dbFile string) (*boltBillStore, error) {
 	}
 	bbs := &boltBillStore{db: db}
 	err = CreateBuckets(db.Update,
-		blockInfoBucket, txInfoBucket, metaBucket,
+		blockInfoBucket, txInfoBucket, metaBucket, unitBucket,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create db buckets: %w", err)
