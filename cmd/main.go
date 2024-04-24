@@ -13,15 +13,14 @@ import (
 	"github.com/alphabill-org/alphabill-explorer-backend/blocksync"
 	ra "github.com/alphabill-org/alphabill-explorer-backend/restapi"
 	"github.com/alphabill-org/alphabill-explorer-backend/types"
+	exTypes "github.com/alphabill-org/alphabill-explorer-backend/types"
 	"github.com/alphabill-org/alphabill-wallet/cli/alphabill/cmd/wallet/args"
 	"github.com/alphabill-org/alphabill-wallet/client/rpc"
 	abtypes "github.com/alphabill-org/alphabill/types"
 	"golang.org/x/sync/errgroup"
-	exTypes "github.com/alphabill-org/alphabill-explorer-backend/types"
 )
 
 type (
-
 	ExplorerBackend struct {
 		store  exTypes.BillStore
 		client *rpc.Client
@@ -140,4 +139,8 @@ func (ex *ExplorerBackend) GetTxInfo(txHash string) (res *types.TxInfo, err erro
 // GetRoundNumber returns latest round number.
 func (ex *ExplorerBackend) GetRoundNumber(ctx context.Context) (uint64, error) {
 	return ex.client.GetRoundNumber(ctx)
+}
+
+func (ex *ExplorerBackend) GetBlockTxsByBlockNumber(blockNumber uint64) (res []*exTypes.TxInfo, err error) {
+	return ex.store.GetBlockTxsByBlockNumber(blockNumber)
 }

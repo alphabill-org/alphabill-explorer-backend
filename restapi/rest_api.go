@@ -20,6 +20,7 @@ type (
 		GetBlock(blockNumber uint64) (*exTypes.BlockInfo, error)
 		GetBlocks(dbStartBlock uint64, count int) (res []*exTypes.BlockInfo, prevBlockNumber uint64, err error)
 		GetTxInfo(txHash string) (res *exTypes.TxInfo, err error)
+		GetBlockTxsByBlockNumber(blockNumber uint64) (res []*exTypes.TxInfo, err error)
 		GetRoundNumber(ctx context.Context) (uint64, error)
 	}
 
