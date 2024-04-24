@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strconv"
 
-	st "github.com/alphabill-org/alphabill-explorer-backend/types"
+	exTypes "github.com/alphabill-org/alphabill-explorer-backend/types"
 	"github.com/alphabill-org/alphabill/types"
 )
 
@@ -17,8 +17,9 @@ const (
 type (
 	ExplorerBackendService interface {
 		GetLastBlockNumber() (uint64, error)
-		GetBlock(blockNumber uint64) (*st.BlockInfo, error)
-		GetBlocks(dbStartBlock uint64, count int) (res []*st.BlockInfo, prevBlockNumber uint64, err error)
+		GetBlock(blockNumber uint64) (*exTypes.BlockInfo, error)
+		GetBlocks(dbStartBlock uint64, count int) (res []*exTypes.BlockInfo, prevBlockNumber uint64, err error)
+		GetTxInfo(txHash string) (res *exTypes.TxInfo, err error)
 		GetRoundNumber(ctx context.Context) (uint64, error)
 	}
 
@@ -52,7 +53,7 @@ func (api *MoneyRestAPI) getInfo(w http.ResponseWriter, _ *http.Request) {
 	api.rw.WriteResponse(w, res)
 }
 
-func parsePubKeyQueryParam(r *http.Request) (st.PubKey, error) {
+func parsePubKeyQueryParam(r *http.Request) (exTypes.PubKey, error) {
 	return DecodePubKeyHex(r.URL.Query().Get(paramPubKey))
 }
 
