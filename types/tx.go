@@ -25,7 +25,7 @@ func NewTxInfo(blockNo uint64, txRecord *types.TransactionRecord) (*TxInfo, erro
 		return nil, fmt.Errorf("transaction record is nil")
 	}
 	hashHex := hex.EncodeToString(txRecord.Hash(crypto.SHA256))
-	txExplorer := &TxInfo{
+	txInfo := &TxInfo{
 		Hash:             hashHex,
 		BlockNumber:      blockNo,
 		Timeout:          txRecord.TransactionOrder.Timeout(),
@@ -35,6 +35,6 @@ func NewTxInfo(blockNo uint64, txRecord *types.TransactionRecord) (*TxInfo, erro
 		TransactionOrder: txRecord.TransactionOrder,
 		Fee:              txRecord.ServerMetadata.GetActualFee(),
 	}
-	txExplorer.TargetUnits = txRecord.ServerMetadata.TargetUnits
-	return txExplorer, nil
+	txInfo.TargetUnits = txRecord.ServerMetadata.TargetUnits
+	return txInfo, nil
 }
