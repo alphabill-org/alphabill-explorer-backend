@@ -7,7 +7,7 @@ test:
 	go test ./... -coverpkg=./... -count=1 -coverprofile test-coverage.out
 
 build:
-	cd ./cmd && go build -o ../../build/abexplorer
+	cd ./cmd && go build -o ../build/abexplorer
 
 .PHONY: \
 	all \

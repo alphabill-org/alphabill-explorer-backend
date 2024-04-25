@@ -1,6 +1,8 @@
 #!/bin/bash
 
-go run explorer.go 'https://money-partition.testnet.alphabill.org' 'localhost:9666' 254277
+make build
+
+./build/abexplorer 'https://money-partition.testnet.alphabill.org' 'localhost:9666' 254277
 
 #
 #curl -H 'Content-Type: application/json' \
