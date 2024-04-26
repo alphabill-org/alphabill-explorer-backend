@@ -14,8 +14,16 @@ const (
 	ExpiredBillDeletionTimeout = 65536
 )
 
+type Store interface {
+	GetBlockNumber() (uint64, error)
+	SetBlockNumber(blockNumber uint64) error
+	SetTxInfo(txExplorer *exTypes.TxInfo) error
+	SetBlockInfo(b *exTypes.BlockInfo) error
+	SetUnit(unit abtypes.UnitID, txHash []byte) error
+}
+
 type BlockProcessor struct {
-	store exTypes.BillStore
+	store Store
 }
 
 func NewBlockProcessor(store exTypes.BillStore, moneySystemID abtypes.SystemID) (*BlockProcessor, error) {
