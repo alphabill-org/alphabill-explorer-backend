@@ -26,7 +26,7 @@ type BlockProcessor struct {
 	store Store
 }
 
-func NewBlockProcessor(store exTypes.BillStore, moneySystemID abtypes.SystemID) (*BlockProcessor, error) {
+func NewBlockProcessor(store Store, moneySystemID abtypes.SystemID) (*BlockProcessor, error) {
 	return &BlockProcessor{store: store}, nil
 }
 
