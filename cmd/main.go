@@ -12,22 +12,21 @@ import (
 	"github.com/alphabill-org/alphabill-explorer-backend/blocks"
 	"github.com/alphabill-org/alphabill-explorer-backend/blocksync"
 	ra "github.com/alphabill-org/alphabill-explorer-backend/restapi"
-	"github.com/alphabill-org/alphabill-explorer-backend/types"
 	exTypes "github.com/alphabill-org/alphabill-explorer-backend/types"
 	"github.com/alphabill-org/alphabill-wallet/cli/alphabill/cmd/wallet/args"
 	"github.com/alphabill-org/alphabill-wallet/client/rpc"
-	abtypes "github.com/alphabill-org/alphabill/types"
+	abTypes "github.com/alphabill-org/alphabill/types"
 	"golang.org/x/sync/errgroup"
 )
 
 type (
 	ExplorerBackend struct {
-		store  exTypes.BillStore
+		store  BillStore
 		client *rpc.Client
 	}
 
 	Config struct {
-		ABMoneySystemIdentifier abtypes.SystemID
+		ABMoneySystemIdentifier abTypes.SystemID
 		AlphabillUrl            string
 		ServerAddr              string
 		DbFile                  string
@@ -123,16 +122,16 @@ func (ex *ExplorerBackend) GetLastBlockNumber() (uint64, error) {
 }
 
 // GetBlock returns block with given block number.
-func (ex *ExplorerBackend) GetBlock(blockNumber uint64) (*types.BlockInfo, error) {
+func (ex *ExplorerBackend) GetBlock(blockNumber uint64) (*exTypes.BlockInfo, error) {
 	return ex.store.GetBlockInfo(blockNumber)
 }
 
 // GetBlocks return amount of blocks provided with count
-func (ex *ExplorerBackend) GetBlocks(dbStartBlockNumber uint64, count int) (res []*types.BlockInfo, prevBlockNUmber uint64, err error) {
+func (ex *ExplorerBackend) GetBlocks(dbStartBlockNumber uint64, count int) (res []*exTypes.BlockInfo, prevBlockNUmber uint64, err error) {
 	return ex.store.GetBlocksInfo(dbStartBlockNumber, count)
 }
 
-func (ex *ExplorerBackend) GetTxInfo(txHash string) (res *types.TxInfo, err error) {
+func (ex *ExplorerBackend) GetTxInfo(txHash string) (res *exTypes.TxInfo, err error) {
 	return ex.store.GetTxInfo(txHash)
 }
 
