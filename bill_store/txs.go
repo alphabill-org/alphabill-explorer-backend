@@ -11,13 +11,13 @@ import (
 
 func (s *boltBillStore) SetTxInfo(txInfo *exTypes.TxInfo) error {
 	return s.db.Update(func(tx *bolt.Tx) error {
-		txExplorerBytes, err := json.Marshal(txInfo)
+		txInfoBytes, err := json.Marshal(txInfo)
 		if err != nil {
 			return err
 		}
-		txExplorerBucket := tx.Bucket(txInfoBucket)
+		txInfoBucket := tx.Bucket(txInfoBucket)
 		hashBytes := []byte(txInfo.Hash)
-		err = txExplorerBucket.Put(hashBytes, txExplorerBytes)
+		err = txInfoBucket.Put(hashBytes, txInfoBytes,)
 		if err != nil {
 			return err
 		}
@@ -26,16 +26,16 @@ func (s *boltBillStore) SetTxInfo(txInfo *exTypes.TxInfo) error {
 }
 
 func (s *boltBillStore) GetTxInfo(txHash string) (*exTypes.TxInfo, error) {
-	var txEx *exTypes.TxInfo
+	var txInfo *exTypes.TxInfo
 	hashBytes := []byte(txHash)
-	err := s.db.Update(func(tx *bolt.Tx) error {
-		txExplorerBytes := tx.Bucket(txInfoBucket).Get(hashBytes)
-		return json.Unmarshal(txExplorerBytes, &txEx)
+	err := s.db.View(func(tx *bolt.Tx) error {
+		txInforBytes := tx.Bucket(txInfoBucket).Get(hashBytes)
+		return json.Unmarshal(txInforBytes, &txInfo)
 	})
 	if err != nil {
 		return nil, err
 	}
-	return txEx, nil
+	return txInfo, nil
 }
 
 func (s *boltBillStore) GetBlockTxsByBlockNumber(blockNumber uint64) (res []*exTypes.TxInfo, err error) {

@@ -13,7 +13,7 @@ func (s *boltBillStore) SetBlockInfo(blockInfo *exTypes.BlockInfo) error {
 	return s.db.Update(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket(blockInfoBucket)
 
-		if blockInfoBucket == nil {
+		if bucket == nil {
 			return fmt.Errorf("bucket %s not found", blockInfoBucket)
 		}
 
