@@ -35,6 +35,15 @@ func (api *MoneyRestAPI) getBlock(w http.ResponseWriter, r *http.Request) {
 
 	api.rw.WriteResponse(w, block)
 }
+
+// @Summary Get blocks, given a start block number and limit.
+// @Description Get blocks, given a start block number and limit.
+// @produce	application/json
+// @Param startBlock query string false "optionally specify the start block number"
+// @Param limit query string false "optionally specify the number of blocks to return, defaults to 10"
+// @Success 200 {array} api.BlockInfo
+// @Router /blocks [get]
+// @Tags Energy Type
 func (api *MoneyRestAPI) getBlocks(w http.ResponseWriter, r *http.Request) {
 
 	qp := r.URL.Query()

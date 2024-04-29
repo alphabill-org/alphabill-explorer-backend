@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/ainvaltin/httpsrv"
+	"github.com/alphabill-org/alphabill-explorer-backend/api"
 	bs "github.com/alphabill-org/alphabill-explorer-backend/bill_store"
 	"github.com/alphabill-org/alphabill-explorer-backend/blocks"
 	"github.com/alphabill-org/alphabill-explorer-backend/blocksync"
@@ -122,12 +123,12 @@ func (ex *ExplorerBackend) GetLastBlockNumber() (uint64, error) {
 }
 
 // GetBlock returns block with given block number.
-func (ex *ExplorerBackend) GetBlock(blockNumber uint64) (*exTypes.BlockInfo, error) {
+func (ex *ExplorerBackend) GetBlock(blockNumber uint64) (*api.BlockInfo, error) {
 	return ex.store.GetBlockInfo(blockNumber)
 }
 
 // GetBlocks return amount of blocks provided with count
-func (ex *ExplorerBackend) GetBlocks(dbStartBlockNumber uint64, count int) (res []*exTypes.BlockInfo, prevBlockNUmber uint64, err error) {
+func (ex *ExplorerBackend) GetBlocks(dbStartBlockNumber uint64, count int) (res []*api.BlockInfo, prevBlockNUmber uint64, err error) {
 	return ex.store.GetBlocksInfo(dbStartBlockNumber, count)
 }
 

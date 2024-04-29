@@ -1,4 +1,4 @@
-all: clean tools test build gosec
+all: clean tools test build swagger
 
 clean:
 	rm -rf build/
@@ -9,8 +9,16 @@ test:
 build:
 	cd ./cmd && go build -o ../build/abexplorer
 
+swagger:
+	swag init --generalInfo restapi/routes.go --parseInternal --parseDependency --output restapi/docs
+
+tools:
+	go install github.com/swaggo/swag/cmd/swag@latest
+
 .PHONY: \
 	all \
 	clean \
 	test \
-	build
+	build \
+	swagger \
+	tools

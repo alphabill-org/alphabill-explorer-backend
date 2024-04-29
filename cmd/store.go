@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/alphabill-org/alphabill-explorer-backend/api"
 	exTypes "github.com/alphabill-org/alphabill-explorer-backend/types"
 )
 
@@ -9,10 +10,10 @@ type BillStore interface {
 	SetBlockNumber(blockNumber uint64) error
 
 	// bill_store/blocks.go
-	SetBlockInfo(b *exTypes.BlockInfo) error
+	SetBlockInfo(b *api.BlockInfo) error
 	GetLastBlockNumber() (uint64, error)
-	GetBlockInfo(blockNumber uint64) (*exTypes.BlockInfo, error)
-	GetBlocksInfo(dbStartBlock uint64, count int) (res []*exTypes.BlockInfo, prevBlockNumber uint64, err error)
+	GetBlockInfo(blockNumber uint64) (*api.BlockInfo, error)
+	GetBlocksInfo(dbStartBlock uint64, count int) (res []*api.BlockInfo, prevBlockNumber uint64, err error)
 
 	// bill_store/txs.go
 	SetTxInfo(txInfo *exTypes.TxInfo) error

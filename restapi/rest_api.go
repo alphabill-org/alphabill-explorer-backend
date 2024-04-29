@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/alphabill-org/alphabill-explorer-backend/api"
 	exTypes "github.com/alphabill-org/alphabill-explorer-backend/types"
 	"github.com/alphabill-org/alphabill/types"
 )
@@ -17,8 +18,8 @@ const (
 type (
 	ExplorerBackendService interface {
 		GetLastBlockNumber() (uint64, error)
-		GetBlock(blockNumber uint64) (*exTypes.BlockInfo, error)
-		GetBlocks(dbStartBlock uint64, count int) (res []*exTypes.BlockInfo, prevBlockNumber uint64, err error)
+		GetBlock(blockNumber uint64) (*api.BlockInfo, error)
+		GetBlocks(dbStartBlock uint64, count int) (res []*api.BlockInfo, prevBlockNumber uint64, err error)
 		GetTxInfo(txHash string) (res *exTypes.TxInfo, err error)
 		GetBlockTxsByBlockNumber(blockNumber uint64) (res []*exTypes.TxInfo, err error)
 		GetRoundNumber(ctx context.Context) (uint64, error)

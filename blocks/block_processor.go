@@ -5,6 +5,7 @@ import (
 	"crypto"
 	"fmt"
 
+	"github.com/alphabill-org/alphabill-explorer-backend/api"
 	exTypes "github.com/alphabill-org/alphabill-explorer-backend/types"
 	abtypes "github.com/alphabill-org/alphabill/types"
 )
@@ -18,7 +19,7 @@ type Store interface {
 	GetBlockNumber() (uint64, error)
 	SetBlockNumber(blockNumber uint64) error
 	SetTxInfo(txExplorer *exTypes.TxInfo) error
-	SetBlockInfo(b *exTypes.BlockInfo) error
+	SetBlockInfo(b *api.BlockInfo) error
 	SetUnitID(unit string, txHash string) error
 }
 
@@ -369,7 +370,7 @@ func (p *BlockProcessor) saveBlock(b *abtypes.Block) error {
 	if b == nil {
 		return fmt.Errorf("block is nil")
 	}
-	blockInfo, err := exTypes.NewBlockInfo(b)
+	blockInfo, err := api.NewBlockInfo(b)
 	if err != nil {
 		return err
 	}
