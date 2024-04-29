@@ -5,8 +5,8 @@ import (
 	"crypto"
 	"fmt"
 
-	abtypes "github.com/alphabill-org/alphabill/types"
 	exTypes "github.com/alphabill-org/alphabill-explorer-backend/types"
+	abtypes "github.com/alphabill-org/alphabill/types"
 )
 
 const (
@@ -19,7 +19,7 @@ type Store interface {
 	SetBlockNumber(blockNumber uint64) error
 	SetTxInfo(txExplorer *exTypes.TxInfo) error
 	SetBlockInfo(b *exTypes.BlockInfo) error
-	SetUnit(unit abtypes.UnitID, txHash []byte) error
+	SetUnitID(unit string, txHash string) error
 }
 
 type BlockProcessor struct {
@@ -49,12 +49,14 @@ func (p *BlockProcessor) ProcessBlock(_ context.Context, b *abtypes.Block) error
 			return fmt.Errorf("failed to process transaction: %w", err)
 		}
 
-		err = p.saveTx(roundNumber, tx)
+		txInfo, err := exTypes.NewTxInfo(roundNumber, tx)
+
+		err = p.saveTx(roundNumber, txInfo)
 		if err != nil {
 			return fmt.Errorf("failed to save tx in ProcessBlock: %w", err)
 		}
 
-		err = p.saveUnit(tx)
+		err = p.saveUnit(txInfo)
 		if err != nil {
 			return fmt.Errorf("failed to save unit in ProcessBlock: %w", err)
 		}
@@ -337,29 +339,25 @@ func (p *BlockProcessor) processTx(txr *abtypes.TransactionRecord, b *abtypes.Bl
 	return nil
 }
 
-func (p *BlockProcessor) saveTx(blockNo uint64, tx *abtypes.TransactionRecord) error {
-	if tx == nil {
-		return fmt.Errorf("transaction record is nil")
+func (p *BlockProcessor) saveTx(blockNo uint64, txInfo *exTypes.TxInfo) error {
+	if txInfo == nil {
+		return fmt.Errorf("transaction is nil")
 	}
-	txInfo, err := exTypes.NewTxInfo(blockNo, tx)
-
-	if err != nil {
-		return err
-	}
-	err = p.store.SetTxInfo(txInfo)
+	err := p.store.SetTxInfo(txInfo)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (p *BlockProcessor) saveUnit(tx *abtypes.TransactionRecord) error {
-	if tx == nil {
+func (p *BlockProcessor) saveUnit(txInfo *exTypes.TxInfo) error {
+	if txInfo == nil {
 		return fmt.Errorf("transaction record is nil")
 	}
-	for _, unit := range tx.ServerMetadata.TargetUnits {
-		txHash := tx.Hash(crypto.SHA256);
-		err := p.store.SetUnit(unit , txHash);
+
+	for _, unitID := range txInfo.TargetUnits {
+		txHash := txInfo.Hash
+		err := p.store.SetUnitID(unitID, txHash)
 		if err != nil {
 			return err
 		}

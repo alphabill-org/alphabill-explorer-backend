@@ -1,7 +1,6 @@
 package main
 
 import (
-	abTypes "github.com/alphabill-org/alphabill/types"
 	exTypes "github.com/alphabill-org/alphabill-explorer-backend/types"
 )
 
@@ -21,5 +20,5 @@ type BillStore interface {
 	GetBlockTxsByBlockNumber(blockNumber uint64) (res []*exTypes.TxInfo, err error)
 
 	// bill_store/units.go
-	SetUnit(unitID abTypes.UnitID, txHash []byte) error
+	SetUnitID(unitID string, txHash string) error
 }
