@@ -1,31 +1,39 @@
 package bill_store
 
 import (
+	"encoding/json"
 	"fmt"
+
 	bolt "go.etcd.io/bbolt"
 )
 
 func (s *boltBillStore) SetUnitID(unitID string, txHash string) error {
 	return s.db.Update(func(tx *bolt.Tx) error {
 		unitIDBytes := []byte(unitID)
-		txHashBytes := []byte(txHash)
 
-		bucket, err := tx.CreateBucketIfNotExists(unitIDBytes)
-		if err != nil {
-			return fmt.Errorf("create bucket: %s", err)
+		bucket:= tx.Bucket(unitBucket)
+		if bucket == nil {
+			return fmt.Errorf("bucket %s not found", unitBucket)
 		}
 
-		existing := bucket.Get(unitIDBytes)
-		if existing == nil {
-			if err := bucket.Put(unitIDBytes, txHashBytes); err != nil {
-				return fmt.Errorf("put value: %s", err)
-			}
-		} else {
-			newValue := append(existing, txHashBytes...)
-			if err := bucket.Put(unitIDBytes, newValue); err != nil {
-				return fmt.Errorf("update value: %s", err)
-			}
-		}
-		return nil
+        oldValue := bucket.Get(unitIDBytes)
+        var hashes []string
+        
+        if oldValue != nil {
+            err := json.Unmarshal(oldValue, &hashes)
+            if err != nil {
+                return err
+            }
+        }
+        
+        hashes = append(hashes, txHash)
+        
+        newValue, err := json.Marshal(hashes)
+        if err != nil {
+            return err
+        }
+
+        return bucket.Put(unitIDBytes, newValue)
 	})
 }
+

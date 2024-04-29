@@ -17,7 +17,7 @@ func (s *boltBillStore) SetTxInfo(txInfo *exTypes.TxInfo) error {
 		}
 		txInfoBucket := tx.Bucket(txInfoBucket)
 		hashBytes := []byte(txInfo.Hash)
-		err = txInfoBucket.Put(hashBytes, txInfoBytes,)
+		err = txInfoBucket.Put(hashBytes, txInfoBytes)
 		if err != nil {
 			return err
 		}
@@ -76,4 +76,45 @@ func (s *boltBillStore) getBlockTxsByBlockNumber(tx *bolt.Tx, blockNumber uint64
 	}
 
 	return txs, nil
+}
+
+func (s *boltBillStore) GetTxsByUnitID(unitID string) ([]*exTypes.TxInfo, error) {
+	var txs []*exTypes.TxInfo
+
+	err := s.db.View(func(tx *bolt.Tx) error {
+		unitB := tx.Bucket(unitBucket)
+		if unitBucket == nil {
+			return fmt.Errorf("bucket %s not found", unitBucket)
+		}
+
+		value := unitB.Get([]byte(unitID))
+		if value == nil {
+			return nil
+		}
+
+		var hashes []string
+		if err := json.Unmarshal(value, &hashes); err != nil {
+			return err
+		}
+
+		txInfoB := tx.Bucket(txInfoBucket)
+		if txInfoBucket == nil {
+			return fmt.Errorf("bucket %s not found", txInfoBucket)
+		}
+
+		for _, hash := range hashes {
+			txInfo := &exTypes.TxInfo{}
+			txBytes := txInfoB.Get([]byte(hash))
+			if txBytes == nil {
+				continue
+			}
+			if err := json.Unmarshal(txBytes, txInfo); err != nil {
+				return err
+			}
+			txs = append(txs, txInfo)
+		}
+		return nil
+	})
+
+	return txs, err
 }
