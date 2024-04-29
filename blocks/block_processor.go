@@ -51,7 +51,12 @@ func (p *BlockProcessor) ProcessBlock(_ context.Context, b *abtypes.Block) error
 
 		err = p.saveTx(roundNumber, tx)
 		if err != nil {
-			return fmt.Errorf("failed to save txExplorer in ProcessBlock: %w", err)
+			return fmt.Errorf("failed to save tx in ProcessBlock: %w", err)
+		}
+
+		err = p.saveUnit(tx)
+		if err != nil {
+			return fmt.Errorf("failed to save unit in ProcessBlock: %w", err)
 		}
 	}
 	err = p.saveBlock(b)

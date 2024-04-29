@@ -21,5 +21,5 @@ type BillStore interface {
 	GetBlockTxsByBlockNumber(blockNumber uint64) (res []*exTypes.TxInfo, err error)
 
 	// bill_store/units.go
-	SetUnit(unit abTypes.UnitID, txHash []byte) error
+	SetUnit(unitID abTypes.UnitID, txHash []byte) error
 }

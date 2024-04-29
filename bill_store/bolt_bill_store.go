@@ -5,8 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"time"
-
-	"github.com/alphabill-org/alphabill-explorer-backend/types"
+	
 	"github.com/alphabill-org/alphabill/util"
 	bolt "go.etcd.io/bbolt"
 )
@@ -14,9 +13,9 @@ import (
 const BoltExplorerStoreFileName = "blocks.db"
 
 var (
-	blockInfoBucket = []byte("BlockInfoBucket") // block_number => exTypes.BlockInfo
+	blockInfoBucket = []byte("blockInfoBucket") // block_number => exTypes.BlockInfo
 	txInfoBucket    = []byte("txInfoBucket")    // txHash => exTypes.TxInfo
-	unitBucket    = []byte("unitBucket")    // unitString => txHash
+	unitBucket      = []byte("unitBucket")      // unit => []txHash
 	metaBucket      = []byte("metaBucket")      // block_number_key => block_number_val
 )
 
@@ -33,11 +32,6 @@ type (
 		db *bolt.DB
 	}
 )
-
-// AddTxInfo implements blocks.Store.
-func (*boltBillStore) AddTxInfo(txExplorer *types.TxInfo) error {
-	panic("unimplemented")
-}
 
 // NewBoltBillStore creates new on-disk persistent storage for bills and proofs using bolt db.
 // If the file does not exist then it will be created, however, parent directories must exist beforehand.
