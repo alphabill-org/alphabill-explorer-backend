@@ -1,7 +1,9 @@
 package restapi
 
 import (
+	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
@@ -19,6 +21,8 @@ import (
 func (api *MoneyRestAPI) Router() *mux.Router {
 	// TODO add request/response headers middleware
 	router := mux.NewRouter().StrictSlash(true)
+
+	router.Path("/health").HandlerFunc(api.healthRequest)
 
 	router.PathPrefix("/swagger/").Handler(httpSwagger.Handler(
 		httpSwagger.URL("/swagger/doc.json"), //The url pointing to API definition
@@ -47,4 +51,9 @@ func (api *MoneyRestAPI) Router() *mux.Router {
 	apiV1.HandleFunc("/blocks/{blockNumber}/txs", api.getBlockTxsByBlockNumber).Methods("GET", "OPTIONS")
 
 	return router
+}
+
+func (api *MoneyRestAPI) healthRequest(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(fmt.Sprintf("OK - %v", time.Now())))
 }
