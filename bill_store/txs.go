@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/alphabill-org/alphabill-explorer-backend/api"
 	exTypes "github.com/alphabill-org/alphabill-explorer-backend/types"
 	"github.com/alphabill-org/alphabill/util"
 	bolt "go.etcd.io/bbolt"
@@ -55,7 +56,7 @@ func (s *boltBillStore) getBlockTxsByBlockNumber(tx *bolt.Tx, blockNumber uint64
 		return nil, fmt.Errorf("no block data found for block number %d", blockNumber)
 	}
 
-	var b exTypes.BlockInfo
+	var b api.BlockInfo
 	if err := json.Unmarshal(blockInfoBytes, &b); err != nil {
 		return nil, err
 	}

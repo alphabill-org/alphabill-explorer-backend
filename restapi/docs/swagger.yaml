@@ -1,0 +1,145 @@
+basePath: /api/v1
+definitions:
+  api.BlockInfo:
+    properties:
+      header:
+        $ref: '#/definitions/types.Header'
+      txHashes:
+        items:
+          type: string
+        type: array
+      unicityCertificate:
+        $ref: '#/definitions/types.UnicityCertificate'
+    type: object
+  imt.PathItem:
+    properties:
+      hash:
+        items:
+          type: integer
+        type: array
+      key:
+        items:
+          type: integer
+        type: array
+    type: object
+  types.Header:
+    properties:
+      previousBlockHash:
+        items:
+          type: integer
+        type: array
+      proposerID:
+        type: string
+      shardID:
+        items:
+          type: integer
+        type: array
+      systemID:
+        type: integer
+    type: object
+  types.InputRecord:
+    properties:
+      block_hash:
+        description: hash of the block
+        items:
+          type: integer
+        type: array
+      hash:
+        description: state hash to be certified
+        items:
+          type: integer
+        type: array
+      previous_hash:
+        description: previously certified state hash
+        items:
+          type: integer
+        type: array
+      round_number:
+        description: transaction system's round number
+        type: integer
+      sum_of_earned_fees:
+        description: sum of the actual fees over all transaction records in the block
+        type: integer
+      summary_value:
+        description: summary value to certified
+        items:
+          type: integer
+        type: array
+    type: object
+  types.SignatureMap:
+    additionalProperties:
+      items:
+        type: integer
+      type: array
+    type: object
+  types.UnicityCertificate:
+    properties:
+      input_record:
+        $ref: '#/definitions/types.InputRecord'
+      unicity_seal:
+        $ref: '#/definitions/types.UnicitySeal'
+      unicity_tree_certificate:
+        $ref: '#/definitions/types.UnicityTreeCertificate'
+    type: object
+  types.UnicitySeal:
+    properties:
+      hash:
+        items:
+          type: integer
+        type: array
+      previous_hash:
+        items:
+          type: integer
+        type: array
+      root_chain_round_number:
+        type: integer
+      signatures:
+        $ref: '#/definitions/types.SignatureMap'
+      timestamp:
+        type: integer
+    type: object
+  types.UnicityTreeCertificate:
+    properties:
+      sibling_hashes:
+        items:
+          $ref: '#/definitions/imt.PathItem'
+        type: array
+      system_description_hash:
+        items:
+          type: integer
+        type: array
+      system_identifier:
+        type: integer
+    type: object
+info:
+  contact: {}
+  description: API to query blocks and transactions of Alphabill's Money Partition
+  title: Alphabill Blockchain Explorer API
+  version: "1.0"
+paths:
+  /blocks:
+    get:
+      description: Get blocks, given a start block number and limit.
+      parameters:
+      - description: optionally specify the start block number
+        in: query
+        name: startBlock
+        type: string
+      - description: optionally specify the number of blocks to return, defaults to
+          10
+        in: query
+        name: limit
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/api.BlockInfo'
+            type: array
+      summary: Get blocks, given a start block number and limit.
+      tags:
+      - Energy Type
+swagger: "2.0"

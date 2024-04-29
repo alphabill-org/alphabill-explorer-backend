@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	exTypes "github.com/alphabill-org/alphabill-explorer-backend/types"
+	exTypes "github.com/alphabill-org/alphabill-explorer-backend/api"
 	"github.com/alphabill-org/alphabill/util"
 	bolt "go.etcd.io/bbolt"
 )
