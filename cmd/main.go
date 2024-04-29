@@ -21,6 +21,14 @@ import (
 )
 
 type (
+	BillStore interface {
+		GetLastBlockNumber() (uint64, error)
+		GetBlockInfo(blockNumber uint64) (*api.BlockInfo, error)
+		GetBlocksInfo(dbStartBlock uint64, count int) (res []*api.BlockInfo, prevBlockNumber uint64, err error)
+		GetBlockTxsByBlockNumber(blockNumber uint64) (res []*exTypes.TxInfo, err error)
+		GetTxInfo(txHash string) (*exTypes.TxInfo, error)
+	}
+
 	ExplorerBackend struct {
 		store  BillStore
 		client *rpc.Client
@@ -60,16 +68,18 @@ func Run(ctx context.Context, config *Config) error {
 			ListBillsPageLimit: config.ListBillsPageLimit,
 			SystemID:           config.ABMoneySystemIdentifier,
 		}
-		server := http.Server{
-			Addr:              config.ServerAddr,
-			Handler:           handler.Router(),
-			ReadTimeout:       3 * time.Second,
-			ReadHeaderTimeout: time.Second,
-			WriteTimeout:      5 * time.Second,
-			IdleTimeout:       30 * time.Second,
-		}
 
-		return httpsrv.Run(ctx, server, httpsrv.ShutdownTimeout(5*time.Second))
+		return httpsrv.Run(
+			ctx,
+			http.Server{
+				Addr:              config.ServerAddr,
+				Handler:           handler.Router(),
+				ReadTimeout:       3 * time.Second,
+				ReadHeaderTimeout: time.Second,
+				WriteTimeout:      5 * time.Second,
+				IdleTimeout:       30 * time.Second,
+			},
+			httpsrv.ShutdownTimeout(5*time.Second))
 	})
 
 	g.Go(func() error {
