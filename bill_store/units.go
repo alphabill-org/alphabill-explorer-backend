@@ -2,26 +2,27 @@ package bill_store
 
 import (
 	"fmt"
-	abtypes "github.com/alphabill-org/alphabill/types"
 	bolt "go.etcd.io/bbolt"
 )
 
-func (s *boltBillStore) SetUnit(unitID abtypes.UnitID, txHash []byte) error {
+func (s *boltBillStore) SetUnitID(unitID string, txHash string) error {
 	return s.db.Update(func(tx *bolt.Tx) error {
+		unitIDBytes := []byte(unitID)
+		txHashBytes := []byte(txHash)
 
-		bucket, err := tx.CreateBucketIfNotExists(unitID)
+		bucket, err := tx.CreateBucketIfNotExists(unitIDBytes)
 		if err != nil {
 			return fmt.Errorf("create bucket: %s", err)
 		}
 
-		existing := bucket.Get(unitID)
+		existing := bucket.Get(unitIDBytes)
 		if existing == nil {
-			if err := bucket.Put(unitID, txHash); err != nil {
+			if err := bucket.Put(unitIDBytes, txHashBytes); err != nil {
 				return fmt.Errorf("put value: %s", err)
 			}
 		} else {
-			newValue := append(existing, txHash...)
-			if err := bucket.Put(unitID, newValue); err != nil {
+			newValue := append(existing, txHashBytes...)
+			if err := bucket.Put(unitIDBytes, newValue); err != nil {
 				return fmt.Errorf("update value: %s", err)
 			}
 		}
