@@ -7,6 +7,7 @@ import (
 
 	"github.com/alphabill-org/alphabill-explorer-backend/api"
 	"github.com/alphabill-org/alphabill/types"
+	moneyApi "github.com/alphabill-org/alphabill-wallet/wallet/money/api"
 )
 
 const (
@@ -27,6 +28,9 @@ type (
 		GetTxInfo(txHash string) (res *api.TxInfo, err error)
 		GetBlockTxsByBlockNumber(blockNumber uint64) (res []*api.TxInfo, err error)
 		GetTxsByUnitID(unitID string) ([]*api.TxInfo, error)
+
+		//bill
+		GetBillsByPubKey(ctx context.Context , ownerID types.Bytes) (res []*moneyApi.Bill, err error)
 	}
 
 	MoneyRestAPI struct {
