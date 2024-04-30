@@ -44,6 +44,152 @@
                     }
                 }
             }
+        },
+        "/blocks/{blockNumber}": {
+            "get": {
+                "description": "Retrieves a block using the block number provided as a path parameter or retrieves the latest block if no block number is specified.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Blocks"
+                ],
+                "summary": "Retrieve a block by block number or the latest block",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "The block number to retrieve (optional; if not provided, the latest block is returned)",
+                        "name": "blockNumber",
+                        "in": "path"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successfully retrieved the block",
+                        "schema": {
+                            "$ref": "#/definitions/api.BlockInfo"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid block number format or other client error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Block with the specified block number not found",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error, such as failure to load the last block number or to load the block from the service",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/blocks/{blockNumber}/txs": {
+            "get": {
+                "description": "Retrieves a list of transactions for a given block number.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Blocks"
+                ],
+                "summary": "Retrieve transactions by block number",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "The block number for which to retrieve transactions",
+                        "name": "blockNumber",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successfully retrieved list of transactions for the block",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/types.TxInfo"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Missing or invalid 'blockNumber' variable in the URL",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "No transactions found for the specified block number",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/txs/{txHash}": {
+            "get": {
+                "description": "Retrieves transaction details using a transaction hash provided as a path parameter.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Transactions"
+                ],
+                "summary": "Retrieve a transaction by hash",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "The hash of the transaction to retrieve",
+                        "name": "txHash",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successfully retrieved the transaction information",
+                        "schema": {
+                            "$ref": "#/definitions/types.TxInfo"
+                        }
+                    },
+                    "400": {
+                        "description": "Missing 'txHash' variable in the URL",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Transaction with the specified hash not found",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to load transaction details",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -78,6 +224,23 @@
                     "items": {
                         "type": "integer"
                     }
+                }
+            }
+        },
+        "types.ClientMetadata": {
+            "type": "object",
+            "properties": {
+                "feeCreditRecordID": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "maxTransactionFee": {
+                    "type": "integer"
+                },
+                "timeout": {
+                    "type": "integer"
                 }
             }
         },
@@ -145,6 +308,32 @@
                 }
             }
         },
+        "types.Payload": {
+            "type": "object",
+            "properties": {
+                "attributes": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "clientMetadata": {
+                    "$ref": "#/definitions/types.ClientMetadata"
+                },
+                "systemID": {
+                    "type": "integer"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "unitID": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
         "types.SignatureMap": {
             "type": "object",
             "additionalProperties": {
@@ -153,6 +342,69 @@
                     "type": "integer"
                 }
             }
+        },
+        "types.TransactionOrder": {
+            "type": "object",
+            "properties": {
+                "feeProof": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "ownerProof": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "payload": {
+                    "$ref": "#/definitions/types.Payload"
+                }
+            }
+        },
+        "types.TxInfo": {
+            "type": "object",
+            "properties": {
+                "blockNumber": {
+                    "type": "integer"
+                },
+                "fee": {
+                    "type": "integer"
+                },
+                "hash": {
+                    "type": "string"
+                },
+                "payloadType": {
+                    "type": "string"
+                },
+                "status": {
+                    "$ref": "#/definitions/types.TxStatus"
+                },
+                "targetUnits": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "timeout": {
+                    "type": "integer"
+                },
+                "transactionOrder": {
+                    "$ref": "#/definitions/types.TransactionOrder"
+                }
+            }
+        },
+        "types.TxStatus": {
+            "type": "integer",
+            "enum": [
+                0,
+                1
+            ],
+            "x-enum-varnames": [
+                "TxStatusFailed",
+                "TxStatusSuccessful"
+            ]
         },
         "types.UnicityCertificate": {
             "type": "object",

@@ -14,7 +14,7 @@ import (
 // @Accept json
 // @Produce json
 // @Param txHash path string true "The hash of the transaction to retrieve"
-// @Success 200 {object} TxInfo "Successfully retrieved the transaction information"
+// @Success 200 {object} types.TxInfo "Successfully retrieved the transaction information"
 // @Failure 400 {string} string "Missing 'txHash' variable in the URL"
 // @Failure 404 {string} string "Transaction with the specified hash not found"
 // @Failure 500 {string} string "Failed to load transaction details"
@@ -45,7 +45,7 @@ func (api *MoneyRestAPI) getTx(w http.ResponseWriter, r *http.Request) {
 // @Accept json
 // @Produce json
 // @Param blockNumber path int true "The block number for which to retrieve transactions"
-// @Success 200 {array} TxInfo "Successfully retrieved list of transactions for the block"
+// @Success 200 {array} types.TxInfo "Successfully retrieved list of transactions for the block"
 // @Failure 400 {string} string "Missing or invalid 'blockNumber' variable in the URL"
 // @Failure 404 {string} string "No transactions found for the specified block number"
 // @Router /blocks/{blockNumber}/txs [get]

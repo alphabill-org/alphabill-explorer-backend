@@ -22,6 +22,17 @@ definitions:
           type: integer
         type: array
     type: object
+  types.ClientMetadata:
+    properties:
+      feeCreditRecordID:
+        items:
+          type: integer
+        type: array
+      maxTransactionFee:
+        type: integer
+      timeout:
+        type: integer
+    type: object
   types.Header:
     properties:
       previousBlockHash:
@@ -66,12 +77,71 @@ definitions:
           type: integer
         type: array
     type: object
+  types.Payload:
+    properties:
+      attributes:
+        items:
+          type: integer
+        type: array
+      clientMetadata:
+        $ref: '#/definitions/types.ClientMetadata'
+      systemID:
+        type: integer
+      type:
+        type: string
+      unitID:
+        items:
+          type: integer
+        type: array
+    type: object
   types.SignatureMap:
     additionalProperties:
       items:
         type: integer
       type: array
     type: object
+  types.TransactionOrder:
+    properties:
+      feeProof:
+        items:
+          type: integer
+        type: array
+      ownerProof:
+        items:
+          type: integer
+        type: array
+      payload:
+        $ref: '#/definitions/types.Payload'
+    type: object
+  types.TxInfo:
+    properties:
+      blockNumber:
+        type: integer
+      fee:
+        type: integer
+      hash:
+        type: string
+      payloadType:
+        type: string
+      status:
+        $ref: '#/definitions/types.TxStatus'
+      targetUnits:
+        items:
+          type: string
+        type: array
+      timeout:
+        type: integer
+      transactionOrder:
+        $ref: '#/definitions/types.TransactionOrder'
+    type: object
+  types.TxStatus:
+    enum:
+    - 0
+    - 1
+    type: integer
+    x-enum-varnames:
+    - TxStatusFailed
+    - TxStatusSuccessful
   types.UnicityCertificate:
     properties:
       input_record:
@@ -142,4 +212,104 @@ paths:
       summary: Get blocks, given a start block number and limit.
       tags:
       - Energy Type
+  /blocks/{blockNumber}:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves a block using the block number provided as a path parameter
+        or retrieves the latest block if no block number is specified.
+      parameters:
+      - description: The block number to retrieve (optional; if not provided, the
+          latest block is returned)
+        in: path
+        name: blockNumber
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully retrieved the block
+          schema:
+            $ref: '#/definitions/api.BlockInfo'
+        "400":
+          description: Invalid block number format or other client error
+          schema:
+            type: string
+        "404":
+          description: Block with the specified block number not found
+          schema:
+            type: string
+        "500":
+          description: Internal server error, such as failure to load the last block
+            number or to load the block from the service
+          schema:
+            type: string
+      summary: Retrieve a block by block number or the latest block
+      tags:
+      - Blocks
+  /blocks/{blockNumber}/txs:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves a list of transactions for a given block number.
+      parameters:
+      - description: The block number for which to retrieve transactions
+        in: path
+        name: blockNumber
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully retrieved list of transactions for the block
+          schema:
+            items:
+              $ref: '#/definitions/types.TxInfo'
+            type: array
+        "400":
+          description: Missing or invalid 'blockNumber' variable in the URL
+          schema:
+            type: string
+        "404":
+          description: No transactions found for the specified block number
+          schema:
+            type: string
+      summary: Retrieve transactions by block number
+      tags:
+      - Blocks
+  /txs/{txHash}:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves transaction details using a transaction hash provided
+        as a path parameter.
+      parameters:
+      - description: The hash of the transaction to retrieve
+        in: path
+        name: txHash
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully retrieved the transaction information
+          schema:
+            $ref: '#/definitions/types.TxInfo'
+        "400":
+          description: Missing 'txHash' variable in the URL
+          schema:
+            type: string
+        "404":
+          description: Transaction with the specified hash not found
+          schema:
+            type: string
+        "500":
+          description: Failed to load transaction details
+          schema:
+            type: string
+      summary: Retrieve a transaction by hash
+      tags:
+      - Transactions
 swagger: "2.0"

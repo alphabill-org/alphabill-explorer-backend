@@ -14,7 +14,7 @@ import (
 // @Accept json
 // @Produce json
 // @Param blockNumber path int false "The block number to retrieve (optional; if not provided, the latest block is returned)"
-// @Success 200 {object} BlockInfo "Successfully retrieved the block"
+// @Success 200 {object} api.BlockInfo "Successfully retrieved the block"
 // @Failure 400 {object} string "Invalid block number format or other client error"
 // @Failure 404 {object} string "Block with the specified block number not found"
 // @Failure 500 {object} string "Internal server error, such as failure to load the last block number or to load the block from the service"
