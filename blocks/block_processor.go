@@ -340,7 +340,7 @@ func (p *BlockProcessor) processTx(txr *abtypes.TransactionRecord, b *abtypes.Bl
 	return nil
 }
 
-func (p *BlockProcessor) saveTx(blockNo uint64, txInfo *exTypes.TxInfo) error {
+func (p *BlockProcessor) saveTx(txInfo *exTypes.TxInfo) error {
 	if txInfo == nil {
 		return fmt.Errorf("transaction is nil")
 	}

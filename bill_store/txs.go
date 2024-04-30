@@ -83,36 +83,36 @@ func (s *boltBillStore) GetTxsByUnitID(unitID string) ([]*exTypes.TxInfo, error)
 	var txs []*exTypes.TxInfo
 
 	err := s.db.View(func(tx *bolt.Tx) error {
-		unitB := tx.Bucket(unitBucket)
-		if unitBucket == nil {
-			return fmt.Errorf("bucket %s not found", unitBucket)
+		bucket := tx.Bucket(unitIDBucket)
+		if unitIDBucket == nil {
+			return fmt.Errorf("bucket %s not found", unitIDBucket)
 		}
 
-		value := unitB.Get([]byte(unitID))
-		if value == nil {
-			return nil
+		subBucket := bucket.Bucket([]byte(unitID))
+		if subBucket == nil {
+			return fmt.Errorf("sub bucket %s not found", []byte(unitID))
 		}
 
-		var hashes []string
-		if err := json.Unmarshal(value, &hashes); err != nil {
-			return err
-		}
-
-		txInfoB := tx.Bucket(txInfoBucket)
+		txBucket := tx.Bucket(txInfoBucket)
 		if txInfoBucket == nil {
 			return fmt.Errorf("bucket %s not found", txInfoBucket)
 		}
 
-		for _, hash := range hashes {
-			txInfo := &exTypes.TxInfo{}
-			txBytes := txInfoB.Get([]byte(hash))
+		err := subBucket.ForEach(func(txHash []byte, _ []byte) error {
+			txBytes := txBucket.Get(txHash)
 			if txBytes == nil {
-				continue
+				return fmt.Errorf("no transaction info found for txHash %s", txHash)
 			}
-			if err := json.Unmarshal(txBytes, txInfo); err != nil {
+
+			var txInfo *exTypes.TxInfo
+			if err := json.Unmarshal(txBytes, &txInfo); err != nil {
 				return err
 			}
 			txs = append(txs, txInfo)
+			return nil
+		})
+		if err != nil {
+			return err
 		}
 		return nil
 	})
