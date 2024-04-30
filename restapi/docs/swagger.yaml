@@ -249,7 +249,7 @@ paths:
             $ref: '#/definitions/restapi.ErrorResponse'
       summary: Retrieve bills by public key
       tags:
-      - bills
+      - Bills
   /blocks:
     get:
       description: Get blocks, given a start block number and limit.
@@ -274,7 +274,7 @@ paths:
             type: array
       summary: Get blocks, given a start block number and limit.
       tags:
-      - Energy Type
+      - Blocks
   /blocks/{blockNumber}:
     get:
       consumes:
@@ -340,7 +340,7 @@ paths:
             type: string
       summary: Retrieve transactions by block number
       tags:
-      - Blocks
+      - Transactions
   /txs/{txHash}:
     get:
       consumes:
@@ -405,5 +405,5 @@ paths:
             $ref: '#/definitions/restapi.ErrorResponse'
       summary: Retrieve transactions by unit ID
       tags:
-      - transactions
+      - Transactions
 swagger: "2.0"

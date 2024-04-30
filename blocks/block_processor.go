@@ -31,7 +31,7 @@ func NewBlockProcessor(store Store, moneySystemID abtypes.SystemID) (*BlockProce
 
 func (p *BlockProcessor) ProcessBlock(_ context.Context, b *abtypes.Block) error {
 	roundNumber := b.GetRoundNumber()
-	println("processing block: ", roundNumber)
+	//println("processing block: ", roundNumber)
 	if len(b.Transactions) > 0 {
 		fmt.Printf("Block number: %d has %d transactions\n", roundNumber, len(b.Transactions))
 	}

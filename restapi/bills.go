@@ -9,7 +9,7 @@ import (
 
 // @Summary Retrieve bills by public key
 // @Description Get bills associated with a specific public key
-// @Tags bills
+// @Tags Bills
 // @Accept json
 // @Produce json
 // @Param pubKey path string true "Public Key"

@@ -41,7 +41,7 @@ func (api *MoneyRestAPI) getTx(w http.ResponseWriter, r *http.Request) {
 
 // @Summary Retrieve transactions by block number
 // @Description Retrieves a list of transactions for a given block number.
-// @Tags Blocks
+// @Tags Transactions
 // @Accept json
 // @Produce json
 // @Param blockNumber path int true "The block number for which to retrieve transactions"
@@ -78,7 +78,7 @@ func (api *MoneyRestAPI) getBlockTxsByBlockNumber(w http.ResponseWriter, r *http
 
 // @Summary Retrieve transactions by unit ID
 // @Description Get transactions associated with a specific unit ID
-// @Tags transactions
+// @Tags Transactions
 // @Accept json
 // @Produce json
 // @Param unitID path string true "Unit ID"
