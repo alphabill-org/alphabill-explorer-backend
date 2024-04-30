@@ -54,3 +54,24 @@ func (api *MoneyRestAPI) getBlockTxsByBlockNumber(w http.ResponseWriter, r *http
 	}
 	api.rw.WriteResponse(w, txs)
 }
+
+func (api *MoneyRestAPI) getTxsByUnitID(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	unitID, ok := vars["unitID"]
+	if !ok {
+		http.Error(w, "Missing 'unitID' variable in the URL", http.StatusBadRequest)
+		return
+	}
+
+	txs, err := api.Service.GetTxsByUnitID(unitID)
+	if err != nil {
+		api.rw.WriteErrorResponse(w, fmt.Errorf("failed to load txs with unitID %s : %w", unitID, err))
+		return
+	}
+
+	if txs == nil {
+		api.rw.ErrorResponse(w, http.StatusNotFound, fmt.Errorf("tx with unitID %s not found", unitID))
+		return
+	}
+	api.rw.WriteResponse(w, txs)
+}

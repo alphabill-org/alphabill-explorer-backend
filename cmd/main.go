@@ -22,11 +22,16 @@ import (
 
 type (
 	BillStore interface {
+
+		//block
 		GetLastBlockNumber() (uint64, error)
 		GetBlockInfo(blockNumber uint64) (*api.BlockInfo, error)
 		GetBlocksInfo(dbStartBlock uint64, count int) (res []*api.BlockInfo, prevBlockNumber uint64, err error)
-		GetBlockTxsByBlockNumber(blockNumber uint64) (res []*exTypes.TxInfo, err error)
+
+		//tx
 		GetTxInfo(txHash string) (*exTypes.TxInfo, error)
+		GetBlockTxsByBlockNumber(blockNumber uint64) (res []*exTypes.TxInfo, err error)
+		GetTxsByUnitID(unitID string) ([]*exTypes.TxInfo, error)
 	}
 
 	ExplorerBackend struct {
@@ -127,6 +132,12 @@ func runBlockSync(ctx context.Context, getBlocks blocksync.BlockLoaderFunc, getB
 	return blocksync.Run(ctx, getBlocks, blockNumber+1, 0, batchSize, processor)
 }
 
+// GetRoundNumber returns latest round number.
+func (ex *ExplorerBackend) GetRoundNumber(ctx context.Context) (uint64, error) {
+	return ex.client.GetRoundNumber(ctx)
+}
+
+//block
 // GetLastBlockNumber returns last processed block
 func (ex *ExplorerBackend) GetLastBlockNumber() (uint64, error) {
 	return ex.store.GetLastBlockNumber()
@@ -142,15 +153,16 @@ func (ex *ExplorerBackend) GetBlocks(dbStartBlockNumber uint64, count int) (res 
 	return ex.store.GetBlocksInfo(dbStartBlockNumber, count)
 }
 
+
+//tx
 func (ex *ExplorerBackend) GetTxInfo(txHash string) (res *exTypes.TxInfo, err error) {
 	return ex.store.GetTxInfo(txHash)
 }
 
-// GetRoundNumber returns latest round number.
-func (ex *ExplorerBackend) GetRoundNumber(ctx context.Context) (uint64, error) {
-	return ex.client.GetRoundNumber(ctx)
-}
-
 func (ex *ExplorerBackend) GetBlockTxsByBlockNumber(blockNumber uint64) (res []*exTypes.TxInfo, err error) {
 	return ex.store.GetBlockTxsByBlockNumber(blockNumber)
+}
+
+func (ex *ExplorerBackend) GetTxsByUnitID(unitID string) ([]*exTypes.TxInfo, error) {
+	return ex.store.GetTxsByUnitID(unitID)
 }
