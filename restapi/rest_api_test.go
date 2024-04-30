@@ -14,6 +14,7 @@ type MockExplorerBackendService struct {
 	getTxInfoFunc                func(txHash string) (res *exTypes.TxInfo, err error)
 	getBlockTxsByBlockNumberFunc func(blockNumber uint64) (res []*exTypes.TxInfo, err error)
 	getRoundNumberFunc           func(ctx context.Context) (uint64, error)
+	getTxsByUnitID               func(unitID string) ([]*exTypes.TxInfo, error)
 }
 
 func (m *MockExplorerBackendService) GetLastBlockNumber() (uint64, error) {
@@ -56,4 +57,11 @@ func (m *MockExplorerBackendService) GetRoundNumber(ctx context.Context) (uint64
 		return m.getRoundNumberFunc(ctx)
 	}
 	panic("GetRoundNumberFunc not implemented")
+}
+
+func (m *MockExplorerBackendService) GetTxsByUnitID(unitID string) ([]*exTypes.TxInfo, error) {
+	if m.getRoundNumberFunc != nil {
+		return m.getTxsByUnitID(unitID)
+	}
+	panic("GetTxsByUnitIDFunc not implemented")
 }

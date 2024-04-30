@@ -17,12 +17,17 @@ const (
 
 type (
 	ExplorerBackendService interface {
+		GetRoundNumber(ctx context.Context) (uint64, error)
+
+		//block
 		GetLastBlockNumber() (uint64, error)
 		GetBlock(blockNumber uint64) (*api.BlockInfo, error)
 		GetBlocks(dbStartBlock uint64, count int) (res []*api.BlockInfo, prevBlockNumber uint64, err error)
+
+		//tx
 		GetTxInfo(txHash string) (res *exTypes.TxInfo, err error)
 		GetBlockTxsByBlockNumber(blockNumber uint64) (res []*exTypes.TxInfo, err error)
-		GetRoundNumber(ctx context.Context) (uint64, error)
+		GetTxsByUnitID(unitID string) ([]*exTypes.TxInfo, error)
 	}
 
 	MoneyRestAPI struct {

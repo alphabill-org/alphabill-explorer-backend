@@ -110,3 +110,5 @@ func (s *boltBillStore) getBlocksInfo(tx *bolt.Tx, dbStartBlock uint64, count in
 	}
 	return res, prevBlockNumber, nil
 }
+
+

@@ -44,11 +44,14 @@ func (api *MoneyRestAPI) Router() *mux.Router {
 	// version v1 router
 	apiV1 := apiRouter.PathPrefix("/v1").Subrouter()
 
+	//block
 	apiV1.HandleFunc("/blocks/{blockNumber}", api.getBlock).Methods("GET", "OPTIONS")
 	apiV1.HandleFunc("/blocks", api.getBlocks).Methods("GET", "OPTIONS")
 
+	//tx
 	apiV1.HandleFunc("/txs/{txHash}", api.getTx).Methods("GET", "OPTIONS")
 	apiV1.HandleFunc("/blocks/{blockNumber}/txs", api.getBlockTxsByBlockNumber).Methods("GET", "OPTIONS")
+	apiV1.HandleFunc("/units/{unitID}/txs", api.getTxsByUnitID).Methods("GET", "OPTIONS")
 
 	return router
 }
