@@ -52,7 +52,11 @@ func (p *BlockProcessor) ProcessBlock(_ context.Context, b *abtypes.Block) error
 
 		txInfo, err := exTypes.NewTxInfo(roundNumber, tx)
 
-		err = p.saveTx(roundNumber, txInfo)
+		if err != nil {
+			return fmt.Errorf("failed create new txInfo in ProcessBlock: %w", err)
+		}
+
+		err = p.saveTx(txInfo)
 		if err != nil {
 			return fmt.Errorf("failed to save tx in ProcessBlock: %w", err)
 		}
