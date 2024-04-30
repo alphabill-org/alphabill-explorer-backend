@@ -30,21 +30,21 @@ func (api *MoneyRestAPI) getBlock(w http.ResponseWriter, r *http.Request) {
 		var err error
 		blockNumber, err = strconv.ParseUint(blockNumberStr, 10, 64)
 		if err != nil {
-			api.rw.ErrorResponse(w, http.StatusBadRequest, fmt.Errorf("invalid 'blockNumber' format: %v", err))
+			api.rw.ErrorResponse(w, http.StatusBadRequest, fmt.Errorf("invalid 'blockNumber' format: %w", err))
 			return
 		}
 	} else {
 		var err error
 		blockNumber, err = api.Service.GetLastBlockNumber()
 		if err != nil {
-			api.rw.ErrorResponse(w, http.StatusInternalServerError, fmt.Errorf("failed to load last block number: %v", err))
+			api.rw.ErrorResponse(w, http.StatusInternalServerError, fmt.Errorf("failed to load last block number: %w", err))
 			return
 		}
 	}
 
 	block, err := api.Service.GetBlock(blockNumber)
 	if err != nil {
-		api.rw.ErrorResponse(w, http.StatusInternalServerError, fmt.Errorf("failed to load block with block number %d: %v", blockNumber, err))
+		api.rw.ErrorResponse(w, http.StatusInternalServerError, fmt.Errorf("failed to load block with block number %d: %w", blockNumber, err))
 		return
 	}
 

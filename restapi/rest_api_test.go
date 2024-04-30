@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/alphabill-org/alphabill-explorer-backend/api"
-	exTypes "github.com/alphabill-org/alphabill-explorer-backend/types"
 	moneyApi "github.com/alphabill-org/alphabill-wallet/wallet/money/api"
 	abTypes "github.com/alphabill-org/alphabill/types"
 )

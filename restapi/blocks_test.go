@@ -54,7 +54,7 @@ func TestGetBlock_InvalidBlockNumber(t *testing.T) {
 	require.NoError(t, err)
 
 	// Check the error message
-	require.Contains(t, string(body), "Invalid 'blockNumber' format")
+	require.Contains(t, string(body), "invalid 'blockNumber' format")
 }
 
 func TestGetBlock_FailedToLoadBlock(t *testing.T) {

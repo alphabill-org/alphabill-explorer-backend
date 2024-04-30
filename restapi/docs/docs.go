@@ -176,7 +176,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/types.TxInfo"
+                                "$ref": "#/definitions/api.TxInfo"
                             }
                         }
                     },
@@ -221,7 +221,7 @@ const docTemplate = `{
                     "200": {
                         "description": "Successfully retrieved the transaction information",
                         "schema": {
-                            "$ref": "#/definitions/types.TxInfo"
+                            "$ref": "#/definitions/api.TxInfo"
                         }
                     },
                     "400": {
@@ -273,7 +273,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/types.TxInfo"
+                                "$ref": "#/definitions/api.TxInfo"
                             }
                         }
                     },
@@ -297,14 +297,45 @@ const docTemplate = `{
         "api.Bill": {
             "type": "object",
             "properties": {
-                "billData": {
-                    "$ref": "#/definitions/money.BillData"
+                "dcTargetUnitBacklink": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "dcTargetUnitId": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
                 },
                 "id": {
                     "type": "array",
                     "items": {
                         "type": "integer"
                     }
+                },
+                "lastAddFcTxHash": {
+                    "description": "fcb specific fields\nLastAddFCTxHash last add fee credit tx hash",
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "ownerPredicate": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "txHash": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "value": {
+                    "type": "integer"
                 }
             }
         },
@@ -325,6 +356,29 @@ const docTemplate = `{
                 }
             }
         },
+        "api.TxInfo": {
+            "type": "object",
+            "properties": {
+                "blockNumber": {
+                    "type": "integer"
+                },
+                "transaction": {
+                    "$ref": "#/definitions/types.TransactionRecord"
+                },
+                "txOrderHash": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "txRecordHash": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
         "imt.PathItem": {
             "type": "object",
             "properties": {
@@ -339,30 +393,6 @@ const docTemplate = `{
                     "items": {
                         "type": "integer"
                     }
-                }
-            }
-        },
-        "money.BillData": {
-            "type": "object",
-            "properties": {
-                "counter": {
-                    "description": "The transaction counter of this bill",
-                    "type": "integer"
-                },
-                "lastUpdate": {
-                    "description": "The round number of the last transaction with the bill",
-                    "type": "string",
-                    "example": "0"
-                },
-                "locked": {
-                    "description": "locked status of the bill, non-zero value means locked",
-                    "type": "string",
-                    "example": "0"
-                },
-                "value": {
-                    "description": "The monetary value of this bill",
-                    "type": "string",
-                    "example": "0"
                 }
             }
         },
@@ -481,6 +511,32 @@ const docTemplate = `{
                 }
             }
         },
+        "types.ServerMetadata": {
+            "type": "object",
+            "properties": {
+                "actualFee": {
+                    "type": "integer"
+                },
+                "processingDetails": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "successIndicator": {
+                    "$ref": "#/definitions/types.TxStatus"
+                },
+                "targetUnits": {
+                    "type": "array",
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "type": "integer"
+                        }
+                    }
+                }
+            }
+        },
         "types.SignatureMap": {
             "type": "object",
             "additionalProperties": {
@@ -510,32 +566,11 @@ const docTemplate = `{
                 }
             }
         },
-        "types.TxInfo": {
+        "types.TransactionRecord": {
             "type": "object",
             "properties": {
-                "blockNumber": {
-                    "type": "integer"
-                },
-                "fee": {
-                    "type": "integer"
-                },
-                "hash": {
-                    "type": "string"
-                },
-                "payloadType": {
-                    "type": "string"
-                },
-                "status": {
-                    "$ref": "#/definitions/types.TxStatus"
-                },
-                "targetUnits": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "timeout": {
-                    "type": "integer"
+                "serverMetadata": {
+                    "$ref": "#/definitions/types.ServerMetadata"
                 },
                 "transactionOrder": {
                     "$ref": "#/definitions/types.TransactionOrder"

@@ -13,8 +13,8 @@ import (
 const BoltExplorerStoreFileName = "blocks.db"
 
 var (
-	blockInfoBucket          = []byte("blockInfoBucket")        // block_number => exTypes.BlockInfo
-	txInfoBucket             = []byte("txInfoBucket")           // txRecHash => exTypes.TxInfo
+	blockInfoBucket          = []byte("blockInfoBucket")        // block_number => api.BlockInfo
+	txInfoBucket             = []byte("txInfoBucket")           // txRecHash => api.TxInfo
 	unitIDsToTxRecHashBucket = []byte("unitIDBucket")           // unitID => [txRecHash]
 	txOrderHashToTxRecHash   = []byte("txOrderHashToTxRecHash") // txOrderHash => txRecHash mapping
 	metaBucket               = []byte("metaBucket")             // block_number_key => block_number_val
