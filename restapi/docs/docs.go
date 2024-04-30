@@ -197,6 +197,53 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/units/{unitID}/txs": {
+            "get": {
+                "description": "Get transactions associated with a specific unit ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "transactions"
+                ],
+                "summary": "Retrieve transactions by unit ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Unit ID",
+                        "name": "unitID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "List of transactions",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/types.TxInfo"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Error: Missing 'unitID' variable in the URL",
+                        "schema": {
+                            "$ref": "#/definitions/restapi.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Error: Transaction with specified unit ID not found",
+                        "schema": {
+                            "$ref": "#/definitions/restapi.ErrorResponse"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -231,6 +278,14 @@ const docTemplate = `{
                     "items": {
                         "type": "integer"
                     }
+                }
+            }
+        },
+        "restapi.ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string"
                 }
             }
         },

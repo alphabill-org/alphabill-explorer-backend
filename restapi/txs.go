@@ -76,6 +76,16 @@ func (api *MoneyRestAPI) getBlockTxsByBlockNumber(w http.ResponseWriter, r *http
 	api.rw.WriteResponse(w, txs)
 }
 
+// @Summary Retrieve transactions by unit ID
+// @Description Get transactions associated with a specific unit ID
+// @Tags transactions
+// @Accept json
+// @Produce json
+// @Param unitID path string true "Unit ID"
+// @Success 200 {array} types.TxInfo "List of transactions"
+// @Failure 400 {object} ErrorResponse "Error: Missing 'unitID' variable in the URL"
+// @Failure 404 {object} ErrorResponse "Error: Transaction with specified unit ID not found"
+// @Router /units/{unitID}/txs [get]
 func (api *MoneyRestAPI) getTxsByUnitID(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	unitID, ok := vars["unitID"]
