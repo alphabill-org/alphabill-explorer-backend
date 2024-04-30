@@ -15,6 +15,53 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/address/{pubKey}/bills": {
+            "get": {
+                "description": "Get bills associated with a specific public key",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "bills"
+                ],
+                "summary": "Retrieve bills by public key",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Public Key",
+                        "name": "pubKey",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "List of bills",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/api.Bill"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Error: Missing 'pubKey' variable in the URL",
+                        "schema": {
+                            "$ref": "#/definitions/restapi.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Error: Bills with specified public key not found",
+                        "schema": {
+                            "$ref": "#/definitions/restapi.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/blocks": {
             "get": {
                 "description": "Get blocks, given a start block number and limit.",
@@ -247,6 +294,20 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "api.Bill": {
+            "type": "object",
+            "properties": {
+                "billData": {
+                    "$ref": "#/definitions/money.BillData"
+                },
+                "id": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
         "api.BlockInfo": {
             "type": "object",
             "properties": {
@@ -278,6 +339,30 @@ const docTemplate = `{
                     "items": {
                         "type": "integer"
                     }
+                }
+            }
+        },
+        "money.BillData": {
+            "type": "object",
+            "properties": {
+                "counter": {
+                    "description": "The transaction counter of this bill",
+                    "type": "integer"
+                },
+                "lastUpdate": {
+                    "description": "The round number of the last transaction with the bill",
+                    "type": "string",
+                    "example": "0"
+                },
+                "locked": {
+                    "description": "locked status of the bill, non-zero value means locked",
+                    "type": "string",
+                    "example": "0"
+                },
+                "value": {
+                    "description": "The monetary value of this bill",
+                    "type": "string",
+                    "example": "0"
                 }
             }
         },
