@@ -39,6 +39,16 @@ func (api *MoneyRestAPI) getTx(w http.ResponseWriter, r *http.Request) {
 	api.rw.WriteResponse(w, txInfo)
 }
 
+// @Summary Retrieve transactions by block number
+// @Description Retrieves a list of transactions for a given block number.
+// @Tags Blocks
+// @Accept json
+// @Produce json
+// @Param blockNumber path int true "The block number for which to retrieve transactions"
+// @Success 200 {array} TxInfo "Successfully retrieved list of transactions for the block"
+// @Failure 400 {string} string "Missing or invalid 'blockNumber' variable in the URL"
+// @Failure 404 {string} string "No transactions found for the specified block number"
+// @Router /blocks/{blockNumber}/txs [get]
 func (api *MoneyRestAPI) getBlockTxsByBlockNumber(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	blockNumberStr, ok := vars["blockNumber"]
