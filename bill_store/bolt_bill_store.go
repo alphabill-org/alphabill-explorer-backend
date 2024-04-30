@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"time"
-	
+
 	"github.com/alphabill-org/alphabill/util"
 	bolt "go.etcd.io/bbolt"
 )
@@ -15,7 +15,7 @@ const BoltExplorerStoreFileName = "blocks.db"
 var (
 	blockInfoBucket = []byte("blockInfoBucket") // block_number => exTypes.BlockInfo
 	txInfoBucket    = []byte("txInfoBucket")    // txHash => exTypes.TxInfo
-	unitBucket      = []byte("unitBucket")      // unit => []txHash
+	unitIDBucket    = []byte("unitIDBucket")    // unitID => [txHash => nil]
 	metaBucket      = []byte("metaBucket")      // block_number_key => block_number_val
 )
 
@@ -42,7 +42,7 @@ func NewBoltBillStore(dbFile string) (*boltBillStore, error) {
 	}
 	bbs := &boltBillStore{db: db}
 	err = CreateBuckets(db.Update,
-		blockInfoBucket, txInfoBucket, metaBucket, unitBucket,
+		blockInfoBucket, txInfoBucket, metaBucket, unitIDBucket,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create db buckets: %w", err)
