@@ -20,7 +20,6 @@ type Store interface {
 	SetBlockNumber(blockNumber uint64) error
 	SetTxInfo(txExplorer *exTypes.TxInfo) error
 	SetBlockInfo(b *api.BlockInfo) error
-	SetUnitID(unit string, txHash string) error
 }
 
 type BlockProcessor struct {
@@ -59,11 +58,6 @@ func (p *BlockProcessor) ProcessBlock(_ context.Context, b *abtypes.Block) error
 		err = p.saveTx(txInfo)
 		if err != nil {
 			return fmt.Errorf("failed to save tx in ProcessBlock: %w", err)
-		}
-
-		err = p.saveUnit(txInfo)
-		if err != nil {
-			return fmt.Errorf("failed to save unit in ProcessBlock: %w", err)
 		}
 	}
 	err = p.saveBlock(b)
@@ -351,21 +345,6 @@ func (p *BlockProcessor) saveTx(txInfo *exTypes.TxInfo) error {
 	err := p.store.SetTxInfo(txInfo)
 	if err != nil {
 		return err
-	}
-	return nil
-}
-
-func (p *BlockProcessor) saveUnit(txInfo *exTypes.TxInfo) error {
-	if txInfo == nil {
-		return fmt.Errorf("transaction record is nil")
-	}
-
-	for _, unitID := range txInfo.TargetUnits {
-		txHash := txInfo.Hash
-		err := p.store.SetUnitID(unitID, txHash)
-		if err != nil {
-			return err
-		}
 	}
 	return nil
 }

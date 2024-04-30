@@ -5,29 +5,55 @@ import (
 	"fmt"
 
 	"github.com/alphabill-org/alphabill-explorer-backend/api"
-	exTypes "github.com/alphabill-org/alphabill-explorer-backend/types"
+	"github.com/alphabill-org/alphabill-explorer-backend/types"
 	"github.com/alphabill-org/alphabill/util"
 	bolt "go.etcd.io/bbolt"
 )
 
-func (s *boltBillStore) SetTxInfo(txInfo *exTypes.TxInfo) error {
+func (s *boltBillStore) SetTxInfo(txInfo *types.TxInfo) error {
 	return s.db.Update(func(tx *bolt.Tx) error {
 		txInfoBytes, err := json.Marshal(txInfo)
 		if err != nil {
 			return err
 		}
 		txInfoBucket := tx.Bucket(txInfoBucket)
-		hashBytes := []byte(txInfo.Hash)
+		hashBytes := txInfo.TxRecordHash
 		err = txInfoBucket.Put(hashBytes, txInfoBytes)
 		if err != nil {
 			return err
 		}
-		return nil
+		for _, unitID := range txInfo.Transaction.ServerMetadata.TargetUnits {
+			if err = s.addUnitTxHash(tx, unitID, txInfo.TxRecordHash); err != nil {
+				return fmt.Errorf("failed to add unit tx hash: %w", err)
+			}
+		}
+		return s.addTxHashMapping(tx, txInfo.TxOrderHash, txInfo.TxRecordHash)
 	})
 }
 
-func (s *boltBillStore) GetTxInfo(txHash string) (*exTypes.TxInfo, error) {
-	var txInfo *exTypes.TxInfo
+func (s *boltBillStore) addUnitTxHash(tx *bolt.Tx, unitID, txRecordHash []byte) error {
+	bucket, err := EnsureSubBucket(tx, unitIDsToTxRecHashBucket, unitID, false)
+	if err != nil {
+		return fmt.Errorf("failed to ensure sub-bucket for unitID %s: %v", unitID, err)
+	}
+	err = bucket.Put(txRecordHash, nil)
+	if err != nil {
+		return fmt.Errorf("failed to set txRecordHash %X for unit %X: %v", txRecordHash, unitID, err)
+	}
+	return nil
+}
+
+func (s *boltBillStore) addTxHashMapping(tx *bolt.Tx, txOrderHash, txRecHash []byte) error {
+	bucket := tx.Bucket(txOrderHashToTxRecHash)
+	err := bucket.Put(txOrderHash, txRecHash)
+	if err != nil {
+		return fmt.Errorf("failed to put txRecHash %X for txOrderHash %X: %w", txRecHash, txOrderHash, err)
+	}
+	return nil
+}
+
+func (s *boltBillStore) GetTxInfo(txHash string) (*types.TxInfo, error) {
+	var txInfo *types.TxInfo
 	hashBytes := []byte(txHash)
 	err := s.db.View(func(tx *bolt.Tx) error {
 		txInforBytes := tx.Bucket(txInfoBucket).Get(hashBytes)
@@ -39,7 +65,7 @@ func (s *boltBillStore) GetTxInfo(txHash string) (*exTypes.TxInfo, error) {
 	return txInfo, nil
 }
 
-func (s *boltBillStore) GetBlockTxsByBlockNumber(blockNumber uint64) (res []*exTypes.TxInfo, err error) {
+func (s *boltBillStore) GetBlockTxsByBlockNumber(blockNumber uint64) (res []*types.TxInfo, err error) {
 	return res, s.db.View(func(tx *bolt.Tx) error {
 		var err error
 		res, err = s.getBlockTxsByBlockNumber(tx, blockNumber)
@@ -47,8 +73,8 @@ func (s *boltBillStore) GetBlockTxsByBlockNumber(blockNumber uint64) (res []*exT
 	})
 }
 
-func (s *boltBillStore) getBlockTxsByBlockNumber(tx *bolt.Tx, blockNumber uint64) ([]*exTypes.TxInfo, error) {
-	var txs []*exTypes.TxInfo
+func (s *boltBillStore) getBlockTxsByBlockNumber(tx *bolt.Tx, blockNumber uint64) ([]*types.TxInfo, error) {
+	var txs []*types.TxInfo
 	blockNumberBytes := util.Uint64ToBytes(blockNumber)
 
 	blockInfoBytes := tx.Bucket(blockInfoBucket).Get(blockNumberBytes)
@@ -69,7 +95,7 @@ func (s *boltBillStore) getBlockTxsByBlockNumber(tx *bolt.Tx, blockNumber uint64
 			continue
 		}
 
-		t := &exTypes.TxInfo{}
+		t := &types.TxInfo{}
 		if err := json.Unmarshal(txBytes, t); err != nil {
 			return nil, err
 		}
@@ -79,8 +105,8 @@ func (s *boltBillStore) getBlockTxsByBlockNumber(tx *bolt.Tx, blockNumber uint64
 	return txs, nil
 }
 
-func (s *boltBillStore) GetTxsByUnitID(unitID string) ([]*exTypes.TxInfo, error) {
-	var txs []*exTypes.TxInfo
+func (s *boltBillStore) GetTxsByUnitID(unitID string) ([]*types.TxInfo, error) {
+	var txs []*types.TxInfo
 
 	err := s.db.View(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket(unitIDsToTxRecHashBucket)
@@ -104,7 +130,7 @@ func (s *boltBillStore) GetTxsByUnitID(unitID string) ([]*exTypes.TxInfo, error)
 				return fmt.Errorf("no transaction info found for txHash %s", txHash)
 			}
 
-			var txInfo *exTypes.TxInfo
+			var txInfo *types.TxInfo
 			if err := json.Unmarshal(txBytes, &txInfo); err != nil {
 				return err
 			}
