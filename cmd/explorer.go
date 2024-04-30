@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strconv"
 
+	"github.com/alphabill-org/alphabill-explorer-backend/bill_store"
 	"github.com/alphabill-org/alphabill/txsystem/money"
 )
 
@@ -30,7 +31,7 @@ func main() {
 		ABMoneySystemIdentifier: money.DefaultSystemIdentifier,
 		AlphabillUrl:            args[1],
 		ServerAddr:              args[2],
-		DbFile:                  filepath.Join(workDir, "blocks.db"),
+		DbFile:                  filepath.Join(workDir, bill_store.BoltExplorerStoreFileName),
 		BlockNumber:             blockNumber,
 	})
 	if err != nil {

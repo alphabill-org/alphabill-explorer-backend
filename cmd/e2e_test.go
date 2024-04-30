@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/alphabill-org/alphabill-explorer-backend/bill_store"
 	"github.com/alphabill-org/alphabill/txsystem/money"
 	"github.com/stretchr/testify/require"
 )
@@ -46,7 +47,7 @@ func runService(t *testing.T, ctx context.Context, host string) *sync.WaitGroup 
 				ABMoneySystemIdentifier: money.DefaultSystemIdentifier,
 				AlphabillUrl:            "https://money-partition.testnet.alphabill.org",
 				ServerAddr:              host,
-				DbFile:                  filepath.Join(t.TempDir(), "blocks.db"),
+				DbFile:                  filepath.Join(t.TempDir(), bill_store.BoltExplorerStoreFileName),
 				BlockNumber:             0,
 			})
 			require.NoError(t, err)
