@@ -10,12 +10,12 @@ func (s *boltBillStore) SetUnitID(unitID string, txHash string) error {
 	return s.db.Update(func(tx *bolt.Tx) error {
 		unitIDBytes := []byte(unitID)
 
-		bucket:= tx.Bucket(unitIDBucket)
+		bucket := tx.Bucket(unitIDsToTxRecHashBucket)
 		if bucket == nil {
-			return fmt.Errorf("bucket %s not found", unitIDBucket)
+			return fmt.Errorf("bucket %s not found", unitIDsToTxRecHashBucket)
 		}
 
-        subBucket, err := bucket.CreateBucketIfNotExists(unitIDBytes)
+		subBucket, err := bucket.CreateBucketIfNotExists(unitIDBytes)
 		if err != nil {
 			return fmt.Errorf("failed to create or find sub-bucket for unitID %s: %v", unitID, err)
 		}
@@ -27,4 +27,3 @@ func (s *boltBillStore) SetUnitID(unitID string, txHash string) error {
 		return nil
 	})
 }
-

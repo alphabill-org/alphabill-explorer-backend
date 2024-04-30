@@ -83,9 +83,9 @@ func (s *boltBillStore) GetTxsByUnitID(unitID string) ([]*exTypes.TxInfo, error)
 	var txs []*exTypes.TxInfo
 
 	err := s.db.View(func(tx *bolt.Tx) error {
-		bucket := tx.Bucket(unitIDBucket)
-		if unitIDBucket == nil {
-			return fmt.Errorf("bucket %s not found", unitIDBucket)
+		bucket := tx.Bucket(unitIDsToTxRecHashBucket)
+		if unitIDsToTxRecHashBucket == nil {
+			return fmt.Errorf("bucket %s not found", unitIDsToTxRecHashBucket)
 		}
 
 		subBucket := bucket.Bucket([]byte(unitID))
