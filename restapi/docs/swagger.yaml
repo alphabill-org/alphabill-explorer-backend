@@ -1,37 +1,5 @@
 basePath: /api/v1
 definitions:
-  api.Bill:
-    properties:
-      dcTargetUnitBacklink:
-        items:
-          type: integer
-        type: array
-      dcTargetUnitId:
-        items:
-          type: integer
-        type: array
-      id:
-        items:
-          type: integer
-        type: array
-      lastAddFcTxHash:
-        description: |-
-          fcb specific fields
-          LastAddFCTxHash last add fee credit tx hash
-        items:
-          type: integer
-        type: array
-      ownerPredicate:
-        items:
-          type: integer
-        type: array
-      txHash:
-        items:
-          type: integer
-        type: array
-      value:
-        type: integer
-    type: object
   api.BlockInfo:
     properties:
       header:
@@ -58,6 +26,15 @@ definitions:
           type: integer
         type: array
     type: object
+  github_com_alphabill-org_alphabill-wallet_wallet_money_api.Bill:
+    properties:
+      billData:
+        $ref: '#/definitions/money.BillData'
+      id:
+        items:
+          type: integer
+        type: array
+    type: object
   imt.PathItem:
     properties:
       hash:
@@ -68,6 +45,24 @@ definitions:
         items:
           type: integer
         type: array
+    type: object
+  money.BillData:
+    properties:
+      counter:
+        description: The transaction counter of this bill
+        type: integer
+      lastUpdate:
+        description: The round number of the last transaction with the bill
+        example: "0"
+        type: string
+      locked:
+        description: locked status of the bill, non-zero value means locked
+        example: "0"
+        type: string
+      value:
+        description: The monetary value of this bill
+        example: "0"
+        type: string
     type: object
   restapi.ErrorResponse:
     properties:
@@ -260,7 +255,7 @@ paths:
           description: List of bills
           schema:
             items:
-              $ref: '#/definitions/api.Bill'
+              $ref: '#/definitions/github_com_alphabill-org_alphabill-wallet_wallet_money_api.Bill'
             type: array
         "400":
           description: 'Error: Missing ''pubKey'' variable in the URL'

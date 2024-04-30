@@ -43,7 +43,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/api.Bill"
+                                "$ref": "#/definitions/github_com_alphabill-org_alphabill-wallet_wallet_money_api.Bill"
                             }
                         }
                     },
@@ -294,51 +294,6 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "api.Bill": {
-            "type": "object",
-            "properties": {
-                "dcTargetUnitBacklink": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "dcTargetUnitId": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "id": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "lastAddFcTxHash": {
-                    "description": "fcb specific fields\nLastAddFCTxHash last add fee credit tx hash",
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "ownerPredicate": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "txHash": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "value": {
-                    "type": "integer"
-                }
-            }
-        },
         "api.BlockInfo": {
             "type": "object",
             "properties": {
@@ -379,6 +334,20 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_alphabill-org_alphabill-wallet_wallet_money_api.Bill": {
+            "type": "object",
+            "properties": {
+                "billData": {
+                    "$ref": "#/definitions/money.BillData"
+                },
+                "id": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
         "imt.PathItem": {
             "type": "object",
             "properties": {
@@ -393,6 +362,30 @@ const docTemplate = `{
                     "items": {
                         "type": "integer"
                     }
+                }
+            }
+        },
+        "money.BillData": {
+            "type": "object",
+            "properties": {
+                "counter": {
+                    "description": "The transaction counter of this bill",
+                    "type": "integer"
+                },
+                "lastUpdate": {
+                    "description": "The round number of the last transaction with the bill",
+                    "type": "string",
+                    "example": "0"
+                },
+                "locked": {
+                    "description": "locked status of the bill, non-zero value means locked",
+                    "type": "string",
+                    "example": "0"
+                },
+                "value": {
+                    "description": "The monetary value of this bill",
+                    "type": "string",
+                    "example": "0"
                 }
             }
         },
