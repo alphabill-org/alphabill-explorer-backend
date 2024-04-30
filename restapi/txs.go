@@ -8,6 +8,17 @@ import (
 	"github.com/gorilla/mux"
 )
 
+// @Summary Retrieve a transaction by hash
+// @Description Retrieves transaction details using a transaction hash provided as a path parameter.
+// @Tags Transactions
+// @Accept json
+// @Produce json
+// @Param txHash path string true "The hash of the transaction to retrieve"
+// @Success 200 {object} TxInfo "Successfully retrieved the transaction information"
+// @Failure 400 {string} string "Missing 'txHash' variable in the URL"
+// @Failure 404 {string} string "Transaction with the specified hash not found"
+// @Failure 500 {string} string "Failed to load transaction details"
+// @Router /txs/{txHash} [get]
 func (api *MoneyRestAPI) getTx(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	txHash, ok := vars["txHash"]
@@ -22,7 +33,7 @@ func (api *MoneyRestAPI) getTx(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if txInfo == nil {
-		api.rw.ErrorResponse(w, http.StatusNotFound, fmt.Errorf("tx with txHash %x not found", txHash))
+		api.rw.ErrorResponse(w, http.StatusNotFound, fmt.Errorf("tx with txHash %s not found", txHash))
 		return
 	}
 	api.rw.WriteResponse(w, txInfo)
