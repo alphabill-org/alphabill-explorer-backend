@@ -13,7 +13,6 @@ import (
 	"github.com/alphabill-org/alphabill-explorer-backend/blocks"
 	"github.com/alphabill-org/alphabill-explorer-backend/blocksync"
 	ra "github.com/alphabill-org/alphabill-explorer-backend/restapi"
-	exTypes "github.com/alphabill-org/alphabill-explorer-backend/types"
 	"github.com/alphabill-org/alphabill-wallet/cli/alphabill/cmd/wallet/args"
 	"github.com/alphabill-org/alphabill-wallet/client/rpc"
 	abTypes "github.com/alphabill-org/alphabill/types"
@@ -29,9 +28,9 @@ type (
 		GetBlocksInfo(dbStartBlock uint64, count int) (res []*api.BlockInfo, prevBlockNumber uint64, err error)
 
 		//tx
-		GetTxInfo(txHash string) (*exTypes.TxInfo, error)
-		GetBlockTxsByBlockNumber(blockNumber uint64) (res []*exTypes.TxInfo, err error)
-		GetTxsByUnitID(unitID string) ([]*exTypes.TxInfo, error)
+		GetTxInfo(txHash string) (*api.TxInfo, error)
+		GetBlockTxsByBlockNumber(blockNumber uint64) (res []*api.TxInfo, err error)
+		GetTxsByUnitID(unitID string) ([]*api.TxInfo, error)
 	}
 
 	ExplorerBackend struct {
@@ -137,7 +136,7 @@ func (ex *ExplorerBackend) GetRoundNumber(ctx context.Context) (uint64, error) {
 	return ex.client.GetRoundNumber(ctx)
 }
 
-//block
+// block
 // GetLastBlockNumber returns last processed block
 func (ex *ExplorerBackend) GetLastBlockNumber() (uint64, error) {
 	return ex.store.GetLastBlockNumber()
@@ -153,16 +152,15 @@ func (ex *ExplorerBackend) GetBlocks(dbStartBlockNumber uint64, count int) (res 
 	return ex.store.GetBlocksInfo(dbStartBlockNumber, count)
 }
 
-
-//tx
-func (ex *ExplorerBackend) GetTxInfo(txHash string) (res *exTypes.TxInfo, err error) {
+// tx
+func (ex *ExplorerBackend) GetTxInfo(txHash string) (res *api.TxInfo, err error) {
 	return ex.store.GetTxInfo(txHash)
 }
 
-func (ex *ExplorerBackend) GetBlockTxsByBlockNumber(blockNumber uint64) (res []*exTypes.TxInfo, err error) {
+func (ex *ExplorerBackend) GetBlockTxsByBlockNumber(blockNumber uint64) (res []*api.TxInfo, err error) {
 	return ex.store.GetBlockTxsByBlockNumber(blockNumber)
 }
 
-func (ex *ExplorerBackend) GetTxsByUnitID(unitID string) ([]*exTypes.TxInfo, error) {
+func (ex *ExplorerBackend) GetTxsByUnitID(unitID string) ([]*api.TxInfo, error) {
 	return ex.store.GetTxsByUnitID(unitID)
 }

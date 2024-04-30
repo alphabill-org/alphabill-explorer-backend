@@ -5,12 +5,11 @@ import (
 	"fmt"
 
 	"github.com/alphabill-org/alphabill-explorer-backend/api"
-	"github.com/alphabill-org/alphabill-explorer-backend/types"
 	"github.com/alphabill-org/alphabill/util"
 	bolt "go.etcd.io/bbolt"
 )
 
-func (s *boltBillStore) SetTxInfo(txInfo *types.TxInfo) error {
+func (s *boltBillStore) SetTxInfo(txInfo *api.TxInfo) error {
 	return s.db.Update(func(tx *bolt.Tx) error {
 		txInfoBytes, err := json.Marshal(txInfo)
 		if err != nil {
@@ -52,8 +51,8 @@ func (s *boltBillStore) addTxHashMapping(tx *bolt.Tx, txOrderHash, txRecHash []b
 	return nil
 }
 
-func (s *boltBillStore) GetTxInfo(txHash string) (*types.TxInfo, error) {
-	var txInfo *types.TxInfo
+func (s *boltBillStore) GetTxInfo(txHash string) (*api.TxInfo, error) {
+	var txInfo *api.TxInfo
 	hashBytes := []byte(txHash)
 	err := s.db.View(func(tx *bolt.Tx) error {
 		txInforBytes := tx.Bucket(txInfoBucket).Get(hashBytes)
@@ -65,7 +64,7 @@ func (s *boltBillStore) GetTxInfo(txHash string) (*types.TxInfo, error) {
 	return txInfo, nil
 }
 
-func (s *boltBillStore) GetBlockTxsByBlockNumber(blockNumber uint64) (res []*types.TxInfo, err error) {
+func (s *boltBillStore) GetBlockTxsByBlockNumber(blockNumber uint64) (res []*api.TxInfo, err error) {
 	return res, s.db.View(func(tx *bolt.Tx) error {
 		var err error
 		res, err = s.getBlockTxsByBlockNumber(tx, blockNumber)
@@ -73,8 +72,8 @@ func (s *boltBillStore) GetBlockTxsByBlockNumber(blockNumber uint64) (res []*typ
 	})
 }
 
-func (s *boltBillStore) getBlockTxsByBlockNumber(tx *bolt.Tx, blockNumber uint64) ([]*types.TxInfo, error) {
-	var txs []*types.TxInfo
+func (s *boltBillStore) getBlockTxsByBlockNumber(tx *bolt.Tx, blockNumber uint64) ([]*api.TxInfo, error) {
+	var txs []*api.TxInfo
 	blockNumberBytes := util.Uint64ToBytes(blockNumber)
 
 	blockInfoBytes := tx.Bucket(blockInfoBucket).Get(blockNumberBytes)
@@ -95,7 +94,7 @@ func (s *boltBillStore) getBlockTxsByBlockNumber(tx *bolt.Tx, blockNumber uint64
 			continue
 		}
 
-		t := &types.TxInfo{}
+		t := &api.TxInfo{}
 		if err := json.Unmarshal(txBytes, t); err != nil {
 			return nil, err
 		}
@@ -105,8 +104,8 @@ func (s *boltBillStore) getBlockTxsByBlockNumber(tx *bolt.Tx, blockNumber uint64
 	return txs, nil
 }
 
-func (s *boltBillStore) GetTxsByUnitID(unitID string) ([]*types.TxInfo, error) {
-	var txs []*types.TxInfo
+func (s *boltBillStore) GetTxsByUnitID(unitID string) ([]*api.TxInfo, error) {
+	var txs []*api.TxInfo
 
 	err := s.db.View(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket(unitIDsToTxRecHashBucket)
@@ -130,7 +129,7 @@ func (s *boltBillStore) GetTxsByUnitID(unitID string) ([]*types.TxInfo, error) {
 				return fmt.Errorf("no transaction info found for txHash %s", txHash)
 			}
 
-			var txInfo *types.TxInfo
+			var txInfo *api.TxInfo
 			if err := json.Unmarshal(txBytes, &txInfo); err != nil {
 				return err
 			}

@@ -4,17 +4,16 @@ import (
 	"context"
 
 	"github.com/alphabill-org/alphabill-explorer-backend/api"
-	exTypes "github.com/alphabill-org/alphabill-explorer-backend/types"
 )
 
 type MockExplorerBackendService struct {
 	getLastBlockNumberFunc       func() (uint64, error)
 	getBlockFunc                 func(blockNumber uint64) (*api.BlockInfo, error)
 	getBlocksFunc                func(dbStartBlock uint64, count int) (res []*api.BlockInfo, prevBlockNumber uint64, err error)
-	getTxInfoFunc                func(txHash string) (res *exTypes.TxInfo, err error)
-	getBlockTxsByBlockNumberFunc func(blockNumber uint64) (res []*exTypes.TxInfo, err error)
+	getTxInfoFunc                func(txHash string) (res *api.TxInfo, err error)
+	getBlockTxsByBlockNumberFunc func(blockNumber uint64) (res []*api.TxInfo, err error)
 	getRoundNumberFunc           func(ctx context.Context) (uint64, error)
-	getTxsByUnitID               func(unitID string) ([]*exTypes.TxInfo, error)
+	getTxsByUnitID               func(unitID string) ([]*api.TxInfo, error)
 }
 
 func (m *MockExplorerBackendService) GetLastBlockNumber() (uint64, error) {
@@ -38,14 +37,14 @@ func (m *MockExplorerBackendService) GetBlocks(dbStartBlock uint64, count int) (
 	panic("GetBlocksFunc not implemented")
 }
 
-func (m *MockExplorerBackendService) GetTxInfo(txHash string) (res *exTypes.TxInfo, err error) {
+func (m *MockExplorerBackendService) GetTxInfo(txHash string) (res *api.TxInfo, err error) {
 	if m.getTxInfoFunc != nil {
 		return m.getTxInfoFunc(txHash)
 	}
 	panic("GetTxInfoFunc not implemented")
 }
 
-func (m *MockExplorerBackendService) GetBlockTxsByBlockNumber(blockNumber uint64) (res []*exTypes.TxInfo, err error) {
+func (m *MockExplorerBackendService) GetBlockTxsByBlockNumber(blockNumber uint64) (res []*api.TxInfo, err error) {
 	if m.getBlockTxsByBlockNumberFunc != nil {
 		return m.getBlockTxsByBlockNumberFunc(blockNumber)
 	}
@@ -59,7 +58,7 @@ func (m *MockExplorerBackendService) GetRoundNumber(ctx context.Context) (uint64
 	panic("GetRoundNumberFunc not implemented")
 }
 
-func (m *MockExplorerBackendService) GetTxsByUnitID(unitID string) ([]*exTypes.TxInfo, error) {
+func (m *MockExplorerBackendService) GetTxsByUnitID(unitID string) ([]*api.TxInfo, error) {
 	if m.getRoundNumberFunc != nil {
 		return m.getTxsByUnitID(unitID)
 	}
