@@ -22,6 +22,11 @@ definitions:
           type: integer
         type: array
     type: object
+  restapi.ErrorResponse:
+    properties:
+      message:
+        type: string
+    type: object
   types.ClientMetadata:
     properties:
       feeCreditRecordID:
@@ -312,4 +317,35 @@ paths:
       summary: Retrieve a transaction by hash
       tags:
       - Transactions
+  /units/{unitID}/txs:
+    get:
+      consumes:
+      - application/json
+      description: Get transactions associated with a specific unit ID
+      parameters:
+      - description: Unit ID
+        in: path
+        name: unitID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of transactions
+          schema:
+            items:
+              $ref: '#/definitions/types.TxInfo'
+            type: array
+        "400":
+          description: 'Error: Missing ''unitID'' variable in the URL'
+          schema:
+            $ref: '#/definitions/restapi.ErrorResponse'
+        "404":
+          description: 'Error: Transaction with specified unit ID not found'
+          schema:
+            $ref: '#/definitions/restapi.ErrorResponse'
+      summary: Retrieve transactions by unit ID
+      tags:
+      - transactions
 swagger: "2.0"
