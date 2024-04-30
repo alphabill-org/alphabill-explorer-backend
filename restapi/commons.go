@@ -11,7 +11,7 @@ import (
 	"regexp"
 	"strconv"
 
-	s "github.com/alphabill-org/alphabill-explorer-backend/types"
+	s "github.com/alphabill-org/alphabill-explorer-backend/api"
 	"github.com/alphabill-org/alphabill/types"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/fxamacker/cbor/v2"

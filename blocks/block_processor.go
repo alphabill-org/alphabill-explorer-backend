@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	"github.com/alphabill-org/alphabill-explorer-backend/api"
-	exTypes "github.com/alphabill-org/alphabill-explorer-backend/types"
 	abtypes "github.com/alphabill-org/alphabill/types"
 )
 
@@ -18,7 +17,7 @@ const (
 type Store interface {
 	GetBlockNumber() (uint64, error)
 	SetBlockNumber(blockNumber uint64) error
-	SetTxInfo(txExplorer *exTypes.TxInfo) error
+	SetTxInfo(txExplorer *api.TxInfo) error
 	SetBlockInfo(b *api.BlockInfo) error
 }
 
@@ -49,7 +48,7 @@ func (p *BlockProcessor) ProcessBlock(_ context.Context, b *abtypes.Block) error
 			return fmt.Errorf("failed to process transaction: %w", err)
 		}
 
-		txInfo, err := exTypes.NewTxInfo(roundNumber, tx)
+		txInfo, err := api.NewTxInfo(roundNumber, tx)
 
 		if err != nil {
 			return fmt.Errorf("failed create new txInfo in ProcessBlock: %w", err)
@@ -338,7 +337,7 @@ func (p *BlockProcessor) processTx(txr *abtypes.TransactionRecord, b *abtypes.Bl
 	return nil
 }
 
-func (p *BlockProcessor) saveTx(txInfo *exTypes.TxInfo) error {
+func (p *BlockProcessor) saveTx(txInfo *api.TxInfo) error {
 	if txInfo == nil {
 		return fmt.Errorf("transaction is nil")
 	}

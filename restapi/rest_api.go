@@ -6,7 +6,6 @@ import (
 	"strconv"
 
 	"github.com/alphabill-org/alphabill-explorer-backend/api"
-	exTypes "github.com/alphabill-org/alphabill-explorer-backend/types"
 	"github.com/alphabill-org/alphabill/types"
 )
 
@@ -25,9 +24,9 @@ type (
 		GetBlocks(dbStartBlock uint64, count int) (res []*api.BlockInfo, prevBlockNumber uint64, err error)
 
 		//tx
-		GetTxInfo(txHash string) (res *exTypes.TxInfo, err error)
-		GetBlockTxsByBlockNumber(blockNumber uint64) (res []*exTypes.TxInfo, err error)
-		GetTxsByUnitID(unitID string) ([]*exTypes.TxInfo, error)
+		GetTxInfo(txHash string) (res *api.TxInfo, err error)
+		GetBlockTxsByBlockNumber(blockNumber uint64) (res []*api.TxInfo, err error)
+		GetTxsByUnitID(unitID string) ([]*api.TxInfo, error)
 	}
 
 	MoneyRestAPI struct {
@@ -60,7 +59,7 @@ func (api *MoneyRestAPI) getInfo(w http.ResponseWriter, _ *http.Request) {
 	api.rw.WriteResponse(w, res)
 }
 
-func parsePubKeyQueryParam(r *http.Request) (exTypes.PubKey, error) {
+func parsePubKeyQueryParam(r *http.Request) (api.PubKey, error) {
 	return DecodePubKeyHex(r.URL.Query().Get(paramPubKey))
 }
 
