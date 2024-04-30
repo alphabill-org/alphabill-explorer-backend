@@ -25,7 +25,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "bills"
+                    "Bills"
                 ],
                 "summary": "Retrieve bills by public key",
                 "parameters": [
@@ -69,7 +69,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Energy Type"
+                    "Blocks"
                 ],
                 "summary": "Get blocks, given a start block number and limit.",
                 "parameters": [
@@ -158,7 +158,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Blocks"
+                    "Transactions"
                 ],
                 "summary": "Retrieve transactions by block number",
                 "parameters": [
@@ -255,7 +255,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "transactions"
+                    "Transactions"
                 ],
                 "summary": "Retrieve transactions by unit ID",
                 "parameters": [
