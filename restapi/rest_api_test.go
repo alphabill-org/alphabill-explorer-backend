@@ -4,6 +4,9 @@ import (
 	"context"
 
 	"github.com/alphabill-org/alphabill-explorer-backend/api"
+	exTypes "github.com/alphabill-org/alphabill-explorer-backend/types"
+	moneyApi "github.com/alphabill-org/alphabill-wallet/wallet/money/api"
+	abTypes "github.com/alphabill-org/alphabill/types"
 )
 
 type MockExplorerBackendService struct {
@@ -14,6 +17,7 @@ type MockExplorerBackendService struct {
 	getBlockTxsByBlockNumberFunc func(blockNumber uint64) (res []*api.TxInfo, err error)
 	getRoundNumberFunc           func(ctx context.Context) (uint64, error)
 	getTxsByUnitID               func(unitID string) ([]*api.TxInfo, error)
+	getBillsByPubKey             func(ctx context.Context, ownerID abTypes.Bytes) (res []*moneyApi.Bill, err error)
 }
 
 func (m *MockExplorerBackendService) GetLastBlockNumber() (uint64, error) {
@@ -63,4 +67,11 @@ func (m *MockExplorerBackendService) GetTxsByUnitID(unitID string) ([]*api.TxInf
 		return m.getTxsByUnitID(unitID)
 	}
 	panic("GetTxsByUnitIDFunc not implemented")
+}
+
+func (m *MockExplorerBackendService) GetBillsByPubKey(ctx context.Context, ownerID abTypes.Bytes) (res []*moneyApi.Bill, err error) {
+	if m.getRoundNumberFunc != nil {
+		return m.getBillsByPubKey(ctx, ownerID)
+	}
+	panic("GetBillsByPubKey not implemented")
 }

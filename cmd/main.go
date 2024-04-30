@@ -17,6 +17,8 @@ import (
 	"github.com/alphabill-org/alphabill-wallet/client/rpc"
 	abTypes "github.com/alphabill-org/alphabill/types"
 	"golang.org/x/sync/errgroup"
+	moneyApi "github.com/alphabill-org/alphabill-wallet/wallet/money/api"
+	txSysMoney "github.com/alphabill-org/alphabill/txsystem/money"
 )
 
 type (
@@ -163,4 +165,24 @@ func (ex *ExplorerBackend) GetBlockTxsByBlockNumber(blockNumber uint64) (res []*
 
 func (ex *ExplorerBackend) GetTxsByUnitID(unitID string) ([]*api.TxInfo, error) {
 	return ex.store.GetTxsByUnitID(unitID)
+}
+
+//bill
+func (ex *ExplorerBackend) GetBillsByPubKey(ctx context.Context , ownerID abTypes.Bytes) (res []*moneyApi.Bill, err error) {
+	unitIDs, err := ex.client.GetUnitsByOwnerID(ctx, ownerID)
+    if err != nil {
+        return nil, fmt.Errorf("failed to get units by owner ID: %w", err)
+    }
+	var bills []*moneyApi.Bill
+	for _, unitID := range unitIDs {
+		if !unitID.HasType(txSysMoney.BillUnitType) {
+			continue
+		}
+		bill, err := ex.client.GetBill(ctx, unitID, false)
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch unit: %w", err)
+		}
+		bills = append(bills, bill)
+	}
+    return bills, nil
 }
