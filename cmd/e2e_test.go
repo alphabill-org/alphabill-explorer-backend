@@ -86,17 +86,27 @@ func TestE2E(t *testing.T) {
 				require.Contains(t, blockInfo.TxHashes, api.TxRecordHash(txrHash))
 			})
 
+			txInfo := &api.TxInfo{}
 			t.Run("Check tx info is correct", func(t *testing.T) {
 				resp, err := client.Get(fmt.Sprintf("http://%s/api/v1/txs/0x%X", host, txrHash))
 				require.NoError(t, err)
 				require.Equal(t, http.StatusOK, resp.StatusCode)
-				txInfo := &api.TxInfo{}
 				err = restapi.DecodeResponse(resp, http.StatusOK, txInfo, false)
 				require.NoError(t, err)
 				require.Equal(t, txrHash, txInfo.TxRecordHash)
 				require.Equal(t, txRn, txInfo.BlockNumber)
 				require.Equal(t, proof.TxRecord, txInfo.Transaction)
 				fmt.Printf("Tx record %X indexed, type: %s\n", txrHash, txInfo.Transaction.TransactionOrder.PayloadType())
+			})
+
+			t.Run("check latest transactions to contain the tx", func(t *testing.T) {
+				resp, err := client.Get(fmt.Sprintf("http://%s/api/v1/txs", host))
+				require.NoError(t, err)
+				require.Equal(t, http.StatusOK, resp.StatusCode)
+				txInfos := make([]*api.TxInfo, 0)
+				err = restapi.DecodeResponse(resp, http.StatusOK, &txInfos, false)
+				require.NoError(t, err)
+				require.Contains(t, txInfos, txInfo)
 			})
 		}
 	})

@@ -63,6 +63,32 @@ func (s *boltBillStore) GetTxInfo(txHash []byte) (*api.TxInfo, error) {
 	return txInfo, nil
 }
 
+func (s *boltBillStore) GetTxs(startTxRecHash api.TxRecordHash, count int) (res []*api.TxInfo, prevTxHash api.TxRecordHash, err error) {
+	return res, prevTxHash, s.db.View(func(tx *bolt.Tx) error {
+		return s.getTxs(tx, startTxRecHash, count, &res, &prevTxHash)
+	})
+}
+
+func (s *boltBillStore) getTxs(tx *bolt.Tx, startTxRecHash api.TxRecordHash, count int, res *[]*api.TxInfo, prevTxHash *api.TxRecordHash) error {
+	txInfoBucket := tx.Bucket(txInfoBucket)
+	cursor := txInfoBucket.Cursor()
+	if len(startTxRecHash) == 0 {
+		startTxRecHash, _ = cursor.Last()
+	}
+	for k, v := cursor.Seek(startTxRecHash); k != nil && count > 0; k, v = cursor.Prev() {
+		var txInfo api.TxInfo
+		if err := json.Unmarshal(v, &txInfo); err != nil {
+			return err
+		}
+		*res = append(*res, &txInfo)
+		if count--; count == 0 {
+			*prevTxHash, _ = cursor.Prev()
+			break
+		}
+	}
+	return nil
+}
+
 func (s *boltBillStore) GetBlockTxsByBlockNumber(blockNumber uint64) (res []*api.TxInfo, err error) {
 	return res, s.db.View(func(tx *bolt.Tx) error {
 		var err error

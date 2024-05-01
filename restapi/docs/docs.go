@@ -195,6 +195,43 @@ const docTemplate = `{
                 }
             }
         },
+        "/txs": {
+            "get": {
+                "description": "Retrieves a list of transactions.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Transactions"
+                ],
+                "summary": "Retrieve transactions, latest first.",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "The hash of the transaction record to start from",
+                        "name": "startTxHash",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "The maximum number of transactions to retrieve",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successfully retrieved list of transactions",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/api.TxInfo"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/txs/{txHash}": {
             "get": {
                 "description": "Retrieves transaction details using a transaction hash provided as a path parameter.",

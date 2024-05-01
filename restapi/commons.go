@@ -145,7 +145,7 @@ func EncodeHex(value []byte) string {
 	return hexutil.Encode(value)
 }
 
-func SetLinkHeader(u *url.URL, w http.ResponseWriter, next string) {
+func setLinkHeader(u *url.URL, w http.ResponseWriter, next string) {
 	if next == "" {
 		w.Header().Del(HeaderLink)
 		return

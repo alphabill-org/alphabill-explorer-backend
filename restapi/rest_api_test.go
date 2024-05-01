@@ -16,6 +16,7 @@ type MockExplorerBackendService struct {
 	getBlockTxsByBlockNumberFunc func(blockNumber uint64) (res []*api.TxInfo, err error)
 	getRoundNumberFunc           func(ctx context.Context) (uint64, error)
 	getTxsByUnitID               func(unitID string) ([]*api.TxInfo, error)
+	getTxs                       func(startTxRecHash api.TxRecordHash, count int) (res []*api.TxInfo, prevTxHash api.TxRecordHash, err error)
 	getBillsByPubKey             func(ctx context.Context, ownerID abTypes.Bytes) (res []*moneyApi.Bill, err error)
 }
 
@@ -73,4 +74,11 @@ func (m *MockExplorerBackendService) GetBillsByPubKey(ctx context.Context, owner
 		return m.getBillsByPubKey(ctx, ownerID)
 	}
 	panic("GetBillsByPubKey not implemented")
+}
+
+func (m *MockExplorerBackendService) GetTxs(startTxRecHash api.TxRecordHash, count int) (res []*api.TxInfo, prevTxHash api.TxRecordHash, err error) {
+	if m.getTxs != nil {
+		return m.getTxs(startTxRecHash, count)
+	}
+	panic("GetTxs not implemented")
 }

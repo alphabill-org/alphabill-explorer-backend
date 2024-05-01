@@ -22,6 +22,7 @@ type (
 		GetTxInfo(txHash []byte) (*api.TxInfo, error)
 		GetBlockTxsByBlockNumber(blockNumber uint64) (res []*api.TxInfo, err error)
 		GetTxsByUnitID(unitID string) ([]*api.TxInfo, error)
+		GetTxs(startTxRecHash api.TxRecordHash, count int) ([]*api.TxInfo, api.TxRecordHash, error)
 	}
 
 	ABClient interface {
@@ -75,6 +76,10 @@ func (ex *ExplorerBackend) GetBlockTxsByBlockNumber(blockNumber uint64) (res []*
 
 func (ex *ExplorerBackend) GetTxsByUnitID(unitID string) ([]*api.TxInfo, error) {
 	return ex.store.GetTxsByUnitID(unitID)
+}
+
+func (ex *ExplorerBackend) GetTxs(startTxRecHash api.TxRecordHash, count int) (res []*api.TxInfo, prevTxHash api.TxRecordHash, err error) {
+	return ex.store.GetTxs(startTxRecHash, count)
 }
 
 // bill

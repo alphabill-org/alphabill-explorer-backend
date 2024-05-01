@@ -363,6 +363,30 @@ paths:
       summary: Retrieve transactions by block number
       tags:
       - Transactions
+  /txs:
+    get:
+      description: Retrieves a list of transactions.
+      parameters:
+      - description: The hash of the transaction record to start from
+        in: query
+        name: startTxHash
+        type: string
+      - description: The maximum number of transactions to retrieve
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully retrieved list of transactions
+          schema:
+            items:
+              $ref: '#/definitions/api.TxInfo'
+            type: array
+      summary: Retrieve transactions, latest first.
+      tags:
+      - Transactions
   /txs/{txHash}:
     get:
       consumes:

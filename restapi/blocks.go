@@ -102,6 +102,6 @@ func (api *MoneyRestAPI) getBlocks(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	prevBlockNumberStr := strconv.FormatUint(prevBlockNumber, 10)
-	SetLinkHeader(r.URL, w, prevBlockNumberStr)
+	setLinkHeader(r.URL, w, prevBlockNumberStr)
 	api.rw.WriteResponse(w, recs)
 }

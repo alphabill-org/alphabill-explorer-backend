@@ -43,6 +43,39 @@ func (api *MoneyRestAPI) getTx(w http.ResponseWriter, r *http.Request) {
 	api.rw.WriteResponse(w, txInfo)
 }
 
+// @Summary Retrieve transactions, latest first.
+// @Description Retrieves a list of transactions.
+// @Tags Transactions
+// @Produce json
+// @Param startTxHash query string false "The hash of the transaction record to start from"
+// @Param limit query int false "The maximum number of transactions to retrieve"
+// @Success 200 {array} api.TxInfo "Successfully retrieved list of transactions"
+// @Router /txs [get]
+func (api *MoneyRestAPI) getTxs(w http.ResponseWriter, r *http.Request) {
+	txHash, err := ParseHex[[]byte](r.URL.Query().Get("startTxHash"), false)
+	if err != nil {
+		api.rw.InvalidParamResponse(w, "startTxHash", err)
+	}
+	limitStr := r.URL.Query().Get("limit")
+	limit := 20
+	if limitStr != "" {
+		limit, err = ParseMaxResponseItems(limitStr, 100)
+		if err != nil {
+			http.Error(w, "Invalid 'limit' format", http.StatusBadRequest)
+			return
+		}
+	}
+
+	txs, prev, err := api.Service.GetTxs(txHash, limit)
+	if err != nil {
+		api.rw.WriteErrorResponse(w, fmt.Errorf("failed to load txs with startTxHash 0X%X and limit %d : %w", txHash, limit, err))
+		return
+	}
+
+	setLinkHeader(r.URL, w, EncodeHex(prev))
+	api.rw.WriteResponse(w, txs)
+}
+
 // @Summary Retrieve transactions by block number
 // @Description Retrieves a list of transactions for a given block number.
 // @Tags Transactions
