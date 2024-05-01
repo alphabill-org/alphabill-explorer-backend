@@ -211,7 +211,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "The hash of the transaction to retrieve",
+                        "description": "The hash of the transaction to retrieve (HEX encoded)",
                         "name": "txHash",
                         "in": "path",
                         "required": true
@@ -317,7 +317,10 @@ const docTemplate = `{
                 "txHashes": {
                     "type": "array",
                     "items": {
-                        "type": "string"
+                        "type": "array",
+                        "items": {
+                            "type": "integer"
+                        }
                     }
                 },
                 "unicityCertificate": {
@@ -368,9 +371,12 @@ const docTemplate = `{
         "money.BillData": {
             "type": "object",
             "properties": {
-                "counter": {
-                    "description": "The transaction counter of this bill",
-                    "type": "integer"
+                "backlink": {
+                    "description": "Backlink (256-bit hash)",
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
                 },
                 "lastUpdate": {
                     "description": "The round number of the last transaction with the bill",

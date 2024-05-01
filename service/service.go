@@ -19,7 +19,7 @@ type (
 		GetBlocksInfo(dbStartBlock uint64, count int) (res []*api.BlockInfo, prevBlockNumber uint64, err error)
 
 		//tx
-		GetTxInfo(txHash string) (*api.TxInfo, error)
+		GetTxInfo(txHash []byte) (*api.TxInfo, error)
 		GetBlockTxsByBlockNumber(blockNumber uint64) (res []*api.TxInfo, err error)
 		GetTxsByUnitID(unitID string) ([]*api.TxInfo, error)
 	}
@@ -65,7 +65,7 @@ func (ex *ExplorerBackend) GetBlocks(dbStartBlockNumber uint64, count int) (res 
 }
 
 // tx
-func (ex *ExplorerBackend) GetTxInfo(txHash string) (res *api.TxInfo, err error) {
+func (ex *ExplorerBackend) GetTxInfo(txHash []byte) (res *api.TxInfo, err error) {
 	return ex.store.GetTxInfo(txHash)
 }
 

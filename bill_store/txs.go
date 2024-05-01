@@ -51,11 +51,10 @@ func (s *boltBillStore) addTxHashMapping(tx *bolt.Tx, txOrderHash, txRecHash []b
 	return nil
 }
 
-func (s *boltBillStore) GetTxInfo(txHash string) (*api.TxInfo, error) {
+func (s *boltBillStore) GetTxInfo(txHash []byte) (*api.TxInfo, error) {
 	var txInfo *api.TxInfo
-	hashBytes := []byte(txHash)
 	err := s.db.View(func(tx *bolt.Tx) error {
-		txInforBytes := tx.Bucket(txInfoBucket).Get(hashBytes)
+		txInforBytes := tx.Bucket(txInfoBucket).Get(txHash)
 		return json.Unmarshal(txInforBytes, &txInfo)
 	})
 	if err != nil {

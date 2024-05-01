@@ -15,7 +15,9 @@ definitions:
         $ref: '#/definitions/types.Header'
       txHashes:
         items:
-          type: string
+          items:
+            type: integer
+          type: array
         type: array
       unicityCertificate:
         $ref: '#/definitions/types.UnicityCertificate'
@@ -48,9 +50,11 @@ definitions:
     type: object
   money.BillData:
     properties:
-      counter:
-        description: The transaction counter of this bill
-        type: integer
+      backlink:
+        description: Backlink (256-bit hash)
+        items:
+          type: integer
+        type: array
       lastUpdate:
         description: The round number of the last transaction with the bill
         example: "0"
@@ -366,7 +370,7 @@ paths:
       description: Retrieves transaction details using a transaction hash provided
         as a path parameter.
       parameters:
-      - description: The hash of the transaction to retrieve
+      - description: The hash of the transaction to retrieve (HEX encoded)
         in: path
         name: txHash
         required: true

@@ -6,8 +6,8 @@ import (
 	"strconv"
 
 	"github.com/alphabill-org/alphabill-explorer-backend/api"
-	"github.com/alphabill-org/alphabill/types"
 	moneyApi "github.com/alphabill-org/alphabill-wallet/wallet/money/api"
+	"github.com/alphabill-org/alphabill/types"
 )
 
 const (
@@ -25,12 +25,12 @@ type (
 		GetBlocks(dbStartBlock uint64, count int) (res []*api.BlockInfo, prevBlockNumber uint64, err error)
 
 		//tx
-		GetTxInfo(txHash string) (res *api.TxInfo, err error)
+		GetTxInfo(txHash []byte) (res *api.TxInfo, err error)
 		GetBlockTxsByBlockNumber(blockNumber uint64) (res []*api.TxInfo, err error)
 		GetTxsByUnitID(unitID string) ([]*api.TxInfo, error)
 
 		//bill
-		GetBillsByPubKey(ctx context.Context , ownerID types.Bytes) (res []*moneyApi.Bill, err error)
+		GetBillsByPubKey(ctx context.Context, ownerID types.Bytes) (res []*moneyApi.Bill, err error)
 	}
 
 	MoneyRestAPI struct {

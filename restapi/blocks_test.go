@@ -38,6 +38,31 @@ func TestGetBlock_Success(t *testing.T) {
 	require.Equal(t, &api.BlockInfo{TxHashes: []string{"FF"}}, result)
 }
 
+func TestGetBlock_latest_Success(t *testing.T) {
+	r := mux.NewRouter()
+	restapi := &MoneyRestAPI{Service: &MockExplorerBackendService{
+		getBlockFunc: func(blockNumber uint64) (*api.BlockInfo, error) {
+			require.Equal(t, uint64(1), blockNumber)
+			return &api.BlockInfo{TxHashes: []string{"FF"}}, nil
+		},
+	}}
+	r.HandleFunc("/blocks/{blockNumber}", restapi.getBlock)
+	ts := httptest.NewServer(r)
+	defer ts.Close()
+
+	res, err := http.Get(fmt.Sprintf("%s/blocks/", ts.URL))
+	require.NoError(t, err)
+
+	require.Equal(t, http.StatusOK, res.StatusCode)
+
+	body, err := io.ReadAll(res.Body)
+	require.NoError(t, err)
+
+	result := &api.BlockInfo{}
+	require.NoError(t, json.Unmarshal(body, result))
+	require.Equal(t, &api.BlockInfo{TxHashes: []string{"FF"}}, result)
+}
+
 func TestGetBlock_InvalidBlockNumber(t *testing.T) {
 	r := mux.NewRouter()
 	api := &MoneyRestAPI{Service: &MockExplorerBackendService{}}
