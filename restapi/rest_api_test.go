@@ -12,7 +12,7 @@ type MockExplorerBackendService struct {
 	getLastBlockNumberFunc       func() (uint64, error)
 	getBlockFunc                 func(blockNumber uint64) (*api.BlockInfo, error)
 	getBlocksFunc                func(dbStartBlock uint64, count int) (res []*api.BlockInfo, prevBlockNumber uint64, err error)
-	getTxInfoFunc                func(txHash string) (res *api.TxInfo, err error)
+	getTxInfoFunc                func(txHash []byte) (res *api.TxInfo, err error)
 	getBlockTxsByBlockNumberFunc func(blockNumber uint64) (res []*api.TxInfo, err error)
 	getRoundNumberFunc           func(ctx context.Context) (uint64, error)
 	getTxsByUnitID               func(unitID string) ([]*api.TxInfo, error)
@@ -40,7 +40,7 @@ func (m *MockExplorerBackendService) GetBlocks(dbStartBlock uint64, count int) (
 	panic("GetBlocksFunc not implemented")
 }
 
-func (m *MockExplorerBackendService) GetTxInfo(txHash string) (res *api.TxInfo, err error) {
+func (m *MockExplorerBackendService) GetTxInfo(txHash []byte) (res *api.TxInfo, err error) {
 	if m.getTxInfoFunc != nil {
 		return m.getTxInfoFunc(txHash)
 	}

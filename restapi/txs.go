@@ -13,7 +13,7 @@ import (
 // @Tags Transactions
 // @Accept json
 // @Produce json
-// @Param txHash path string true "The hash of the transaction to retrieve"
+// @Param txHash path string true "The hash of the transaction to retrieve (HEX encoded)"
 // @Success 200 {object} api.TxInfo "Successfully retrieved the transaction information"
 // @Failure 400 {string} string "Missing 'txHash' variable in the URL"
 // @Failure 404 {string} string "Transaction with the specified hash not found"
@@ -26,7 +26,11 @@ func (api *MoneyRestAPI) getTx(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Missing 'txHash' variable in the URL", http.StatusBadRequest)
 		return
 	}
-	txInfo, err := api.Service.GetTxInfo(txHash)
+	txHashBytes, err := ParseHex[[]byte](txHash, true)
+	if err != nil {
+		http.Error(w, "Invalid 'txHash' format", http.StatusBadRequest)
+	}
+	txInfo, err := api.Service.GetTxInfo(txHashBytes)
 	if err != nil {
 		api.rw.WriteErrorResponse(w, fmt.Errorf("failed to load tx with txHash %s : %w", txHash, err))
 		return
