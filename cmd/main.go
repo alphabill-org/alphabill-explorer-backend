@@ -5,41 +5,25 @@ import (
 	"fmt"
 	"math/rand"
 	"net/http"
+	"os"
+	"path/filepath"
+	"strconv"
 	"time"
 
 	"github.com/ainvaltin/httpsrv"
-	"github.com/alphabill-org/alphabill-explorer-backend/api"
 	bs "github.com/alphabill-org/alphabill-explorer-backend/bill_store"
 	"github.com/alphabill-org/alphabill-explorer-backend/blocks"
 	"github.com/alphabill-org/alphabill-explorer-backend/blocksync"
 	ra "github.com/alphabill-org/alphabill-explorer-backend/restapi"
+	"github.com/alphabill-org/alphabill-explorer-backend/service"
 	"github.com/alphabill-org/alphabill-wallet/cli/alphabill/cmd/wallet/args"
 	"github.com/alphabill-org/alphabill-wallet/client/rpc"
+	"github.com/alphabill-org/alphabill/txsystem/money"
 	abTypes "github.com/alphabill-org/alphabill/types"
 	"golang.org/x/sync/errgroup"
-	moneyApi "github.com/alphabill-org/alphabill-wallet/wallet/money/api"
-	txSysMoney "github.com/alphabill-org/alphabill/txsystem/money"
 )
 
 type (
-	BillStore interface {
-
-		//block
-		GetLastBlockNumber() (uint64, error)
-		GetBlockInfo(blockNumber uint64) (*api.BlockInfo, error)
-		GetBlocksInfo(dbStartBlock uint64, count int) (res []*api.BlockInfo, prevBlockNumber uint64, err error)
-
-		//tx
-		GetTxInfo(txHash string) (*api.TxInfo, error)
-		GetBlockTxsByBlockNumber(blockNumber uint64) (res []*api.TxInfo, err error)
-		GetTxsByUnitID(unitID string) ([]*api.TxInfo, error)
-	}
-
-	ExplorerBackend struct {
-		store  BillStore
-		client *rpc.Client
-	}
-
 	Config struct {
 		ABMoneySystemIdentifier abTypes.SystemID
 		AlphabillUrl            string
@@ -49,6 +33,34 @@ type (
 		BlockNumber             uint64
 	}
 )
+
+func main() {
+	fmt.Println("Starting AB Explorer")
+	args := os.Args
+	if len(args) < 3 {
+		fmt.Println("Usage: blocks <AB Partition RPC url> <AB Explorer url> [<Block number>]")
+		return
+	}
+	workDir := filepath.Dir(args[0]) //"/tmp/"
+	fmt.Printf("filepath: %s\n", filepath.Dir(args[0]))
+	fmt.Printf("AB Partition url: %s\n", args[1])
+	fmt.Printf("AB Explorer url: %s\n", args[2])
+	blockNumber := uint64(0)
+	if len(args) > 3 {
+		fmt.Printf("Block number: %s\n", args[3])
+		blockNumber, _ = strconv.ParseUint(args[3], 10, 64)
+	}
+	err := Run(context.Background(), &Config{
+		ABMoneySystemIdentifier: money.DefaultSystemIdentifier,
+		AlphabillUrl:            args[1],
+		ServerAddr:              args[2],
+		DbFile:                  filepath.Join(workDir, bs.BoltExplorerStoreFileName),
+		BlockNumber:             blockNumber,
+	})
+	if err != nil {
+		panic(err)
+	}
+}
 
 func Run(ctx context.Context, config *Config) error {
 	println("starting money partition explorer")
@@ -66,7 +78,7 @@ func Run(ctx context.Context, config *Config) error {
 
 	g.Go(func() error {
 		println("money backend REST server starting on ", config.ServerAddr)
-		explorerBackend := &ExplorerBackend{store: store, client: moneyClient}
+		explorerBackend := service.NewExplorerBackend(store, moneyClient)
 		defer moneyClient.Close()
 
 		handler := &ra.MoneyRestAPI{
@@ -131,58 +143,4 @@ func runBlockSync(ctx context.Context, getBlocks blocksync.BlockLoaderFunc, getB
 	// on bootstrap storage returns 0 as current block and as block numbering
 	// starts from 1 by adding 1 to it we start with the first block
 	return blocksync.Run(ctx, getBlocks, blockNumber+1, 0, batchSize, processor)
-}
-
-// GetRoundNumber returns latest round number.
-func (ex *ExplorerBackend) GetRoundNumber(ctx context.Context) (uint64, error) {
-	return ex.client.GetRoundNumber(ctx)
-}
-
-// block
-// GetLastBlockNumber returns last processed block
-func (ex *ExplorerBackend) GetLastBlockNumber() (uint64, error) {
-	return ex.store.GetLastBlockNumber()
-}
-
-// GetBlock returns block with given block number.
-func (ex *ExplorerBackend) GetBlock(blockNumber uint64) (*api.BlockInfo, error) {
-	return ex.store.GetBlockInfo(blockNumber)
-}
-
-// GetBlocks return amount of blocks provided with count
-func (ex *ExplorerBackend) GetBlocks(dbStartBlockNumber uint64, count int) (res []*api.BlockInfo, prevBlockNUmber uint64, err error) {
-	return ex.store.GetBlocksInfo(dbStartBlockNumber, count)
-}
-
-// tx
-func (ex *ExplorerBackend) GetTxInfo(txHash string) (res *api.TxInfo, err error) {
-	return ex.store.GetTxInfo(txHash)
-}
-
-func (ex *ExplorerBackend) GetBlockTxsByBlockNumber(blockNumber uint64) (res []*api.TxInfo, err error) {
-	return ex.store.GetBlockTxsByBlockNumber(blockNumber)
-}
-
-func (ex *ExplorerBackend) GetTxsByUnitID(unitID string) ([]*api.TxInfo, error) {
-	return ex.store.GetTxsByUnitID(unitID)
-}
-
-//bill
-func (ex *ExplorerBackend) GetBillsByPubKey(ctx context.Context , ownerID abTypes.Bytes) (res []*moneyApi.Bill, err error) {
-	unitIDs, err := ex.client.GetUnitsByOwnerID(ctx, ownerID)
-    if err != nil {
-        return nil, fmt.Errorf("failed to get units by owner ID: %w", err)
-    }
-	var bills []*moneyApi.Bill
-	for _, unitID := range unitIDs {
-		if !unitID.HasType(txSysMoney.BillUnitType) {
-			continue
-		}
-		bill, err := ex.client.GetBill(ctx, unitID, false)
-		if err != nil {
-			return nil, fmt.Errorf("failed to fetch unit: %w", err)
-		}
-		bills = append(bills, bill)
-	}
-    return bills, nil
 }
