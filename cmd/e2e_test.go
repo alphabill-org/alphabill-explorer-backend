@@ -31,6 +31,7 @@ func TestE2E(t *testing.T) {
 	fmt.Printf("Started in %s\n", time.Since(startTime))
 
 	// TODO: Add tests here
+	// mnemonic: prison tone orbit inside kitten clean page enrich plastic ring gather cross
 
 	fmt.Printf("Finished after %s\n", time.Since(startTime))
 }
