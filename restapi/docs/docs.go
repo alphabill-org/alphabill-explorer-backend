@@ -43,7 +43,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/github_com_alphabill-org_alphabill-wallet_wallet_money_api.Bill"
+                                "$ref": "#/definitions/api.Bill"
                             }
                         }
                     },
@@ -294,6 +294,20 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "api.Bill": {
+            "type": "object",
+            "properties": {
+                "billData": {
+                    "$ref": "#/definitions/money.BillData"
+                },
+                "id": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
         "api.BlockInfo": {
             "type": "object",
             "properties": {
@@ -327,20 +341,6 @@ const docTemplate = `{
                     }
                 },
                 "txRecordHash": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                }
-            }
-        },
-        "github_com_alphabill-org_alphabill-wallet_wallet_money_api.Bill": {
-            "type": "object",
-            "properties": {
-                "billData": {
-                    "$ref": "#/definitions/money.BillData"
-                },
-                "id": {
                     "type": "array",
                     "items": {
                         "type": "integer"

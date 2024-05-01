@@ -1,5 +1,14 @@
 basePath: /api/v1
 definitions:
+  api.Bill:
+    properties:
+      billData:
+        $ref: '#/definitions/money.BillData'
+      id:
+        items:
+          type: integer
+        type: array
+    type: object
   api.BlockInfo:
     properties:
       header:
@@ -22,15 +31,6 @@ definitions:
           type: integer
         type: array
       txRecordHash:
-        items:
-          type: integer
-        type: array
-    type: object
-  github_com_alphabill-org_alphabill-wallet_wallet_money_api.Bill:
-    properties:
-      billData:
-        $ref: '#/definitions/money.BillData'
-      id:
         items:
           type: integer
         type: array
@@ -255,7 +255,7 @@ paths:
           description: List of bills
           schema:
             items:
-              $ref: '#/definitions/github_com_alphabill-org_alphabill-wallet_wallet_money_api.Bill'
+              $ref: '#/definitions/api.Bill'
             type: array
         "400":
           description: 'Error: Missing ''pubKey'' variable in the URL'
