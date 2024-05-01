@@ -94,7 +94,7 @@
         },
         "/blocks/{blockNumber}": {
             "get": {
-                "description": "Retrieves a block using the block number provided as a path parameter or retrieves the latest block if no block number is specified.",
+                "description": "Retrieves a block by using the provided block number as a path parameter, or retrieves the latest block if no number is specified.",
                 "consumes": [
                     "application/json"
                 ],
@@ -104,36 +104,36 @@
                 "tags": [
                     "Blocks"
                 ],
-                "summary": "Retrieve a block by block number or the latest block",
+                "summary": "Retrieve a blockchain block by number, or the latest if unspecified",
                 "parameters": [
                     {
-                        "type": "integer",
-                        "description": "The block number to retrieve (optional; if not provided, the latest block is returned)",
+                        "type": "string",
+                        "description": "Block number ('latest' or a specific number)",
                         "name": "blockNumber",
                         "in": "path"
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Successfully retrieved the block",
+                        "description": "Block information successfully retrieved",
                         "schema": {
                             "$ref": "#/definitions/api.BlockInfo"
                         }
                     },
                     "400": {
-                        "description": "Invalid block number format or other client error",
+                        "description": "Missing or invalid block number",
                         "schema": {
                             "type": "string"
                         }
                     },
                     "404": {
-                        "description": "Block with the specified block number not found",
+                        "description": "No block found with the specified number",
                         "schema": {
                             "type": "string"
                         }
                     },
                     "500": {
-                        "description": "Internal server error, such as failure to load the last block number or to load the block from the service",
+                        "description": "Internal server error, such as a failure to retrieve the block",
                         "schema": {
                             "type": "string"
                         }

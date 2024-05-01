@@ -8,36 +8,39 @@ import (
 	"github.com/gorilla/mux"
 )
 
-// @Summary Retrieve a block by block number or the latest block
-// @Description Retrieves a block using the block number provided as a path parameter or retrieves the latest block if no block number is specified.
+// @Summary Retrieve a blockchain block by number, or the latest if unspecified
+// @Description Retrieves a block by using the provided block number as a path parameter, or retrieves the latest block if no number is specified.
 // @Tags Blocks
 // @Accept json
 // @Produce json
-// @Param blockNumber path int false "The block number to retrieve (optional; if not provided, the latest block is returned)"
-// @Success 200 {object} api.BlockInfo "Successfully retrieved the block"
-// @Failure 400 {object} string "Invalid block number format or other client error"
-// @Failure 404 {object} string "Block with the specified block number not found"
-// @Failure 500 {object} string "Internal server error, such as failure to load the last block number or to load the block from the service"
+// @Param blockNumber path string false "Block number ('latest' or a specific number)"
+// @Success 200 {object} api.BlockInfo "Block information successfully retrieved"
+// @Failure 400 {object} string "Missing or invalid block number"
+// @Failure 404 {object} string "No block found with the specified number"
+// @Failure 500 {object} string "Internal server error, such as a failure to retrieve the block"
 // @Router /blocks/{blockNumber} [get]
 func (api *MoneyRestAPI) getBlock(w http.ResponseWriter, r *http.Request) {
 
 	var blockNumber uint64
+	var err error
 
 	vars := mux.Vars(r)
 	blockNumberStr, ok := vars["blockNumber"]
+	if !ok {
+		http.Error(w, "Missing 'blockNumber' variable in the URL", http.StatusBadRequest)
+		return
+	}
 
-	if ok {
-		var err error
-		blockNumber, err = strconv.ParseUint(blockNumberStr, 10, 64)
-		if err != nil {
-			api.rw.ErrorResponse(w, http.StatusBadRequest, fmt.Errorf("invalid 'blockNumber' format: %w", err))
-			return
-		}
-	} else {
-		var err error
+	if blockNumberStr == "latest" {
 		blockNumber, err = api.Service.GetLastBlockNumber()
 		if err != nil {
 			api.rw.ErrorResponse(w, http.StatusInternalServerError, fmt.Errorf("failed to load last block number: %w", err))
+			return
+		}
+	} else {
+		blockNumber, err = strconv.ParseUint(blockNumberStr, 10, 64)
+		if err != nil {
+			api.rw.ErrorResponse(w, http.StatusBadRequest, fmt.Errorf("invalid 'blockNumber' format: %w", err))
 			return
 		}
 	}
