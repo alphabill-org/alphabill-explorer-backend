@@ -208,13 +208,13 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "The hash of the transaction record to start from",
-                        "name": "startTxHash",
+                        "description": "The sequence number of the transaction to start from, if not provided, the latest transactions are returned",
+                        "name": "startSeqNumber",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "The maximum number of transactions to retrieve",
+                        "description": "The maximum number of transactions to retrieve, default 20",
                         "name": "limit",
                         "in": "query"
                     }

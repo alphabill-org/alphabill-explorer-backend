@@ -47,14 +47,19 @@ func (api *MoneyRestAPI) getTx(w http.ResponseWriter, r *http.Request) {
 // @Description Retrieves a list of transactions.
 // @Tags Transactions
 // @Produce json
-// @Param startTxHash query string false "The hash of the transaction record to start from"
-// @Param limit query int false "The maximum number of transactions to retrieve"
+// @Param startSeqNumber query string false "The sequence number of the transaction to start from, if not provided, the latest transactions are returned"
+// @Param limit query int false "The maximum number of transactions to retrieve, default 20"
 // @Success 200 {array} api.TxInfo "Successfully retrieved list of transactions"
 // @Router /txs [get]
 func (api *MoneyRestAPI) getTxs(w http.ResponseWriter, r *http.Request) {
-	txHash, err := ParseHex[[]byte](r.URL.Query().Get("startTxHash"), false)
-	if err != nil {
-		api.rw.InvalidParamResponse(w, "startTxHash", err)
+	seqStr := r.URL.Query().Get("startSeqNumber")
+	seq := uint64(0)
+	var err error
+	if seqStr != "" {
+		seq, err = strconv.ParseUint(seqStr, 10, 64)
+		if err != nil {
+			api.rw.InvalidParamResponse(w, "startSeqNumber", err)
+		}
 	}
 	limitStr := r.URL.Query().Get("limit")
 	limit := 20
@@ -66,13 +71,13 @@ func (api *MoneyRestAPI) getTxs(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	txs, prev, err := api.Service.GetTxs(txHash, limit)
+	txs, prev, err := api.Service.GetTxs(seq, limit)
 	if err != nil {
-		api.rw.WriteErrorResponse(w, fmt.Errorf("failed to load txs with startTxHash 0X%X and limit %d : %w", txHash, limit, err))
+		api.rw.WriteErrorResponse(w, fmt.Errorf("failed to load txs with startSeqNumber %d and limit %d : %w", seq, limit, err))
 		return
 	}
 
-	setLinkHeader(r.URL, w, EncodeHex(prev))
+	setLinkHeader(r.URL, w, fmt.Sprintf("%d", prev))
 	api.rw.WriteResponse(w, txs)
 }
 

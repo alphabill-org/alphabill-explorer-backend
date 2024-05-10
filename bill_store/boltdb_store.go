@@ -17,6 +17,7 @@ var (
 	txInfoBucket             = []byte("txInfoBucket")           // txRecHash => api.TxInfo
 	unitIDsToTxRecHashBucket = []byte("unitIDBucket")           // unitID => [txRecHash]
 	txOrderHashToTxRecHash   = []byte("txOrderHashToTxRecHash") // txOrderHash => txRecHash mapping
+	orderedTxRecHashes       = []byte("orderedTxRecHashes")     // uint64 => txRecHash allows for ordered retrieval
 	metaBucket               = []byte("metaBucket")             // block_number_key => block_number_val
 )
 
@@ -48,6 +49,7 @@ func NewBoltBillStore(dbFile string) (*boltBillStore, error) {
 		metaBucket,
 		unitIDsToTxRecHashBucket,
 		txOrderHashToTxRecHash,
+		orderedTxRecHashes,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create db buckets: %w", err)

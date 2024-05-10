@@ -22,7 +22,7 @@ type (
 		GetTxInfo(txHash []byte) (*api.TxInfo, error)
 		GetBlockTxsByBlockNumber(blockNumber uint64) (res []*api.TxInfo, err error)
 		GetTxsByUnitID(unitID string) ([]*api.TxInfo, error)
-		GetTxs(startTxRecHash api.TxRecordHash, count int) ([]*api.TxInfo, api.TxRecordHash, error)
+		GetTxs(startSequenceNumber uint64, count int) (res []*api.TxInfo, prevSequenceNumber uint64, err error)
 	}
 
 	ABClient interface {
@@ -78,8 +78,8 @@ func (ex *ExplorerBackend) GetTxsByUnitID(unitID string) ([]*api.TxInfo, error) 
 	return ex.store.GetTxsByUnitID(unitID)
 }
 
-func (ex *ExplorerBackend) GetTxs(startTxRecHash api.TxRecordHash, count int) (res []*api.TxInfo, prevTxHash api.TxRecordHash, err error) {
-	return ex.store.GetTxs(startTxRecHash, count)
+func (ex *ExplorerBackend) GetTxs(startSequenceNumber uint64, count int) (res []*api.TxInfo, prevSequenceNumber uint64, err error) {
+	return ex.store.GetTxs(startSequenceNumber, count)
 }
 
 // bill

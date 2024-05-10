@@ -26,8 +26,23 @@ func (s *boltBillStore) SetTxInfo(txInfo *api.TxInfo) error {
 				return fmt.Errorf("failed to add unit tx hash: %w", err)
 			}
 		}
+		if err = s.addTxInOrder(tx, txInfo.TxRecordHash); err != nil {
+			return fmt.Errorf("failed to add tx in order: %w", err)
+		}
 		return s.addTxHashMapping(tx, txInfo.TxOrderHash, txInfo.TxRecordHash)
 	})
+}
+
+func (s *boltBillStore) addTxInOrder(tx *bolt.Tx, txRecHash []byte) error {
+	bucket := tx.Bucket(orderedTxRecHashes)
+	if bucket == nil {
+		return fmt.Errorf("bucket %s not found", orderedTxRecHashes)
+	}
+	nextIndex, err := bucket.NextSequence()
+	if err != nil {
+		return fmt.Errorf("failed to get next sequence: %w", err)
+	}
+	return bucket.Put(util.Uint64ToBytes(nextIndex), txRecHash)
 }
 
 func (s *boltBillStore) addUnitTxHash(tx *bolt.Tx, unitID, txRecordHash []byte) error {
@@ -54,35 +69,49 @@ func (s *boltBillStore) addTxHashMapping(tx *bolt.Tx, txOrderHash, txRecHash []b
 func (s *boltBillStore) GetTxInfo(txHash []byte) (*api.TxInfo, error) {
 	var txInfo *api.TxInfo
 	err := s.db.View(func(tx *bolt.Tx) error {
-		txInforBytes := tx.Bucket(txInfoBucket).Get(txHash)
-		return json.Unmarshal(txInforBytes, &txInfo)
+		var err error
+		txInfo, err = s.getTxInfo(tx, txHash)
+		return err
 	})
+	return txInfo, err
+}
+
+func (s *boltBillStore) getTxInfo(tx *bolt.Tx, txHash []byte) (*api.TxInfo, error) {
+	var txInfo *api.TxInfo
+	txInfoBytes := tx.Bucket(txInfoBucket).Get(txHash)
+	err := json.Unmarshal(txInfoBytes, &txInfo)
 	if err != nil {
 		return nil, err
 	}
 	return txInfo, nil
 }
 
-func (s *boltBillStore) GetTxs(startTxRecHash api.TxRecordHash, count int) (res []*api.TxInfo, prevTxHash api.TxRecordHash, err error) {
-	return res, prevTxHash, s.db.View(func(tx *bolt.Tx) error {
-		return s.getTxs(tx, startTxRecHash, count, &res, &prevTxHash)
+// GetTxs returns a list of transactions starting from the given sequence number. startSequenceNumber=0 means it's not set and cursor.last() is used.
+func (s *boltBillStore) GetTxs(startSequenceNumber uint64, count int) (res []*api.TxInfo, prevSequenceNumber uint64, err error) {
+	return res, prevSequenceNumber, s.db.View(func(tx *bolt.Tx) error {
+		return s.getTxs(tx, startSequenceNumber, count, &res, &prevSequenceNumber)
 	})
 }
 
-func (s *boltBillStore) getTxs(tx *bolt.Tx, startTxRecHash api.TxRecordHash, count int, res *[]*api.TxInfo, prevTxHash *api.TxRecordHash) error {
-	txInfoBucket := tx.Bucket(txInfoBucket)
-	cursor := txInfoBucket.Cursor()
-	if len(startTxRecHash) == 0 {
-		startTxRecHash, _ = cursor.Last()
+func (s *boltBillStore) getTxs(tx *bolt.Tx, startSequenceNumber uint64, count int, res *[]*api.TxInfo, prevSequenceNumber *uint64) error {
+	orderedTxRecHashes := tx.Bucket(orderedTxRecHashes)
+
+	var startKey []byte
+	if startSequenceNumber == 0 {
+		startSequenceNumber = orderedTxRecHashes.Sequence()
 	}
-	for k, v := cursor.Seek(startTxRecHash); k != nil && count > 0; k, v = cursor.Prev() {
-		var txInfo api.TxInfo
-		if err := json.Unmarshal(v, &txInfo); err != nil {
+	startKey = util.Uint64ToBytes(startSequenceNumber)
+	
+	cursor := orderedTxRecHashes.Cursor()
+	for k, v := cursor.Seek(startKey); k != nil && count > 0; k, v = cursor.Prev() {
+		txInfo, err := s.getTxInfo(tx, v)
+		if err != nil {
 			return err
 		}
-		*res = append(*res, &txInfo)
+		*res = append(*res, txInfo)
 		if count--; count == 0 {
-			*prevTxHash, _ = cursor.Prev()
+			prevKey, _ := cursor.Prev()
+			*prevSequenceNumber = util.BytesToUint64(prevKey)
 			break
 		}
 	}

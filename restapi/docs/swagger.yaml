@@ -365,11 +365,12 @@ paths:
     get:
       description: Retrieves a list of transactions.
       parameters:
-      - description: The hash of the transaction record to start from
+      - description: The sequence number of the transaction to start from, if not
+          provided, the latest transactions are returned
         in: query
-        name: startTxHash
+        name: startSeqNumber
         type: string
-      - description: The maximum number of transactions to retrieve
+      - description: The maximum number of transactions to retrieve, default 20
         in: query
         name: limit
         type: integer

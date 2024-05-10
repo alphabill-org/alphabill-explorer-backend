@@ -28,7 +28,7 @@ type (
 		GetTxInfo(txHash []byte) (res *api.TxInfo, err error)
 		GetBlockTxsByBlockNumber(blockNumber uint64) (res []*api.TxInfo, err error)
 		GetTxsByUnitID(unitID string) ([]*api.TxInfo, error)
-		GetTxs(startTxRecHash api.TxRecordHash, count int) (res []*api.TxInfo, prevTxHash api.TxRecordHash, err error)
+		GetTxs(startSequenceNumber uint64, count int) (res []*api.TxInfo, prevSequenceNumber uint64, err error)
 
 		//bill
 		GetBillsByPubKey(ctx context.Context, ownerID types.Bytes) (res []*moneyApi.Bill, err error)
