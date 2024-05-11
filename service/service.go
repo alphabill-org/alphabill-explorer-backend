@@ -21,7 +21,7 @@ type (
 		//tx
 		GetTxInfo(txHash []byte) (*api.TxInfo, error)
 		GetBlockTxsByBlockNumber(blockNumber uint64) (res []*api.TxInfo, err error)
-		GetTxsByUnitID(unitID string) ([]*api.TxInfo, error)
+		GetTxsByUnitID(unitID abTypes.UnitID) ([]*api.TxInfo, error)
 		GetTxs(startSequenceNumber uint64, count int) (res []*api.TxInfo, prevSequenceNumber uint64, err error)
 	}
 
@@ -74,7 +74,7 @@ func (ex *ExplorerBackend) GetBlockTxsByBlockNumber(blockNumber uint64) (res []*
 	return ex.store.GetBlockTxsByBlockNumber(blockNumber)
 }
 
-func (ex *ExplorerBackend) GetTxsByUnitID(unitID string) ([]*api.TxInfo, error) {
+func (ex *ExplorerBackend) GetTxsByUnitID(unitID abTypes.UnitID) ([]*api.TxInfo, error) {
 	return ex.store.GetTxsByUnitID(unitID)
 }
 

@@ -8,8 +8,8 @@ import (
 )
 
 type TxInfo struct {
-	TxRecordHash []byte
-	TxOrderHash  []byte
+	TxRecordHash TxHash
+	TxOrderHash  TxHash
 	BlockNumber  uint64
 	Transaction  *types.TransactionRecord
 }

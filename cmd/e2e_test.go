@@ -83,7 +83,7 @@ func TestE2E(t *testing.T) {
 			txrHash := proof.TxRecord.Hash(crypto.SHA256)
 
 			t.Run("Check tx record hash is in the block info", func(t *testing.T) {
-				require.Contains(t, blockInfo.TxHashes, api.TxRecordHash(txrHash))
+				require.Contains(t, blockInfo.TxHashes, api.TxHash(txrHash))
 			})
 
 			txInfo := &api.TxInfo{}

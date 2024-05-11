@@ -18,7 +18,7 @@ func TestGetBlock_Success(t *testing.T) {
 	restapi := &MoneyRestAPI{Service: &MockExplorerBackendService{
 		getBlockFunc: func(blockNumber uint64) (*api.BlockInfo, error) {
 			require.Equal(t, uint64(1), blockNumber)
-			return &api.BlockInfo{TxHashes: []api.TxRecordHash{{0xFF}}}, nil
+			return &api.BlockInfo{TxHashes: []api.TxHash{{0xFF}}}, nil
 		},
 	}}
 	r.HandleFunc("/blocks/{blockNumber}", restapi.getBlock)
@@ -35,7 +35,7 @@ func TestGetBlock_Success(t *testing.T) {
 
 	result := &api.BlockInfo{}
 	require.NoError(t, json.Unmarshal(body, result))
-	require.Equal(t, &api.BlockInfo{TxHashes: []api.TxRecordHash{{0xFF}}}, result)
+	require.Equal(t, &api.BlockInfo{TxHashes: []api.TxHash{{0xFF}}}, result)
 }
 
 func TestGetBlock_latest_Success(t *testing.T) {
@@ -43,7 +43,7 @@ func TestGetBlock_latest_Success(t *testing.T) {
 	restapi := &MoneyRestAPI{Service: &MockExplorerBackendService{
 		getBlockFunc: func(blockNumber uint64) (*api.BlockInfo, error) {
 			require.Equal(t, uint64(1), blockNumber)
-			return &api.BlockInfo{TxHashes: []api.TxRecordHash{{0xFF}}}, nil
+			return &api.BlockInfo{TxHashes: []api.TxHash{{0xFF}}}, nil
 		},
 		getLastBlockNumberFunc: func() (uint64, error) {
 			return uint64(1), nil
@@ -63,7 +63,7 @@ func TestGetBlock_latest_Success(t *testing.T) {
 
 	result := &api.BlockInfo{}
 	require.NoError(t, json.Unmarshal(body, result))
-	require.Equal(t, &api.BlockInfo{TxHashes: []api.TxRecordHash{{0xFF}}}, result)
+	require.Equal(t, &api.BlockInfo{TxHashes: []api.TxHash{{0xFF}}}, result)
 }
 
 func TestGetBlock_InvalidBlockNumber(t *testing.T) {
@@ -112,7 +112,7 @@ func TestGetBlocks_Success(t *testing.T) {
 	r := mux.NewRouter()
 	restapi := &MoneyRestAPI{Service: &MockExplorerBackendService{
 		getBlocksFunc: func(dbStartBlock uint64, count int) (res []*api.BlockInfo, prevBlockNumber uint64, err error) {
-			return []*api.BlockInfo{{TxHashes: []api.TxRecordHash{{0xAA}}}}, 0, nil
+			return []*api.BlockInfo{{TxHashes: []api.TxHash{{0xAA}}}}, 0, nil
 		},
 		getLastBlockNumberFunc: func() (uint64, error) {
 			return 0, nil
@@ -131,7 +131,7 @@ func TestGetBlocks_Success(t *testing.T) {
 	require.NoError(t, err)
 	result := make([]*api.BlockInfo, 0)
 	require.NoError(t, json.Unmarshal(body, &result))
-	require.Equal(t, []*api.BlockInfo{{TxHashes: []api.TxRecordHash{{0xAA}}}}, result)
+	require.Equal(t, []*api.BlockInfo{{TxHashes: []api.TxHash{{0xAA}}}}, result)
 
 	require.Contains(t, res.Header.Get("Link"), "offsetKey=0")
 }
