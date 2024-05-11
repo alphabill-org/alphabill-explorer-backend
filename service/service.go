@@ -7,7 +7,7 @@ import (
 	"github.com/alphabill-org/alphabill-explorer-backend/api"
 	moneyApi "github.com/alphabill-org/alphabill-wallet/wallet/money/api"
 	txSysMoney "github.com/alphabill-org/alphabill/txsystem/money"
-	abTypes "github.com/alphabill-org/alphabill/types"
+	types "github.com/alphabill-org/alphabill/types"
 )
 
 type (
@@ -19,16 +19,16 @@ type (
 		GetBlocksInfo(dbStartBlock uint64, count int) (res []*api.BlockInfo, prevBlockNumber uint64, err error)
 
 		//tx
-		GetTxInfo(txHash []byte) (*api.TxInfo, error)
+		GetTxInfo(txHash api.TxHash) (*api.TxInfo, error)
 		GetBlockTxsByBlockNumber(blockNumber uint64) (res []*api.TxInfo, err error)
-		GetTxsByUnitID(unitID abTypes.UnitID) ([]*api.TxInfo, error)
+		GetTxsByUnitID(unitID types.UnitID) ([]*api.TxInfo, error)
 		GetTxs(startSequenceNumber uint64, count int) (res []*api.TxInfo, prevSequenceNumber uint64, err error)
 	}
 
 	ABClient interface {
 		GetRoundNumber(ctx context.Context) (uint64, error)
-		GetUnitsByOwnerID(ctx context.Context, ownerID abTypes.Bytes) ([]abTypes.UnitID, error)
-		GetBill(ctx context.Context, unitID abTypes.UnitID, includeStateProof bool) (*moneyApi.Bill, error)
+		GetUnitsByOwnerID(ctx context.Context, ownerID types.Bytes) ([]types.UnitID, error)
+		GetBill(ctx context.Context, unitID types.UnitID, includeStateProof bool) (*moneyApi.Bill, error)
 	}
 
 	ExplorerBackend struct {
@@ -66,7 +66,7 @@ func (ex *ExplorerBackend) GetBlocks(dbStartBlockNumber uint64, count int) (res 
 }
 
 // tx
-func (ex *ExplorerBackend) GetTxInfo(txHash []byte) (res *api.TxInfo, err error) {
+func (ex *ExplorerBackend) GetTxInfo(txHash api.TxHash) (res *api.TxInfo, err error) {
 	return ex.store.GetTxInfo(txHash)
 }
 
@@ -74,7 +74,7 @@ func (ex *ExplorerBackend) GetBlockTxsByBlockNumber(blockNumber uint64) (res []*
 	return ex.store.GetBlockTxsByBlockNumber(blockNumber)
 }
 
-func (ex *ExplorerBackend) GetTxsByUnitID(unitID abTypes.UnitID) ([]*api.TxInfo, error) {
+func (ex *ExplorerBackend) GetTxsByUnitID(unitID types.UnitID) ([]*api.TxInfo, error) {
 	return ex.store.GetTxsByUnitID(unitID)
 }
 
@@ -83,7 +83,7 @@ func (ex *ExplorerBackend) GetTxs(startSequenceNumber uint64, count int) (res []
 }
 
 // bill
-func (ex *ExplorerBackend) GetBillsByPubKey(ctx context.Context, ownerID abTypes.Bytes) (res []*moneyApi.Bill, err error) {
+func (ex *ExplorerBackend) GetBillsByPubKey(ctx context.Context, ownerID types.Bytes) (res []*moneyApi.Bill, err error) {
 	unitIDs, err := ex.client.GetUnitsByOwnerID(ctx, ownerID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get units by owner ID: %w", err)

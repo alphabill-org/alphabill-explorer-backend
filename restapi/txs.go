@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/alphabill-org/alphabill-explorer-backend/util"
 	"github.com/gorilla/mux"
 )
 
@@ -123,7 +124,7 @@ func (api *MoneyRestAPI) getBlockTxsByBlockNumber(w http.ResponseWriter, r *http
 // @Tags Transactions
 // @Accept json
 // @Produce json
-// @Param unitID path string true "Unit ID"
+// @Param unitID path string true "Unit ID (0xHEX encoded)"
 // @Success 200 {array} api.TxInfo "List of transactions"
 // @Failure 400 {object} ErrorResponse "Error: Missing 'unitID' variable in the URL"
 // @Failure 404 {object} ErrorResponse "Error: Transaction with specified unit ID not found"
@@ -136,7 +137,12 @@ func (api *MoneyRestAPI) getTxsByUnitID(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	txs, err := api.Service.GetTxsByUnitID(unitID)
+	uid, err := util.FromHex([]byte(unitID))
+	if err != nil {
+		http.Error(w, "Invalid 'unitID' format", http.StatusBadRequest)
+		return
+	}
+	txs, err := api.Service.GetTxsByUnitID(uid)
 	if err != nil {
 		api.rw.WriteErrorResponse(w, fmt.Errorf("failed to load txs with unitID %s : %w", unitID, err))
 		return

@@ -93,7 +93,7 @@ func TestE2E(t *testing.T) {
 				require.Equal(t, http.StatusOK, resp.StatusCode)
 				err = restapi.DecodeResponse(resp, http.StatusOK, txInfo, false)
 				require.NoError(t, err)
-				require.Equal(t, txrHash, txInfo.TxRecordHash)
+				require.EqualValues(t, txrHash, txInfo.TxRecordHash)
 				require.Equal(t, txRn, txInfo.BlockNumber)
 				require.Equal(t, proof.TxRecord, txInfo.Transaction)
 				fmt.Printf("Tx record %X indexed, type: %s\n", txrHash, txInfo.Transaction.TransactionOrder.PayloadType())
