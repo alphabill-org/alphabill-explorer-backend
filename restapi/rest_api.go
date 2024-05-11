@@ -27,7 +27,7 @@ type (
 		//tx
 		GetTxInfo(txHash []byte) (res *api.TxInfo, err error)
 		GetBlockTxsByBlockNumber(blockNumber uint64) (res []*api.TxInfo, err error)
-		GetTxsByUnitID(unitID string) ([]*api.TxInfo, error)
+		GetTxsByUnitID(unitID types.UnitID) ([]*api.TxInfo, error)
 		GetTxs(startSequenceNumber uint64, count int) (res []*api.TxInfo, prevSequenceNumber uint64, err error)
 
 		//bill

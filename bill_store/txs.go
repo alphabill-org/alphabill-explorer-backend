@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/alphabill-org/alphabill-explorer-backend/api"
+	"github.com/alphabill-org/alphabill/types"
 	"github.com/alphabill-org/alphabill/util"
 	bolt "go.etcd.io/bbolt"
 )
@@ -33,7 +34,7 @@ func (s *boltBillStore) SetTxInfo(txInfo *api.TxInfo) error {
 	})
 }
 
-func (s *boltBillStore) addTxInOrder(tx *bolt.Tx, txRecHash []byte) error {
+func (s *boltBillStore) addTxInOrder(tx *bolt.Tx, txRecHash api.TxHash) error {
 	bucket := tx.Bucket(orderedTxRecHashes)
 	if bucket == nil {
 		return fmt.Errorf("bucket %s not found", orderedTxRecHashes)
@@ -45,7 +46,7 @@ func (s *boltBillStore) addTxInOrder(tx *bolt.Tx, txRecHash []byte) error {
 	return bucket.Put(util.Uint64ToBytes(nextIndex), txRecHash)
 }
 
-func (s *boltBillStore) addUnitTxHash(tx *bolt.Tx, unitID, txRecordHash []byte) error {
+func (s *boltBillStore) addUnitTxHash(tx *bolt.Tx, unitID types.UnitID, txRecordHash api.TxHash) error {
 	bucket, err := EnsureSubBucket(tx, unitIDsToTxRecHashBucket, unitID, false)
 	if err != nil {
 		return fmt.Errorf("failed to ensure sub-bucket for unitID %s: %v", unitID, err)
@@ -57,7 +58,7 @@ func (s *boltBillStore) addUnitTxHash(tx *bolt.Tx, unitID, txRecordHash []byte) 
 	return nil
 }
 
-func (s *boltBillStore) addTxHashMapping(tx *bolt.Tx, txOrderHash, txRecHash []byte) error {
+func (s *boltBillStore) addTxHashMapping(tx *bolt.Tx, txOrderHash, txRecHash api.TxHash) error {
 	bucket := tx.Bucket(txOrderHashToTxRecHash)
 	err := bucket.Put(txOrderHash, txRecHash)
 	if err != nil {
@@ -66,7 +67,7 @@ func (s *boltBillStore) addTxHashMapping(tx *bolt.Tx, txOrderHash, txRecHash []b
 	return nil
 }
 
-func (s *boltBillStore) GetTxInfo(txHash []byte) (*api.TxInfo, error) {
+func (s *boltBillStore) GetTxInfo(txHash api.TxHash) (*api.TxInfo, error) {
 	var txInfo *api.TxInfo
 	err := s.db.View(func(tx *bolt.Tx) error {
 		var err error
@@ -76,7 +77,7 @@ func (s *boltBillStore) GetTxInfo(txHash []byte) (*api.TxInfo, error) {
 	return txInfo, err
 }
 
-func (s *boltBillStore) getTxInfo(tx *bolt.Tx, txHash []byte) (*api.TxInfo, error) {
+func (s *boltBillStore) getTxInfo(tx *bolt.Tx, txHash api.TxHash) (*api.TxInfo, error) {
 	var txInfo *api.TxInfo
 	txInfoBytes := tx.Bucket(txInfoBucket).Get(txHash)
 	err := json.Unmarshal(txInfoBytes, &txInfo)
@@ -101,7 +102,7 @@ func (s *boltBillStore) getTxs(tx *bolt.Tx, startSequenceNumber uint64, count in
 		startSequenceNumber = orderedTxRecHashes.Sequence()
 	}
 	startKey = util.Uint64ToBytes(startSequenceNumber)
-	
+
 	cursor := orderedTxRecHashes.Cursor()
 	for k, v := cursor.Seek(startKey); k != nil && count > 0; k, v = cursor.Prev() {
 		txInfo, err := s.getTxInfo(tx, v)
@@ -158,7 +159,7 @@ func (s *boltBillStore) getBlockTxsByBlockNumber(tx *bolt.Tx, blockNumber uint64
 	return txs, nil
 }
 
-func (s *boltBillStore) GetTxsByUnitID(unitID string) ([]*api.TxInfo, error) {
+func (s *boltBillStore) GetTxsByUnitID(unitID types.UnitID) ([]*api.TxInfo, error) {
 	var txs []*api.TxInfo
 
 	err := s.db.View(func(tx *bolt.Tx) error {
@@ -167,7 +168,7 @@ func (s *boltBillStore) GetTxsByUnitID(unitID string) ([]*api.TxInfo, error) {
 			return fmt.Errorf("bucket %s not found", unitIDsToTxRecHashBucket)
 		}
 
-		subBucket := bucket.Bucket([]byte(unitID))
+		subBucket := bucket.Bucket(unitID)
 		if subBucket == nil {
 			return fmt.Errorf("sub bucket %s not found", []byte(unitID))
 		}
