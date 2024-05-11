@@ -19,13 +19,13 @@ import (
 	"github.com/alphabill-org/alphabill-wallet/cli/alphabill/cmd/wallet/args"
 	"github.com/alphabill-org/alphabill-wallet/client/rpc"
 	"github.com/alphabill-org/alphabill/txsystem/money"
-	abTypes "github.com/alphabill-org/alphabill/types"
+	"github.com/alphabill-org/alphabill/types"
 	"golang.org/x/sync/errgroup"
 )
 
 type (
 	Config struct {
-		ABMoneySystemIdentifier abTypes.SystemID
+		ABMoneySystemIdentifier types.SystemID
 		AlphabillUrl            string
 		ServerAddr              string
 		DbFile                  string

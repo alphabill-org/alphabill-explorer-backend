@@ -7,7 +7,7 @@ import (
 	"github.com/alphabill-org/alphabill-explorer-backend/api"
 	moneyApi "github.com/alphabill-org/alphabill-wallet/wallet/money/api"
 	txSysMoney "github.com/alphabill-org/alphabill/txsystem/money"
-	types "github.com/alphabill-org/alphabill/types"
+	"github.com/alphabill-org/alphabill/types"
 )
 
 type (

@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"github.com/alphabill-org/alphabill-explorer-backend/api"
-	abtypes "github.com/alphabill-org/alphabill/types"
+	"github.com/alphabill-org/alphabill/types"
 )
 
 const (
@@ -25,11 +25,11 @@ type BlockProcessor struct {
 	store Store
 }
 
-func NewBlockProcessor(store Store, moneySystemID abtypes.SystemID) (*BlockProcessor, error) {
+func NewBlockProcessor(store Store, moneySystemID types.SystemID) (*BlockProcessor, error) {
 	return &BlockProcessor{store: store}, nil
 }
 
-func (p *BlockProcessor) ProcessBlock(_ context.Context, b *abtypes.Block) error {
+func (p *BlockProcessor) ProcessBlock(_ context.Context, b *types.Block) error {
 	roundNumber := b.GetRoundNumber()
 	println("processing block: ", roundNumber)
 	if len(b.Transactions) > 0 {
@@ -67,11 +67,11 @@ func (p *BlockProcessor) ProcessBlock(_ context.Context, b *abtypes.Block) error
 	return p.store.SetBlockNumber(roundNumber)
 }
 
-func (p *BlockProcessor) processTx(txr *abtypes.TransactionRecord, b *abtypes.Block, txIdx int) error {
+func (p *BlockProcessor) processTx(txr *types.TransactionRecord, b *types.Block, txIdx int) error {
 	txo := txr.TransactionOrder
 	txHash := txo.Hash(crypto.SHA256)
 	_ = txHash
-	proof, _, err := abtypes.NewTxProof(b, txIdx, crypto.SHA256)
+	proof, _, err := types.NewTxProof(b, txIdx, crypto.SHA256)
 	if err != nil {
 		return err
 	}
@@ -348,7 +348,7 @@ func (p *BlockProcessor) saveTx(txInfo *api.TxInfo) error {
 	return nil
 }
 
-func (p *BlockProcessor) saveBlock(b *abtypes.Block) error {
+func (p *BlockProcessor) saveBlock(b *types.Block) error {
 	if b == nil {
 		return fmt.Errorf("block is nil")
 	}
