@@ -64,6 +64,7 @@ func (api *MoneyRestAPI) getBlock(w http.ResponseWriter, r *http.Request) {
 // @produce	application/json
 // @Param startBlock query string false "optionally specify the start block number"
 // @Param limit query string false "optionally specify the number of blocks to return, defaults to 10"
+// @Param includeEmpty query string false "optionally specify to include empty blocks in the response"
 // @Success 200 {array} api.BlockInfo
 // @Router /blocks [get]
 // @Tags Blocks
@@ -98,7 +99,17 @@ func (api *MoneyRestAPI) getBlocks(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	recs, prevBlockNumber, err := api.Service.GetBlocks(startBlock, limit)
+	includeEmptyStr := qp.Get("includeEmpty")
+	includeEmpty := true
+	if includeEmptyStr != "" {
+		includeEmpty, err = strconv.ParseBool(includeEmptyStr)
+		if err != nil {
+			http.Error(w, "Invalid 'includeEmpty' format", http.StatusBadRequest)
+			return
+		}
+	}
+
+	recs, prevBlockNumber, err := api.Service.GetBlocks(startBlock, limit, includeEmpty)
 	if err != nil {
 		println("error on GET /blocks: ", err)
 		api.rw.WriteErrorResponse(w, fmt.Errorf("unable to fetch blocks: %w", err))

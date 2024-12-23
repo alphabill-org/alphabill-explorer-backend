@@ -22,7 +22,7 @@ type (
 		//block
 		GetLastBlockNumber() (uint64, error)
 		GetBlock(blockNumber uint64) (*api.BlockInfo, error)
-		GetBlocks(dbStartBlock uint64, count int) (res []*api.BlockInfo, prevBlockNumber uint64, err error)
+		GetBlocks(dbStartBlock uint64, count int, includeEmpty bool) (res []*api.BlockInfo, prevBlockNumber uint64, err error)
 
 		//tx
 		GetTxInfo(txHash api.TxHash) (res *api.TxInfo, err error)

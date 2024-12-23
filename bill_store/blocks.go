@@ -3,6 +3,7 @@ package bill_store
 import (
 	"encoding/json"
 	"fmt"
+	"time"
 
 	exTypes "github.com/alphabill-org/alphabill-explorer-backend/api"
 	"github.com/alphabill-org/alphabill/util"
@@ -70,15 +71,15 @@ func (s *boltBillStore) GetBlockInfo(blockNumber uint64) (*exTypes.BlockInfo, er
 	return b, nil
 }
 
-func (s *boltBillStore) GetBlocksInfo(dbStartBlock uint64, count int) (res []*exTypes.BlockInfo, prevBlockNumber uint64, err error) {
+func (s *boltBillStore) GetBlocksInfo(dbStartBlock uint64, count int, includeEmpty bool) (res []*exTypes.BlockInfo, prevBlockNumber uint64, err error) {
 	return res, prevBlockNumber, s.db.View(func(tx *bolt.Tx) error {
 		var err error
-		res, prevBlockNumber, err = s.getBlocksInfo(tx, dbStartBlock, count)
+		res, prevBlockNumber, err = s.getBlocksInfo(tx, dbStartBlock, count, includeEmpty)
 		return err
 	})
 }
 
-func (s *boltBillStore) getBlocksInfo(tx *bolt.Tx, dbStartBlock uint64, count int) ([]*exTypes.BlockInfo, uint64, error) {
+func (s *boltBillStore) getBlocksInfo(tx *bolt.Tx, dbStartBlock uint64, count int, includeEmpty bool) ([]*exTypes.BlockInfo, uint64, error) {
 	pb := tx.Bucket(blockInfoBucket)
 
 	if pb == nil {
@@ -92,10 +93,19 @@ func (s *boltBillStore) getBlocksInfo(tx *bolt.Tx, dbStartBlock uint64, count in
 	var prevBlockNumberBytes []byte
 	var prevBlockNumber uint64
 
+	iteratedBlockCount := 0
+	start := time.Now()
+
 	for k, v := c.Seek(dbStartKeyBytes); k != nil && count > 0; k, v = c.Prev() {
+		iteratedBlockCount++
 		rec := &exTypes.BlockInfo{}
 		if err := json.Unmarshal(v, rec); err != nil {
 			return nil, 0, fmt.Errorf("failed to deserialize tx history record: %w", err)
+		}
+		prevBlockNumberBytes = k
+		if !includeEmpty && len(rec.TxHashes) == 0 {
+			// TODO: this might be slow, need to refactor
+			continue
 		}
 		res = append(res, rec)
 		if count--; count == 0 {
@@ -108,7 +118,6 @@ func (s *boltBillStore) getBlocksInfo(tx *bolt.Tx, dbStartBlock uint64, count in
 	} else {
 		prevBlockNumber = 0
 	}
+	fmt.Printf("dbStartBlock: %d, iteratedBlockCount: %d, total returned: %d, prevBlockNumber: %d, time: %s\n", dbStartBlock, iteratedBlockCount, len(res), prevBlockNumber, time.Since(start))
 	return res, prevBlockNumber, nil
 }
-
-

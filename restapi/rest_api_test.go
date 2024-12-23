@@ -34,7 +34,7 @@ func (m *MockExplorerBackendService) GetBlock(blockNumber uint64) (*api.BlockInf
 	panic("GetBlockFunc not implemented")
 }
 
-func (m *MockExplorerBackendService) GetBlocks(dbStartBlock uint64, count int) (res []*api.BlockInfo, prevBlockNumber uint64, err error) {
+func (m *MockExplorerBackendService) GetBlocks(dbStartBlock uint64, count int, includeEmpty bool) (res []*api.BlockInfo, prevBlockNumber uint64, err error) {
 	if m.getBlocksFunc != nil {
 		return m.getBlocksFunc(dbStartBlock, count)
 	}

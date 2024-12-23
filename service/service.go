@@ -16,7 +16,7 @@ type (
 		//block
 		GetLastBlockNumber() (uint64, error)
 		GetBlockInfo(blockNumber uint64) (*api.BlockInfo, error)
-		GetBlocksInfo(dbStartBlock uint64, count int) (res []*api.BlockInfo, prevBlockNumber uint64, err error)
+		GetBlocksInfo(dbStartBlock uint64, count int, includeEmpty bool) (res []*api.BlockInfo, prevBlockNumber uint64, err error)
 
 		//tx
 		GetTxInfo(txHash api.TxHash) (*api.TxInfo, error)
@@ -61,8 +61,8 @@ func (ex *ExplorerBackend) GetBlock(blockNumber uint64) (*api.BlockInfo, error) 
 }
 
 // GetBlocks return amount of blocks provided with count
-func (ex *ExplorerBackend) GetBlocks(dbStartBlockNumber uint64, count int) (res []*api.BlockInfo, prevBlockNUmber uint64, err error) {
-	return ex.store.GetBlocksInfo(dbStartBlockNumber, count)
+func (ex *ExplorerBackend) GetBlocks(dbStartBlockNumber uint64, count int, includeEmpty bool) (res []*api.BlockInfo, prevBlockNUmber uint64, err error) {
+	return ex.store.GetBlocksInfo(dbStartBlockNumber, count, includeEmpty)
 }
 
 // tx
