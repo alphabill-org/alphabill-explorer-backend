@@ -5,7 +5,8 @@ import (
 	"fmt"
 
 	exTypes "github.com/alphabill-org/alphabill-explorer-backend/api"
-	"github.com/alphabill-org/alphabill/util"
+	"github.com/alphabill-org/alphabill-go-base/types"
+	"github.com/alphabill-org/alphabill-go-base/util"
 	bolt "go.etcd.io/bbolt"
 )
 
@@ -17,7 +18,16 @@ func (s *boltBillStore) SetBlockInfo(blockInfo *exTypes.BlockInfo) error {
 			return fmt.Errorf("bucket %s not found", blockInfoBucket)
 		}
 
-		blockNumber := blockInfo.UnicityCertificate.InputRecord.RoundNumber
+		unicityCertificate := types.UnicityCertificate{}
+		bytes, err := blockInfo.UnicityCertificate.MarshalCBOR()
+		if err != nil {
+			return err
+		}
+		if err = unicityCertificate.UnmarshalCBOR(bytes); err != nil {
+			return err
+		}
+
+		blockNumber := unicityCertificate.InputRecord.RoundNumber
 		blockNumberBytes := util.Uint64ToBytes(blockNumber)
 
 		blockInfoBytes, err := json.Marshal(blockInfo)
@@ -110,5 +120,3 @@ func (s *boltBillStore) getBlocksInfo(tx *bolt.Tx, dbStartBlock uint64, count in
 	}
 	return res, prevBlockNumber, nil
 }
-
-

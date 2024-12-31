@@ -6,8 +6,8 @@ import (
 	"strconv"
 
 	"github.com/alphabill-org/alphabill-explorer-backend/api"
-	moneyApi "github.com/alphabill-org/alphabill-wallet/wallet/money/api"
-	"github.com/alphabill-org/alphabill/types"
+	"github.com/alphabill-org/alphabill-go-base/types"
+	"github.com/alphabill-org/alphabill-go-base/types/hex"
 )
 
 const (
@@ -18,6 +18,7 @@ const (
 type (
 	ExplorerBackendService interface {
 		GetRoundNumber(ctx context.Context) (uint64, error)
+		GetUnitsByOwnerID(ctx context.Context, ownerID hex.Bytes) ([]types.UnitID, error)
 
 		//block
 		GetLastBlockNumber() (uint64, error)
@@ -31,14 +32,14 @@ type (
 		GetTxs(startSequenceNumber uint64, count int) (res []*api.TxInfo, prevSequenceNumber uint64, err error)
 
 		//bill
-		GetBillsByPubKey(ctx context.Context, ownerID types.Bytes) (res []*moneyApi.Bill, err error)
+		//GetBillsByPubKey(ctx context.Context, ownerID types.Bytes) (res []*moneyApi.Bill, err error)
 	}
 
 	MoneyRestAPI struct {
 		Service            ExplorerBackendService
 		ListBillsPageLimit int
 		rw                 *ResponseWriter
-		SystemID           types.SystemID
+		PartitionID        types.PartitionID
 	}
 
 	RoundNumberResponse struct {
@@ -58,8 +59,8 @@ func (api *MoneyRestAPI) roundNumberFunc(w http.ResponseWriter, r *http.Request)
 
 func (api *MoneyRestAPI) getInfo(w http.ResponseWriter, _ *http.Request) {
 	res := InfoResponse{
-		SystemID: api.SystemID,
-		Name:     "blocks backend",
+		PartitionID: api.PartitionID,
+		Name:        "blocks backend",
 	}
 	api.rw.WriteResponse(w, res)
 }

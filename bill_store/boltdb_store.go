@@ -6,8 +6,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/alphabill-org/alphabill/util"
 	bolt "go.etcd.io/bbolt"
+
+	"github.com/alphabill-org/alphabill-go-base/util"
 )
 
 const BoltExplorerStoreFileName = "blocks.db"

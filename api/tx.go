@@ -3,8 +3,7 @@ package api
 import (
 	"crypto"
 	"fmt"
-
-	"github.com/alphabill-org/alphabill/types"
+	"github.com/alphabill-org/alphabill-go-base/types"
 )
 
 type TxInfo struct {
@@ -18,8 +17,23 @@ func NewTxInfo(blockNo uint64, txRecord *types.TransactionRecord) (*TxInfo, erro
 	if txRecord == nil {
 		return nil, fmt.Errorf("transaction record is nil")
 	}
-	txrHash := txRecord.Hash(crypto.SHA256)
-	txoHash := txRecord.TransactionOrder.Hash(crypto.SHA256)
+	txrHash, err := txRecord.Hash(crypto.SHA256)
+	if err != nil {
+		return nil, err
+	}
+	txOrder := types.TransactionOrder{}
+	bytes, err := txRecord.TransactionOrder.MarshalCBOR()
+	if err != nil {
+		return nil, err
+	}
+	if err = txOrder.UnmarshalCBOR(bytes); err != nil {
+		return nil, err
+	}
+
+	txoHash, err := txOrder.Hash(crypto.SHA256)
+	if err != nil {
+		return nil, err
+	}
 
 	txInfo := &TxInfo{
 		TxRecordHash: txrHash,

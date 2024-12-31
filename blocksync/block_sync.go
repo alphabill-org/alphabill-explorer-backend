@@ -7,8 +7,8 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/alphabill-org/alphabill-wallet/wallet/money/api"
-	"github.com/alphabill-org/alphabill/types"
+	"github.com/alphabill-org/alphabill-go-base/types"
+	"github.com/alphabill-org/alphabill/tree/avl"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -69,12 +69,18 @@ func fetchBlocks(ctx context.Context, getBlock BlockLoaderFunc, blockNumber uint
 			return err
 		}
 		block, err := getBlock(ctx, blockNumber)
-		if err != nil && !errors.Is(err, api.ErrNotFound) {
+		if err != nil && !errors.Is(err, avl.ErrNotFound) {
 			return fmt.Errorf("failed to fetch blocks [%d...]: %w", blockNumber, err)
 		}
+
+		round, err := block.GetRoundNumber()
+		if err != nil {
+			return err
+		}
+
 		if block != nil {
 			out <- block
-			blockNumber = block.GetRoundNumber() + 1
+			blockNumber = round + 1
 			continue
 		}
 		// we have reached to the last block the source currently has - wait a bit before asking for more
@@ -89,7 +95,8 @@ func fetchBlocks(ctx context.Context, getBlock BlockLoaderFunc, blockNumber uint
 func processBlocks(ctx context.Context, blocks <-chan *types.Block, processor BlockProcessorFunc) error {
 	for b := range blocks {
 		if err := processor(ctx, b); err != nil {
-			return fmt.Errorf("failed to process block {%x : %d}: %w", b.SystemID(), b.GetRoundNumber(), err)
+			round, _ := b.GetRoundNumber()
+			return fmt.Errorf("failed to process block {%x : %d}: %w", b.PartitionID(), round, err)
 		}
 	}
 	return nil
