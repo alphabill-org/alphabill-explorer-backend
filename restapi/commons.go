@@ -12,7 +12,7 @@ import (
 	"strconv"
 
 	s "github.com/alphabill-org/alphabill-explorer-backend/api"
-	"github.com/alphabill-org/alphabill/types"
+	"github.com/alphabill-org/alphabill-go-base/types"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/fxamacker/cbor/v2"
 )
@@ -50,8 +50,8 @@ type (
 
 	// InfoResponse should be compatible with Node /info request
 	InfoResponse struct {
-		SystemID types.SystemID `json:"system_id"` // hex encoded system identifier (without 0x prefix)
-		Name     string         `json:"name"`      // one of [money backend | tokens backend]
+		PartitionID types.PartitionID `json:"system_id"` // hex encoded system identifier (without 0x prefix)
+		Name        string            `json:"name"`      // one of [money backend | tokens backend]
 	}
 )
 

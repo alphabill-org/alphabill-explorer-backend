@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	"github.com/alphabill-org/alphabill-explorer-backend/api"
-	"github.com/alphabill-org/alphabill/types"
-	"github.com/alphabill-org/alphabill/util"
+	"github.com/alphabill-org/alphabill-go-base/types"
+	"github.com/alphabill-org/alphabill-go-base/util"
 	bolt "go.etcd.io/bbolt"
 )
 

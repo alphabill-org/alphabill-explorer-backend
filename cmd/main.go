@@ -18,19 +18,16 @@ import (
 	"github.com/alphabill-org/alphabill-explorer-backend/service"
 	"github.com/alphabill-org/alphabill-wallet/cli/alphabill/cmd/wallet/args"
 	"github.com/alphabill-org/alphabill-wallet/client/rpc"
-	"github.com/alphabill-org/alphabill/txsystem/money"
-	"github.com/alphabill-org/alphabill/types"
 	"golang.org/x/sync/errgroup"
 )
 
 type (
 	Config struct {
-		ABMoneySystemIdentifier types.SystemID
-		AlphabillUrl            string
-		ServerAddr              string
-		DbFile                  string
-		ListBillsPageLimit      int
-		BlockNumber             uint64
+		AlphabillUrl       string
+		ServerAddr         string
+		DbFile             string
+		ListBillsPageLimit int
+		BlockNumber        uint64
 	}
 )
 
@@ -51,11 +48,10 @@ func main() {
 		blockNumber, _ = strconv.ParseUint(args[3], 10, 64)
 	}
 	err := Run(context.Background(), &Config{
-		ABMoneySystemIdentifier: money.DefaultSystemIdentifier,
-		AlphabillUrl:            args[1],
-		ServerAddr:              args[2],
-		DbFile:                  filepath.Join(workDir, bs.BoltExplorerStoreFileName),
-		BlockNumber:             blockNumber,
+		AlphabillUrl: args[1],
+		ServerAddr:   args[2],
+		DbFile:       filepath.Join(workDir, bs.BoltExplorerStoreFileName),
+		BlockNumber:  blockNumber,
 	})
 	if err != nil {
 		panic(err)
@@ -69,7 +65,19 @@ func Run(ctx context.Context, config *Config) error {
 		return fmt.Errorf("failed to get storage: %w", err)
 	}
 
-	moneyClient, err := rpc.DialContext(ctx, args.BuildRpcUrl(config.AlphabillUrl))
+	adminClient, err := rpc.NewAdminAPIClient(ctx, args.BuildRpcUrl(config.AlphabillUrl))
+	if err != nil {
+		return fmt.Errorf("failed to dial rpc client: %w", err)
+	}
+
+	info, err := adminClient.GetNodeInfo(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get node info: %w", err)
+	}
+
+	println("partition ID: ", info.PartitionID)
+
+	moneyClient, err := rpc.NewStateAPIClient(ctx, args.BuildRpcUrl(config.AlphabillUrl))
 	if err != nil {
 		return fmt.Errorf("failed to dial rpc client: %w", err)
 	}
@@ -84,12 +92,12 @@ func Run(ctx context.Context, config *Config) error {
 		handler := &ra.MoneyRestAPI{
 			Service:            explorerBackend,
 			ListBillsPageLimit: config.ListBillsPageLimit,
-			SystemID:           config.ABMoneySystemIdentifier,
+			PartitionID:        info.PartitionID,
 		}
 
 		return httpsrv.Run(
 			ctx,
-			http.Server{
+			&http.Server{
 				Addr:              config.ServerAddr,
 				Handler:           handler.Router(),
 				ReadTimeout:       3 * time.Second,
@@ -101,7 +109,7 @@ func Run(ctx context.Context, config *Config) error {
 	})
 
 	g.Go(func() error {
-		blockProcessor, err := blocks.NewBlockProcessor(store, config.ABMoneySystemIdentifier)
+		blockProcessor, err := blocks.NewBlockProcessor(store)
 		if err != nil {
 			return fmt.Errorf("failed to create block processor: %w", err)
 		}

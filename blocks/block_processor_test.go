@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/alphabill-org/alphabill-explorer-backend/api"
-	"github.com/alphabill-org/alphabill/types"
+	"github.com/alphabill-org/alphabill-go-base/types"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
@@ -42,16 +42,22 @@ func TestBlockProcessor_Success(t *testing.T) {
 	store.On("SetTxInfo", mock.Anything).Return(nil)
 	store.On("SetBlockInfo", mock.Anything).Return(nil)
 
-	blockProcessor, err := NewBlockProcessor(store, 0)
+	blockProcessor, err := NewBlockProcessor(store)
+	require.NoError(t, err)
+
+	txoBytes, err := (&types.TransactionOrder{}).MarshalCBOR()
+	require.NoError(t, err)
+
+	unicityCertificate, err := (&types.UnicityCertificate{InputRecord: &types.InputRecord{RoundNumber: 2}}).MarshalCBOR()
 	require.NoError(t, err)
 
 	block := &types.Block{
 		Transactions: []*types.TransactionRecord{
 			{
-				TransactionOrder: &types.TransactionOrder{},
+				TransactionOrder: txoBytes,
 			},
 		},
-		UnicityCertificate: &types.UnicityCertificate{InputRecord: &types.InputRecord{RoundNumber: 2}},
+		UnicityCertificate: unicityCertificate,
 	}
 
 	err = blockProcessor.ProcessBlock(context.Background(), block)
@@ -64,13 +70,16 @@ func TestBlockProcessor_FailOnGetBlockNumber(t *testing.T) {
 	store := new(MockStore)
 	store.On("GetBlockNumber").Return(uint64(0), fmt.Errorf("some error"))
 
-	blockProcessor, err := NewBlockProcessor(store, 0)
+	blockProcessor, err := NewBlockProcessor(store)
+	require.NoError(t, err)
+
+	txoBytes, err := (&types.TransactionOrder{}).MarshalCBOR()
 	require.NoError(t, err)
 
 	block := &types.Block{
 		Transactions: []*types.TransactionRecord{
 			{
-				TransactionOrder: &types.TransactionOrder{},
+				TransactionOrder: txoBytes,
 			},
 		},
 	}
@@ -88,16 +97,22 @@ func TestBlockProcessor_FailOnSetBlockNumber(t *testing.T) {
 	store.On("SetTxInfo", mock.Anything).Return(nil)
 	store.On("SetBlockInfo", mock.Anything).Return(nil)
 
-	blockProcessor, err := NewBlockProcessor(store, 0)
+	blockProcessor, err := NewBlockProcessor(store)
+	require.NoError(t, err)
+
+	txoBytes, err := (&types.TransactionOrder{}).MarshalCBOR()
+	require.NoError(t, err)
+
+	unicityCertificate, err := (&types.UnicityCertificate{InputRecord: &types.InputRecord{RoundNumber: 2}}).MarshalCBOR()
 	require.NoError(t, err)
 
 	block := &types.Block{
 		Transactions: []*types.TransactionRecord{
 			{
-				TransactionOrder: &types.TransactionOrder{},
+				TransactionOrder: txoBytes,
 			},
 		},
-		UnicityCertificate: &types.UnicityCertificate{InputRecord: &types.InputRecord{RoundNumber: 2}},
+		UnicityCertificate: unicityCertificate,
 	}
 
 	err = blockProcessor.ProcessBlock(context.Background(), block)

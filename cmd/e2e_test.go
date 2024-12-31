@@ -23,7 +23,6 @@ import (
 	"github.com/alphabill-org/alphabill-wallet/wallet/account"
 	"github.com/alphabill-org/alphabill-wallet/wallet/fees"
 	wallet "github.com/alphabill-org/alphabill-wallet/wallet/money"
-	"github.com/alphabill-org/alphabill/txsystem/money"
 	"github.com/stretchr/testify/require"
 )
 
@@ -145,11 +144,10 @@ func runService(t *testing.T, ctx context.Context, host string, startFromBlock u
 		defer wg.Done()
 		require.NotPanics(t, func() {
 			err := Run(ctx, &Config{
-				ABMoneySystemIdentifier: money.DefaultSystemIdentifier,
-				AlphabillUrl:            abMoneyRpcUrl,
-				ServerAddr:              host,
-				DbFile:                  filepath.Join(t.TempDir(), bill_store.BoltExplorerStoreFileName),
-				BlockNumber:             startFromBlock,
+				AlphabillUrl: abMoneyRpcUrl,
+				ServerAddr:   host,
+				DbFile:       filepath.Join(t.TempDir(), bill_store.BoltExplorerStoreFileName),
+				BlockNumber:  startFromBlock,
 			})
 			require.NoError(t, err)
 		}, "should not panic")

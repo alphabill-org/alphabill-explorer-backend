@@ -5,9 +5,8 @@ import (
 	"fmt"
 
 	"github.com/alphabill-org/alphabill-explorer-backend/api"
-	moneyApi "github.com/alphabill-org/alphabill-wallet/wallet/money/api"
-	txSysMoney "github.com/alphabill-org/alphabill/txsystem/money"
-	"github.com/alphabill-org/alphabill/types"
+	"github.com/alphabill-org/alphabill-go-base/types"
+	"github.com/alphabill-org/alphabill-go-base/types/hex"
 )
 
 type (
@@ -27,8 +26,8 @@ type (
 
 	ABClient interface {
 		GetRoundNumber(ctx context.Context) (uint64, error)
-		GetUnitsByOwnerID(ctx context.Context, ownerID types.Bytes) ([]types.UnitID, error)
-		GetBill(ctx context.Context, unitID types.UnitID, includeStateProof bool) (*moneyApi.Bill, error)
+		GetUnitsByOwnerID(ctx context.Context, ownerID hex.Bytes) ([]types.UnitID, error)
+		//GetBill(ctx context.Context, unitID types.UnitID, includeStateProof bool) (*moneyApi.Bill, error)
 	}
 
 	ExplorerBackend struct {
@@ -82,22 +81,16 @@ func (ex *ExplorerBackend) GetTxs(startSequenceNumber uint64, count int) (res []
 	return ex.store.GetTxs(startSequenceNumber, count)
 }
 
+func (ex *ExplorerBackend) GetUnitsByOwnerID(ctx context.Context, ownerID hex.Bytes) ([]types.UnitID, error) {
+	return ex.GetUnitsByOwnerID(ctx, ownerID)
+}
+
 // bill
-func (ex *ExplorerBackend) GetBillsByPubKey(ctx context.Context, ownerID types.Bytes) (res []*moneyApi.Bill, err error) {
+func (ex *ExplorerBackend) GetBillsByPubKey(ctx context.Context, ownerID hex.Bytes) (res []types.UnitID, err error) {
 	unitIDs, err := ex.client.GetUnitsByOwnerID(ctx, ownerID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get units by owner ID: %w", err)
 	}
-	var bills []*moneyApi.Bill
-	for _, unitID := range unitIDs {
-		if !unitID.HasType(txSysMoney.BillUnitType) {
-			continue
-		}
-		bill, err := ex.client.GetBill(ctx, unitID, false)
-		if err != nil {
-			return nil, fmt.Errorf("failed to fetch unit: %w", err)
-		}
-		bills = append(bills, bill)
-	}
-	return bills, nil
+	// todo get bill data
+	return unitIDs, nil
 }

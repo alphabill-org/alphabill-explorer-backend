@@ -2,11 +2,10 @@ package blocks
 
 import (
 	"context"
-	"crypto"
 	"fmt"
 
 	"github.com/alphabill-org/alphabill-explorer-backend/api"
-	"github.com/alphabill-org/alphabill/types"
+	"github.com/alphabill-org/alphabill-go-base/types"
 )
 
 type Store interface {
@@ -20,12 +19,15 @@ type BlockProcessor struct {
 	store Store
 }
 
-func NewBlockProcessor(store Store, moneySystemID types.SystemID) (*BlockProcessor, error) {
+func NewBlockProcessor(store Store) (*BlockProcessor, error) {
 	return &BlockProcessor{store: store}, nil
 }
 
 func (p *BlockProcessor) ProcessBlock(_ context.Context, b *types.Block) error {
-	roundNumber := b.GetRoundNumber()
+	roundNumber, err := b.GetRoundNumber()
+	if err != nil {
+		return err
+	}
 	println("processing block: ", roundNumber)
 	if len(b.Transactions) > 0 {
 		fmt.Printf("Block number: %d has %d transactions\n", roundNumber, len(b.Transactions))
@@ -50,7 +52,7 @@ func (p *BlockProcessor) ProcessBlock(_ context.Context, b *types.Block) error {
 }
 
 func (p *BlockProcessor) processTx(txr *types.TransactionRecord, b *types.Block, txIdx int) error {
-	txo := txr.TransactionOrder
+	/*txo := txr.TransactionOrder
 	txHash := txo.Hash(crypto.SHA256)
 	_ = txHash
 	proof, _, err := types.NewTxProof(b, txIdx, crypto.SHA256)
@@ -58,9 +60,14 @@ func (p *BlockProcessor) processTx(txr *types.TransactionRecord, b *types.Block,
 		return err
 	}
 
-	_ = proof // TODO: save proofs?
+	_ = proof // TODO: save proofs?*/
 
-	txInfo, err := api.NewTxInfo(b.GetRoundNumber(), txr)
+	roundNumber, err := b.GetRoundNumber()
+	if err != nil {
+		return err
+	}
+
+	txInfo, err := api.NewTxInfo(roundNumber, txr)
 
 	if err != nil {
 		return fmt.Errorf("failed create new txInfo in ProcessBlock: %w", err)

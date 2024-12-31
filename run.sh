@@ -2,7 +2,7 @@
 
 make build
 
-./build/abexplorer 'https://money-partition.testnet.alphabill.org' 'localhost:9666' 254277
+./build/abexplorer 'dev-ab-money-archive.abdev1.guardtime.com/rpc' 'localhost:9666' 1
 
 #
 #curl -H 'Content-Type: application/json' \

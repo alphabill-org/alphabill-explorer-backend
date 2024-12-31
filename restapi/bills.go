@@ -5,7 +5,6 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
-	moneyApi "github.com/alphabill-org/alphabill-wallet/wallet/money/api"
 )
 
 // @Summary Retrieve bills by public key
@@ -26,19 +25,18 @@ func (api *MoneyRestAPI) getBillsByPubKey(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	ownerID:= []byte(ownerIDStr)
-	var bills []*moneyApi.Bill 
-
-	bills, err := api.Service.GetBillsByPubKey(r.Context() , ownerID)
+	ownerID := []byte(ownerIDStr)
+	unitIDs, err := api.Service.GetUnitsByOwnerID(r.Context(), ownerID)
 	if err != nil {
 		api.rw.WriteErrorResponse(w, fmt.Errorf("failed to load bills with pubKey %s : %w", ownerIDStr, err))
-		return
 	}
 
-	if bills == nil {
+	// todo get bill data
+
+	if unitIDs == nil {
 		api.rw.ErrorResponse(w, http.StatusNotFound, fmt.Errorf("bills with pubKey %s not found", ownerIDStr))
 		return
 	}
 
-	api.rw.WriteResponse(w, bills)
+	api.rw.WriteResponse(w, unitIDs)
 }
