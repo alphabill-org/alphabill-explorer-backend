@@ -1,14 +1,5 @@
 basePath: /api/v1
 definitions:
-  api.Bill:
-    properties:
-      billData:
-        $ref: '#/definitions/money.BillData'
-      id:
-        items:
-          type: integer
-        type: array
-    type: object
   api.BlockInfo:
     properties:
       header:
@@ -20,7 +11,9 @@ definitions:
           type: array
         type: array
       unicityCertificate:
-        $ref: '#/definitions/types.UnicityCertificate'
+        items:
+          type: integer
+        type: array
     type: object
   api.TxInfo:
     properties:
@@ -37,55 +30,15 @@ definitions:
           type: integer
         type: array
     type: object
-  imt.PathItem:
-    properties:
-      hash:
-        items:
-          type: integer
-        type: array
-      key:
-        items:
-          type: integer
-        type: array
-    type: object
-  money.BillData:
-    properties:
-      backlink:
-        description: Backlink (256-bit hash)
-        items:
-          type: integer
-        type: array
-      lastUpdate:
-        description: The round number of the last transaction with the bill
-        example: "0"
-        type: string
-      locked:
-        description: locked status of the bill, non-zero value means locked
-        example: "0"
-        type: string
-      value:
-        description: The monetary value of this bill
-        example: "0"
-        type: string
-    type: object
   restapi.ErrorResponse:
     properties:
       message:
         type: string
     type: object
-  types.ClientMetadata:
-    properties:
-      feeCreditRecordID:
-        items:
-          type: integer
-        type: array
-      maxTransactionFee:
-        type: integer
-      timeout:
-        type: integer
-    type: object
   types.Header:
     properties:
+      partitionID:
+        type: integer
       previousBlockHash:
         items:
           type: integer
@@ -93,57 +46,9 @@ definitions:
       proposerID:
         type: string
       shardID:
-        items:
-          type: integer
-        type: array
-      systemID:
+        $ref: '#/definitions/types.ShardID'
+      version:
         type: integer
-    type: object
-  types.InputRecord:
-    properties:
-      block_hash:
-        description: hash of the block
-        items:
-          type: integer
-        type: array
-      hash:
-        description: state hash to be certified
-        items:
-          type: integer
-        type: array
-      previous_hash:
-        description: previously certified state hash
-        items:
-          type: integer
-        type: array
-      round_number:
-        description: transaction system's round number
-        type: integer
-      sum_of_earned_fees:
-        description: sum of the actual fees over all transaction records in the block
-        type: integer
-      summary_value:
-        description: summary value to certified
-        items:
-          type: integer
-        type: array
-    type: object
-  types.Payload:
-    properties:
-      attributes:
-        items:
-          type: integer
-        type: array
-      clientMetadata:
-        $ref: '#/definitions/types.ClientMetadata'
-      systemID:
-        type: integer
-      type:
-        type: string
-      unitID:
-        items:
-          type: integer
-        type: array
     type: object
   types.ServerMetadata:
     properties:
@@ -162,79 +67,29 @@ definitions:
           type: array
         type: array
     type: object
-  types.SignatureMap:
-    additionalProperties:
-      items:
-        type: integer
-      type: array
-    type: object
-  types.TransactionOrder:
-    properties:
-      feeProof:
-        items:
-          type: integer
-        type: array
-      ownerProof:
-        items:
-          type: integer
-        type: array
-      payload:
-        $ref: '#/definitions/types.Payload'
+  types.ShardID:
     type: object
   types.TransactionRecord:
     properties:
       serverMetadata:
         $ref: '#/definitions/types.ServerMetadata'
       transactionOrder:
-        $ref: '#/definitions/types.TransactionOrder'
+        items:
+          type: integer
+        type: array
+      version:
+        type: integer
     type: object
   types.TxStatus:
     enum:
     - 0
     - 1
+    - 2
     type: integer
     x-enum-varnames:
     - TxStatusFailed
     - TxStatusSuccessful
-  types.UnicityCertificate:
-    properties:
-      input_record:
-        $ref: '#/definitions/types.InputRecord'
-      unicity_seal:
-        $ref: '#/definitions/types.UnicitySeal'
-      unicity_tree_certificate:
-        $ref: '#/definitions/types.UnicityTreeCertificate'
-    type: object
-  types.UnicitySeal:
-    properties:
-      hash:
-        items:
-          type: integer
-        type: array
-      previous_hash:
-        items:
-          type: integer
-        type: array
-      root_chain_round_number:
-        type: integer
-      signatures:
-        $ref: '#/definitions/types.SignatureMap'
-      timestamp:
-        type: integer
-    type: object
-  types.UnicityTreeCertificate:
-    properties:
-      sibling_hashes:
-        items:
-          $ref: '#/definitions/imt.PathItem'
-        type: array
-      system_description_hash:
-        items:
-          type: integer
-        type: array
-      system_identifier:
-        type: integer
-    type: object
+    - TxErrOutOfGas
 info:
   contact: {}
   description: API to query blocks and transactions of Alphabill's Money Partition
@@ -259,7 +114,7 @@ paths:
           description: List of bills
           schema:
             items:
-              $ref: '#/definitions/api.Bill'
+              type: string
             type: array
         "400":
           description: 'Error: Missing ''pubKey'' variable in the URL'
@@ -426,7 +281,7 @@ paths:
       - application/json
       description: Get transactions associated with a specific unit ID
       parameters:
-      - description: Unit ID
+      - description: Unit ID (0xHEX encoded)
         in: path
         name: unitID
         required: true

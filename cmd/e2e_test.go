@@ -42,6 +42,8 @@ func TestE2E(t *testing.T) {
 	port := findFreePort(t)
 	host := fmt.Sprintf("localhost:%s", port)
 
+	fmt.Printf("Starting server on %s\n", host)
+
 	w := createMoneyWallet(t, ctx, t.TempDir())
 	rn, err := w.GetRoundNumber(ctx)
 	require.NoError(t, err)

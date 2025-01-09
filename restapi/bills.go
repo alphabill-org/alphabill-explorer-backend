@@ -13,7 +13,7 @@ import (
 // @Accept json
 // @Produce json
 // @Param pubKey path string true "Public Key"
-// @Success 200 {array} moneyApi.Bill "List of bills"
+// @Success 200 {array} string "List of bills"
 // @Failure 400 {object} ErrorResponse "Error: Missing 'pubKey' variable in the URL"
 // @Failure 404 {object} ErrorResponse "Error: Bills with specified public key not found"
 // @Router /address/{pubKey}/bills [get]
