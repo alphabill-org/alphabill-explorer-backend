@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/alphabill-org/alphabill-go-base/types"
-	"github.com/alphabill-org/alphabill/tree/avl"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -69,7 +68,7 @@ func fetchBlocks(ctx context.Context, getBlock BlockLoaderFunc, blockNumber uint
 			return err
 		}
 		block, err := getBlock(ctx, blockNumber)
-		if err != nil && !errors.Is(err, avl.ErrNotFound) {
+		if err != nil {
 			return fmt.Errorf("failed to fetch blocks [%d...]: %w", blockNumber, err)
 		}
 

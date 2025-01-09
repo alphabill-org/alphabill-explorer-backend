@@ -22,11 +22,7 @@ func NewTxInfo(blockNo uint64, txRecord *types.TransactionRecord) (*TxInfo, erro
 		return nil, err
 	}
 	txOrder := types.TransactionOrder{}
-	bytes, err := txRecord.TransactionOrder.MarshalCBOR()
-	if err != nil {
-		return nil, err
-	}
-	if err = txOrder.UnmarshalCBOR(bytes); err != nil {
+	if err = txOrder.UnmarshalCBOR(txRecord.TransactionOrder); err != nil {
 		return nil, err
 	}
 
