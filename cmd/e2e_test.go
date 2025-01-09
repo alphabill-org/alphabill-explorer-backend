@@ -29,8 +29,9 @@ import (
 )
 
 const (
-	abMoneyRpcUrl = "dev-ab-money-archive.abdev1.guardtime.com/rpc"
-	maxFee        = 10
+	abMoneyRpcUrl        = "dev-ab-money.abdev1.guardtime.com/rpc"
+	abMoneyArchiveRpcUrl = "dev-ab-money-archive.abdev1.guardtime.com/rpc"
+	maxFee               = 10
 )
 
 func TestE2E(t *testing.T) {
@@ -79,7 +80,7 @@ func TestE2E(t *testing.T) {
 		pk1, err := w.GetAccountManager().GetPublicKey(1)
 		require.NoError(t, err)
 		// send 1 unit to the second key
-		proofs, err := w.Send(ctx, wallet.SendCmd{Receivers: []wallet.ReceiverData{{PubKey: pk1, Amount: 1}}, WaitForConfirmation: true, AccountIndex: 0})
+		proofs, err := w.Send(ctx, wallet.SendCmd{Receivers: []wallet.ReceiverData{{PubKey: pk1, Amount: 1}}, WaitForConfirmation: true, AccountIndex: 0, MaxFee: maxFee})
 		require.NoError(t, err)
 		require.NotEmpty(t, proofs)
 
@@ -178,7 +179,7 @@ func runService(t *testing.T, ctx context.Context, host string, startFromBlock u
 		defer wg.Done()
 		require.NotPanics(t, func() {
 			err := Run(ctx, &Config{
-				AlphabillUrl: abMoneyRpcUrl,
+				AlphabillUrl: abMoneyArchiveRpcUrl,
 				ServerAddr:   host,
 				DbFile:       filepath.Join(t.TempDir(), bill_store.BoltExplorerStoreFileName),
 				BlockNumber:  startFromBlock,
