@@ -18,15 +18,19 @@ import (
 	"github.com/alphabill-org/alphabill-explorer-backend/api"
 	"github.com/alphabill-org/alphabill-explorer-backend/bill_store"
 	"github.com/alphabill-org/alphabill-explorer-backend/restapi"
+	"github.com/alphabill-org/alphabill-go-base/types"
 	"github.com/alphabill-org/alphabill-wallet/cli/alphabill/cmd/wallet/args"
-	"github.com/alphabill-org/alphabill-wallet/client/rpc"
+	"github.com/alphabill-org/alphabill-wallet/client"
 	"github.com/alphabill-org/alphabill-wallet/wallet/account"
 	"github.com/alphabill-org/alphabill-wallet/wallet/fees"
 	wallet "github.com/alphabill-org/alphabill-wallet/wallet/money"
 	"github.com/stretchr/testify/require"
 )
 
-const abMoneyRpcUrl = "https://money-partition.testnet.alphabill.org"
+const (
+	abMoneyRpcUrl = "dev-ab-money-archive.abdev1.guardtime.com/rpc"
+	maxFee        = 10
+)
 
 func TestE2E(t *testing.T) {
 	startTime := time.Now()
@@ -66,7 +70,10 @@ func TestE2E(t *testing.T) {
 		require.NotEmpty(t, proofs)
 
 		for _, proof := range proofs {
-			txRn := proof.TxProof.UnicityCertificate.GetRoundNumber()
+			unicityCertificate := types.UnicityCertificate{}
+			err := unicityCertificate.UnmarshalCBOR(proof.TxProof.UnicityCertificate)
+			require.NoError(t, err)
+			txRn := unicityCertificate.GetRoundNumber()
 			blockInfo := &api.BlockInfo{}
 			require.Eventually(t, func() bool {
 				resp, err := client.Get(fmt.Sprintf("http://%s/api/v1/blocks/%d", host, txRn))
@@ -79,7 +86,8 @@ func TestE2E(t *testing.T) {
 				return false
 			}, 10*time.Second, 100*time.Millisecond, "should index tx record")
 
-			txrHash := proof.TxRecord.Hash(crypto.SHA256)
+			txrHash, err := proof.TxRecord.Hash(crypto.SHA256)
+			require.NoError(t, err)
 
 			t.Run("Check tx record hash is in the block info", func(t *testing.T) {
 				require.Contains(t, blockInfo.TxHashes, api.TxHash(txrHash))
@@ -95,7 +103,9 @@ func TestE2E(t *testing.T) {
 				require.EqualValues(t, txrHash, txInfo.TxRecordHash)
 				require.Equal(t, txRn, txInfo.BlockNumber)
 				require.Equal(t, proof.TxRecord, txInfo.Transaction)
-				fmt.Printf("Tx record %X indexed, type: %s\n", txrHash, txInfo.Transaction.TransactionOrder.PayloadType())
+				txOrder := types.TransactionOrder{}
+				require.NoError(t, txOrder.UnmarshalCBOR(txInfo.Transaction.TransactionOrder))
+				fmt.Printf("Tx record %X indexed, type: %d\n", txrHash, txOrder.Payload.Type)
 			})
 
 			t.Run("check latest transactions to contain the tx", func(t *testing.T) {
@@ -117,16 +127,19 @@ func createMoneyWallet(t *testing.T, ctx context.Context, walletDir string) *wal
 	am, err := account.NewManager(walletDir, "", true)
 	require.NoError(t, err)
 
-	err = wallet.CreateNewWallet(am, "prison tone orbit inside kitten clean page enrich plastic ring gather cross")
-	require.NoError(t, err)
-
 	feeManagerDB, err := fees.NewFeeManagerDB(walletDir)
 	require.NoError(t, err)
 
-	moneyClient, err := rpc.DialContext(ctx, args.BuildRpcUrl(abMoneyRpcUrl))
+	moneyClient, err := client.NewMoneyPartitionClient(ctx, args.BuildRpcUrl(abMoneyRpcUrl))
 	require.NoError(t, err)
 
-	w, err := wallet.LoadExistingWallet(am, feeManagerDB, moneyClient, slog.Default())
+	nodeInfo, err := moneyClient.GetNodeInfo(ctx)
+	require.NoError(t, err)
+
+	w, err := wallet.NewWallet(nodeInfo.NetworkID, nodeInfo.PartitionID, am, feeManagerDB, moneyClient, maxFee, slog.Default())
+	require.NoError(t, err)
+
+	err = wallet.GenerateKeys(am, "prison tone orbit inside kitten clean page enrich plastic ring gather cross")
 	require.NoError(t, err)
 
 	_, _, err = w.GetAccountManager().AddAccount()
