@@ -21,6 +21,7 @@ import (
 	"github.com/alphabill-org/alphabill-go-base/types"
 	"github.com/alphabill-org/alphabill-wallet/cli/alphabill/cmd/wallet/args"
 	"github.com/alphabill-org/alphabill-wallet/client"
+	sdktypes "github.com/alphabill-org/alphabill-wallet/client/types"
 	"github.com/alphabill-org/alphabill-wallet/wallet/account"
 	"github.com/alphabill-org/alphabill-wallet/wallet/fees"
 	wallet "github.com/alphabill-org/alphabill-wallet/wallet/money"
@@ -57,8 +58,21 @@ func TestE2E(t *testing.T) {
 		// Check first key's balance
 		balance, err := w.GetBalance(ctx, wallet.GetBalanceCmd{AccountIndex: 0})
 		require.NoError(t, err)
-		require.Greater(t, balance, uint64(0))
 		fmt.Printf("Balance: %d\n", balance)
+		require.Greater(t, balance, uint64(0))
+	})
+
+	t.Run("Check first key's fee credit record", func(t *testing.T) {
+		var fcr *sdktypes.FeeCreditRecord
+		fcr, err = w.GetFeeCredit(ctx, fees.GetFeeCreditCmd{AccountIndex: 0})
+		require.NoError(t, err)
+		if fcr == nil {
+			_, err := w.AddFeeCredit(ctx, fees.AddFeeCmd{AccountIndex: 0, Amount: 100})
+			require.NoError(t, err)
+			fcr, err = w.GetFeeCredit(ctx, fees.GetFeeCreditCmd{AccountIndex: 0})
+			require.NoError(t, err)
+		}
+		fmt.Printf("FCR balance: %d\n", fcr.Balance)
 	})
 
 	t.Run("ensure all tx records are indexed and returned by the explorer API", func(t *testing.T) {
@@ -142,8 +156,15 @@ func createMoneyWallet(t *testing.T, ctx context.Context, walletDir string) *wal
 	err = wallet.GenerateKeys(am, "prison tone orbit inside kitten clean page enrich plastic ring gather cross")
 	require.NoError(t, err)
 
-	_, _, err = w.GetAccountManager().AddAccount()
+	_, _, err = am.AddAccount()
 	require.NoError(t, err)
+
+	keys, err := am.GetPublicKeys()
+	require.NoError(t, err)
+
+	for idx, key := range keys {
+		fmt.Printf("Account #%d Pubkey: 0x%X\n", idx, key)
+	}
 
 	return w
 }
