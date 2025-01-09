@@ -76,7 +76,10 @@ func TestBlockProcessor_FailOnGetBlockNumber(t *testing.T) {
 	txoBytes, err := (&types.TransactionOrder{}).MarshalCBOR()
 	require.NoError(t, err)
 
+	unicityCertificate, err := (&types.UnicityCertificate{}).MarshalCBOR()
+	require.NoError(t, err)
 	block := &types.Block{
+		UnicityCertificate: unicityCertificate,
 		Transactions: []*types.TransactionRecord{
 			{
 				TransactionOrder: txoBytes,
@@ -86,6 +89,7 @@ func TestBlockProcessor_FailOnGetBlockNumber(t *testing.T) {
 
 	err = blockProcessor.ProcessBlock(context.Background(), block)
 	require.Error(t, err)
+	fmt.Printf("error: %v", err)
 
 	store.AssertExpectations(t)
 }
