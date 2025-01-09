@@ -8,7 +8,6 @@ go 1.23
 
 require (
 	github.com/ainvaltin/httpsrv v0.3.1
-	github.com/alphabill-org/alphabill v1.0.0-rc1
 	github.com/alphabill-org/alphabill-go-base v1.0.0-rc1.0.20241203115033-c8c87b664e82
 	github.com/alphabill-org/alphabill-wallet v1.0.0-rc1
 	github.com/ethereum/go-ethereum v1.14.11
