@@ -67,6 +67,9 @@ func (s *boltBillStore) GetBlockInfo(blockNumber uint64) (*exTypes.BlockInfo, er
 	blockNumberBytes := util.Uint64ToBytes(blockNumber)
 	err := s.db.View(func(tx *bolt.Tx) error {
 		blockInfoBytes := tx.Bucket(blockInfoBucket).Get(blockNumberBytes)
+		if blockInfoBytes == nil {
+			return nil
+		}
 		return json.Unmarshal(blockInfoBytes, &b)
 	})
 	if err != nil {
