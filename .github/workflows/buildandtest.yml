@@ -36,7 +36,7 @@ jobs:
         run: make build
 
       - name: Build e2e test # e2e test has to be run manually
-        run: go test -c cmd/e2e_test.go
+        run: go test -c cmd/*.go
 
       - name: Run tests
         run: make test
