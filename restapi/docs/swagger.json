@@ -36,7 +36,7 @@
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/api.Bill"
+                                "type": "string"
                             }
                         }
                     },
@@ -291,7 +291,7 @@
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Unit ID",
+                        "description": "Unit ID (0xHEX encoded)",
                         "name": "unitID",
                         "in": "path",
                         "required": true
@@ -324,20 +324,6 @@
         }
     },
     "definitions": {
-        "api.Bill": {
-            "type": "object",
-            "properties": {
-                "billData": {
-                    "$ref": "#/definitions/money.BillData"
-                },
-                "id": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                }
-            }
-        },
         "api.BlockInfo": {
             "type": "object",
             "properties": {
@@ -354,7 +340,10 @@
                     }
                 },
                 "unicityCertificate": {
-                    "$ref": "#/definitions/types.UnicityCertificate"
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
                 }
             }
         },
@@ -381,50 +370,6 @@
                 }
             }
         },
-        "imt.PathItem": {
-            "type": "object",
-            "properties": {
-                "hash": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "key": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                }
-            }
-        },
-        "money.BillData": {
-            "type": "object",
-            "properties": {
-                "backlink": {
-                    "description": "Backlink (256-bit hash)",
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "lastUpdate": {
-                    "description": "The round number of the last transaction with the bill",
-                    "type": "string",
-                    "example": "0"
-                },
-                "locked": {
-                    "description": "locked status of the bill, non-zero value means locked",
-                    "type": "string",
-                    "example": "0"
-                },
-                "value": {
-                    "description": "The monetary value of this bill",
-                    "type": "string",
-                    "example": "0"
-                }
-            }
-        },
         "restapi.ErrorResponse": {
             "type": "object",
             "properties": {
@@ -433,26 +378,12 @@
                 }
             }
         },
-        "types.ClientMetadata": {
-            "type": "object",
-            "properties": {
-                "feeCreditRecordID": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "maxTransactionFee": {
-                    "type": "integer"
-                },
-                "timeout": {
-                    "type": "integer"
-                }
-            }
-        },
         "types.Header": {
             "type": "object",
             "properties": {
+                "partitionID": {
+                    "type": "integer"
+                },
                 "previousBlockHash": {
                     "type": "array",
                     "items": {
@@ -463,80 +394,10 @@
                     "type": "string"
                 },
                 "shardID": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
+                    "$ref": "#/definitions/types.ShardID"
                 },
-                "systemID": {
+                "version": {
                     "type": "integer"
-                }
-            }
-        },
-        "types.InputRecord": {
-            "type": "object",
-            "properties": {
-                "block_hash": {
-                    "description": "hash of the block",
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "hash": {
-                    "description": "state hash to be certified",
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "previous_hash": {
-                    "description": "previously certified state hash",
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "round_number": {
-                    "description": "transaction system's round number",
-                    "type": "integer"
-                },
-                "sum_of_earned_fees": {
-                    "description": "sum of the actual fees over all transaction records in the block",
-                    "type": "integer"
-                },
-                "summary_value": {
-                    "description": "summary value to certified",
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                }
-            }
-        },
-        "types.Payload": {
-            "type": "object",
-            "properties": {
-                "attributes": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "clientMetadata": {
-                    "$ref": "#/definitions/types.ClientMetadata"
-                },
-                "systemID": {
-                    "type": "integer"
-                },
-                "type": {
-                    "type": "string"
-                },
-                "unitID": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
                 }
             }
         },
@@ -566,34 +427,8 @@
                 }
             }
         },
-        "types.SignatureMap": {
-            "type": "object",
-            "additionalProperties": {
-                "type": "array",
-                "items": {
-                    "type": "integer"
-                }
-            }
-        },
-        "types.TransactionOrder": {
-            "type": "object",
-            "properties": {
-                "feeProof": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "ownerProof": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "payload": {
-                    "$ref": "#/definitions/types.Payload"
-                }
-            }
+        "types.ShardID": {
+            "type": "object"
         },
         "types.TransactionRecord": {
             "type": "object",
@@ -602,7 +437,13 @@
                     "$ref": "#/definitions/types.ServerMetadata"
                 },
                 "transactionOrder": {
-                    "$ref": "#/definitions/types.TransactionOrder"
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "version": {
+                    "type": "integer"
                 }
             }
         },
@@ -610,72 +451,14 @@
             "type": "integer",
             "enum": [
                 0,
-                1
+                1,
+                2
             ],
             "x-enum-varnames": [
                 "TxStatusFailed",
-                "TxStatusSuccessful"
+                "TxStatusSuccessful",
+                "TxErrOutOfGas"
             ]
-        },
-        "types.UnicityCertificate": {
-            "type": "object",
-            "properties": {
-                "input_record": {
-                    "$ref": "#/definitions/types.InputRecord"
-                },
-                "unicity_seal": {
-                    "$ref": "#/definitions/types.UnicitySeal"
-                },
-                "unicity_tree_certificate": {
-                    "$ref": "#/definitions/types.UnicityTreeCertificate"
-                }
-            }
-        },
-        "types.UnicitySeal": {
-            "type": "object",
-            "properties": {
-                "hash": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "previous_hash": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "root_chain_round_number": {
-                    "type": "integer"
-                },
-                "signatures": {
-                    "$ref": "#/definitions/types.SignatureMap"
-                },
-                "timestamp": {
-                    "type": "integer"
-                }
-            }
-        },
-        "types.UnicityTreeCertificate": {
-            "type": "object",
-            "properties": {
-                "sibling_hashes": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/imt.PathItem"
-                    }
-                },
-                "system_description_hash": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "system_identifier": {
-                    "type": "integer"
-                }
-            }
         }
     }
 }
