@@ -3,6 +3,7 @@ package restapi
 import (
 	"context"
 	"github.com/alphabill-org/alphabill-go-base/types"
+	"github.com/alphabill-org/alphabill-go-base/types/hex"
 
 	"github.com/alphabill-org/alphabill-explorer-backend/api"
 )
@@ -17,6 +18,10 @@ type MockExplorerBackendService struct {
 	getTxsByUnitID               func(unitID types.UnitID) ([]*api.TxInfo, error)
 	getTxs                       func(startSequenceNumber uint64, count int) (res []*api.TxInfo, prevSequenceNumber uint64, err error)
 	//getBillsByPubKey             func(ctx context.Context, ownerID types.Bytes) (res []*moneyApi.Bill, err error)
+}
+
+func (m *MockExplorerBackendService) GetUnitsByOwnerID(ctx context.Context, ownerID hex.Bytes) ([]types.UnitID, error) {
+	panic("implement me")
 }
 
 func (m *MockExplorerBackendService) GetLastBlockNumber() (uint64, error) {
