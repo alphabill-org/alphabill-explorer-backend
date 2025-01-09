@@ -67,7 +67,7 @@ func TestE2E(t *testing.T) {
 		var fcr *sdktypes.FeeCreditRecord
 		fcr, err = w.GetFeeCredit(ctx, fees.GetFeeCreditCmd{AccountIndex: 0})
 		require.NoError(t, err)
-		if fcr == nil {
+		if fcr == nil || fcr.Balance < maxFee*10 {
 			_, err := w.AddFeeCredit(ctx, fees.AddFeeCmd{AccountIndex: 0, Amount: 100})
 			require.NoError(t, err)
 			fcr, err = w.GetFeeCredit(ctx, fees.GetFeeCreditCmd{AccountIndex: 0})
