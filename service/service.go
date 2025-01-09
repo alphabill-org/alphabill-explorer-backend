@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/alphabill-org/alphabill-explorer-backend/api"
 	"github.com/alphabill-org/alphabill-go-base/types"
@@ -13,15 +12,15 @@ type (
 	BillStore interface {
 
 		//block
-		GetLastBlockNumber() (uint64, error)
-		GetBlockInfo(blockNumber uint64) (*api.BlockInfo, error)
-		GetBlocksInfo(dbStartBlock uint64, count int) (res []*api.BlockInfo, prevBlockNumber uint64, err error)
+		GetLastBlock(ctx context.Context, partitionIDs []types.PartitionID) (map[types.PartitionID]*api.BlockInfo, error)
+		GetBlock(ctx context.Context, blockNumber uint64, partitionIDs []types.PartitionID) (map[types.PartitionID]*api.BlockInfo, error)
+		GetBlocksInRange(ctx context.Context, partitionID types.PartitionID, dbStartBlock uint64, count int) (res []*api.BlockInfo, prevBlockNumber uint64, err error)
 
 		//tx
-		GetTxInfo(txHash api.TxHash) (*api.TxInfo, error)
-		GetBlockTxsByBlockNumber(blockNumber uint64) (res []*api.TxInfo, err error)
-		GetTxsByUnitID(unitID types.UnitID) ([]*api.TxInfo, error)
-		GetTxs(startSequenceNumber uint64, count int) (res []*api.TxInfo, prevSequenceNumber uint64, err error)
+		GetTxInfo(ctx context.Context, txHash api.TxHash) (*api.TxInfo, error)
+		GetTxsByBlockNumber(ctx context.Context, blockNumber uint64, partitionID types.PartitionID) ([]*api.TxInfo, error)
+		GetTxsByUnitID(ctx context.Context, unitID types.UnitID) ([]*api.TxInfo, error)
+		GetTxsInRange(ctx context.Context, partitionID types.PartitionID, startSequenceNumber uint64, count int) (res []*api.TxInfo, prevSequenceNumber uint64, err error)
 	}
 
 	ABClient interface {
@@ -31,58 +30,66 @@ type (
 	}
 
 	ExplorerBackend struct {
-		store  BillStore
-		client ABClient
+		store BillStore
 	}
 )
 
-func NewExplorerBackend(store BillStore, client ABClient) *ExplorerBackend {
+func NewExplorerBackend(store BillStore) *ExplorerBackend {
 	return &ExplorerBackend{
-		store:  store,
-		client: client,
+		store: store,
 	}
 }
 
 // GetRoundNumber returns latest round number.
 func (ex *ExplorerBackend) GetRoundNumber(ctx context.Context) (uint64, error) {
-	return ex.client.GetRoundNumber(ctx)
+	panic("not implemented")
+	//return ex.client.GetRoundNumber(ctx)
 }
 
 // block
-// GetLastBlockNumber returns last processed block
-func (ex *ExplorerBackend) GetLastBlockNumber() (uint64, error) {
-	return ex.store.GetLastBlockNumber()
+// GetLastBlock returns last processed block for each partition
+func (ex *ExplorerBackend) GetLastBlock(ctx context.Context, partitionIDs []types.PartitionID) (map[types.PartitionID]*api.BlockInfo, error) {
+	return ex.store.GetLastBlock(ctx, partitionIDs)
 }
 
-// GetBlock returns block with given block number.
-func (ex *ExplorerBackend) GetBlock(blockNumber uint64) (*api.BlockInfo, error) {
-	return ex.store.GetBlockInfo(blockNumber)
+// GetBlock returns block with given block number for each specified partition.
+func (ex *ExplorerBackend) GetBlock(
+	ctx context.Context,
+	blockNumber uint64,
+	partitionIDs []types.PartitionID,
+) (map[types.PartitionID]*api.BlockInfo, error) {
+	return ex.store.GetBlock(ctx, blockNumber, partitionIDs)
 }
 
-// GetBlocks return amount of blocks provided with count
-func (ex *ExplorerBackend) GetBlocks(dbStartBlockNumber uint64, count int) (res []*api.BlockInfo, prevBlockNUmber uint64, err error) {
-	return ex.store.GetBlocksInfo(dbStartBlockNumber, count)
+// GetBlocksInRange returns amount of blocks provided with count for given partition
+func (ex *ExplorerBackend) GetBlocksInRange(
+	ctx context.Context,
+	partitionID types.PartitionID,
+	dbStartBlock uint64,
+	count int,
+) (res []*api.BlockInfo, prevBlockNUmber uint64, err error) {
+	return ex.store.GetBlocksInRange(ctx, partitionID, dbStartBlock, count)
 }
 
 // tx
-func (ex *ExplorerBackend) GetTxInfo(txHash api.TxHash) (res *api.TxInfo, err error) {
-	return ex.store.GetTxInfo(txHash)
+func (ex *ExplorerBackend) GetTxInfo(ctx context.Context, txHash api.TxHash) (res *api.TxInfo, err error) {
+	return ex.store.GetTxInfo(ctx, txHash)
 }
 
-func (ex *ExplorerBackend) GetBlockTxsByBlockNumber(blockNumber uint64) (res []*api.TxInfo, err error) {
-	return ex.store.GetBlockTxsByBlockNumber(blockNumber)
+func (ex *ExplorerBackend) GetTxsByBlockNumber(ctx context.Context, blockNumber uint64, partitionID types.PartitionID) ([]*api.TxInfo, error) {
+	return ex.store.GetTxsByBlockNumber(ctx, blockNumber, partitionID)
 }
 
-func (ex *ExplorerBackend) GetTxsByUnitID(unitID types.UnitID) ([]*api.TxInfo, error) {
-	return ex.store.GetTxsByUnitID(unitID)
+func (ex *ExplorerBackend) GetTxsByUnitID(ctx context.Context, unitID types.UnitID) ([]*api.TxInfo, error) {
+	return ex.store.GetTxsByUnitID(ctx, unitID)
 }
 
-func (ex *ExplorerBackend) GetTxs(startSequenceNumber uint64, count int) (res []*api.TxInfo, prevSequenceNumber uint64, err error) {
-	return ex.store.GetTxs(startSequenceNumber, count)
+func (ex *ExplorerBackend) GetTxsInRange(ctx context.Context, partitionID types.PartitionID, startSequenceNumber uint64, count int) (res []*api.TxInfo, prevSequenceNumber uint64, err error) {
+	return ex.store.GetTxsInRange(ctx, partitionID, startSequenceNumber, count)
 }
 
-func (ex *ExplorerBackend) GetUnitsByOwnerID(ctx context.Context, ownerID hex.Bytes) ([]types.UnitID, error) {
-	return ex.GetUnitsByOwnerID(ctx, ownerID)
+/*func (ex *ExplorerBackend) GetUnitsByOwnerID(ctx context.Context, ownerID hex.Bytes) ([]types.UnitID, error) {
+	return ex.client.GetUnitsByOwnerID(ctx, ownerID)
 }
 
 // bill
@@ -94,3 +101,4 @@ func (ex *ExplorerBackend) GetBillsByPubKey(ctx context.Context, ownerID hex.Byt
 	// todo get bill data
 	return unitIDs, nil
 }
+*/

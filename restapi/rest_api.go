@@ -7,7 +7,6 @@ import (
 
 	"github.com/alphabill-org/alphabill-explorer-backend/api"
 	"github.com/alphabill-org/alphabill-go-base/types"
-	"github.com/alphabill-org/alphabill-go-base/types/hex"
 )
 
 const (
@@ -17,19 +16,19 @@ const (
 
 type (
 	ExplorerBackendService interface {
-		GetRoundNumber(ctx context.Context) (uint64, error)
-		GetUnitsByOwnerID(ctx context.Context, ownerID hex.Bytes) ([]types.UnitID, error)
+		//GetRoundNumber(ctx context.Context) (uint64, error)
+		//GetUnitsByOwnerID(ctx context.Context, ownerID hex.Bytes) ([]types.UnitID, error)
 
 		//block
-		GetLastBlockNumber() (uint64, error)
-		GetBlock(blockNumber uint64) (*api.BlockInfo, error)
-		GetBlocks(dbStartBlock uint64, count int) (res []*api.BlockInfo, prevBlockNumber uint64, err error)
+		GetLastBlock(ctx context.Context, partitionIDs []types.PartitionID) (map[types.PartitionID]*api.BlockInfo, error)
+		GetBlock(ctx context.Context, blockNumber uint64, partitionIDs []types.PartitionID) (map[types.PartitionID]*api.BlockInfo, error)
+		GetBlocksInRange(ctx context.Context, partitionID types.PartitionID, dbStartBlock uint64, count int) (res []*api.BlockInfo, prevBlockNumber uint64, err error)
 
 		//tx
-		GetTxInfo(txHash api.TxHash) (res *api.TxInfo, err error)
-		GetBlockTxsByBlockNumber(blockNumber uint64) (res []*api.TxInfo, err error)
-		GetTxsByUnitID(unitID types.UnitID) ([]*api.TxInfo, error)
-		GetTxs(startSequenceNumber uint64, count int) (res []*api.TxInfo, prevSequenceNumber uint64, err error)
+		GetTxInfo(ctx context.Context, txHash api.TxHash) (res *api.TxInfo, err error)
+		GetTxsByBlockNumber(ctx context.Context, blockNumber uint64, partitionID types.PartitionID) ([]*api.TxInfo, error)
+		GetTxsByUnitID(ctx context.Context, unitID types.UnitID) ([]*api.TxInfo, error)
+		GetTxsInRange(ctx context.Context, partitionID types.PartitionID, startSequenceNumber uint64, count int) (res []*api.TxInfo, prevSequenceNumber uint64, err error)
 
 		//bill
 		//GetBillsByPubKey(ctx context.Context, ownerID types.Bytes) (res []*moneyApi.Bill, err error)
@@ -39,7 +38,6 @@ type (
 		Service            ExplorerBackendService
 		ListBillsPageLimit int
 		rw                 *ResponseWriter
-		PartitionID        types.PartitionID
 	}
 
 	RoundNumberResponse struct {
@@ -47,7 +45,7 @@ type (
 	}
 )
 
-func (api *MoneyRestAPI) roundNumberFunc(w http.ResponseWriter, r *http.Request) {
+/*func (api *MoneyRestAPI) roundNumberFunc(w http.ResponseWriter, r *http.Request) {
 	lastRoundNumber, err := api.Service.GetRoundNumber(r.Context())
 	if err != nil {
 		println("GET /round-number error fetching round number", err)
@@ -55,12 +53,11 @@ func (api *MoneyRestAPI) roundNumberFunc(w http.ResponseWriter, r *http.Request)
 	} else {
 		api.rw.WriteResponse(w, &RoundNumberResponse{RoundNumber: lastRoundNumber})
 	}
-}
+}*/
 
 func (api *MoneyRestAPI) getInfo(w http.ResponseWriter, _ *http.Request) {
 	res := InfoResponse{
-		PartitionID: api.PartitionID,
-		Name:        "blocks backend",
+		Name: "blocks backend",
 	}
 	api.rw.WriteResponse(w, res)
 }

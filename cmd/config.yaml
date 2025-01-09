@@ -1,0 +1,10 @@
+nodes:
+  - url: "dev-ab-money-archive.abdev1.guardtime.com/rpc"
+
+db:
+  url: "mongodb://localhost:27017"
+
+server:
+  address: "localhost:9666"
+
+blockNumber: 1

@@ -3,46 +3,63 @@ package restapi
 import (
 	"context"
 	"github.com/alphabill-org/alphabill-go-base/types"
+	"github.com/alphabill-org/alphabill-go-base/types/hex"
 
 	"github.com/alphabill-org/alphabill-explorer-backend/api"
 )
 
 type MockExplorerBackendService struct {
-	getLastBlockNumberFunc       func() (uint64, error)
-	getBlockFunc                 func(blockNumber uint64) (*api.BlockInfo, error)
-	getBlocksFunc                func(dbStartBlock uint64, count int) (res []*api.BlockInfo, prevBlockNumber uint64, err error)
-	getTxInfoFunc                func(txHash api.TxHash) (res *api.TxInfo, err error)
+	getLastBlockFunc             func(ctx context.Context, partitionIDs []types.PartitionID) (map[types.PartitionID]*api.BlockInfo, error)
+	getBlockFunc                 func(ctx context.Context, blockNumber uint64, partitionIDs []types.PartitionID) (map[types.PartitionID]*api.BlockInfo, error)
+	getBlocksInRangeFunc         func(ctx context.Context, partitionID types.PartitionID, dbStartBlock uint64, count int) (res []*api.BlockInfo, prevBlockNumber uint64, err error)
+	getTxInfoFunc                func(ctx context.Context, txHash api.TxHash) (res *api.TxInfo, err error)
 	getBlockTxsByBlockNumberFunc func(blockNumber uint64) (res []*api.TxInfo, err error)
 	getRoundNumberFunc           func(ctx context.Context) (uint64, error)
-	getTxsByUnitID               func(unitID types.UnitID) ([]*api.TxInfo, error)
+	getTxsByUnitID               func(ctx context.Context, txHash api.TxHash) (res *api.TxInfo, err error)
 	getTxs                       func(startSequenceNumber uint64, count int) (res []*api.TxInfo, prevSequenceNumber uint64, err error)
 	//getBillsByPubKey             func(ctx context.Context, ownerID types.Bytes) (res []*moneyApi.Bill, err error)
 }
 
-func (m *MockExplorerBackendService) GetLastBlockNumber() (uint64, error) {
-	if m.getLastBlockNumberFunc != nil {
-		return m.getLastBlockNumberFunc()
-	}
-	panic("GetLastBlockNumberFunc not implemented")
+func (m *MockExplorerBackendService) GetUnitsByOwnerID(ctx context.Context, ownerID hex.Bytes) ([]types.UnitID, error) {
+	panic("implement me")
 }
 
-func (m *MockExplorerBackendService) GetBlock(blockNumber uint64) (*api.BlockInfo, error) {
+func (m *MockExplorerBackendService) GetBlock(ctx context.Context, blockNumber uint64, partitionIDs []types.PartitionID) (map[types.PartitionID]*api.BlockInfo, error) {
 	if m.getBlockFunc != nil {
-		return m.getBlockFunc(blockNumber)
+		return m.getBlockFunc(ctx, blockNumber, partitionIDs)
 	}
-	panic("GetBlockFunc not implemented")
+	panic("implement me")
 }
 
-func (m *MockExplorerBackendService) GetBlocks(dbStartBlock uint64, count int) (res []*api.BlockInfo, prevBlockNumber uint64, err error) {
-	if m.getBlocksFunc != nil {
-		return m.getBlocksFunc(dbStartBlock, count)
+func (m *MockExplorerBackendService) GetBlocksInRange(ctx context.Context, partitionID types.PartitionID, dbStartBlock uint64, count int) (res []*api.BlockInfo, prevBlockNumber uint64, err error) {
+	if m.getBlocksInRangeFunc != nil {
+		return m.getBlocksInRangeFunc(ctx, partitionID, dbStartBlock, count)
 	}
-	panic("GetBlocksFunc not implemented")
+	panic("implement me")
 }
 
-func (m *MockExplorerBackendService) GetTxInfo(txHash api.TxHash) (res *api.TxInfo, err error) {
+func (m *MockExplorerBackendService) GetTxsByBlockNumber(ctx context.Context, blockNumber uint64, partitionID types.PartitionID) ([]*api.TxInfo, error) {
+	panic("implement me")
+}
+
+func (m *MockExplorerBackendService) GetTxsByUnitID(ctx context.Context, unitID types.UnitID) ([]*api.TxInfo, error) {
+	panic("implement me")
+}
+
+func (m *MockExplorerBackendService) GetTxsInRange(ctx context.Context, partitionID types.PartitionID, startSequenceNumber uint64, count int) (res []*api.TxInfo, prevSequenceNumber uint64, err error) {
+	panic("implement me")
+}
+
+func (m *MockExplorerBackendService) GetLastBlock(ctx context.Context, partitionIDs []types.PartitionID) (map[types.PartitionID]*api.BlockInfo, error) {
+	if m.getLastBlockFunc != nil {
+		return m.getLastBlockFunc(ctx, partitionIDs)
+	}
+	panic("getLastBlockFunc not implemented")
+}
+
+func (m *MockExplorerBackendService) GetTxInfo(ctx context.Context, txHash api.TxHash) (res *api.TxInfo, err error) {
 	if m.getTxInfoFunc != nil {
-		return m.getTxInfoFunc(txHash)
+		return m.getTxInfoFunc(ctx, txHash)
 	}
 	panic("GetTxInfoFunc not implemented")
 }
@@ -59,13 +76,6 @@ func (m *MockExplorerBackendService) GetRoundNumber(ctx context.Context) (uint64
 		return m.getRoundNumberFunc(ctx)
 	}
 	panic("GetRoundNumberFunc not implemented")
-}
-
-func (m *MockExplorerBackendService) GetTxsByUnitID(unitID types.UnitID) ([]*api.TxInfo, error) {
-	if m.getRoundNumberFunc != nil {
-		return m.getTxsByUnitID(unitID)
-	}
-	panic("GetTxsByUnitIDFunc not implemented")
 }
 
 /*func (m *MockExplorerBackendService) GetBillsByPubKey(ctx context.Context, ownerID types.Bytes) (res []*moneyApi.Bill, err error) {

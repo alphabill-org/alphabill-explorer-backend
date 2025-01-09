@@ -2,6 +2,7 @@ package restapi
 
 import (
 	"fmt"
+	"github.com/alphabill-org/alphabill-go-base/types"
 	"net/http"
 	"strconv"
 
@@ -31,7 +32,7 @@ func (api *MoneyRestAPI) getTx(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.Error(w, "Invalid 'txHash' format", http.StatusBadRequest)
 	}
-	txInfo, err := api.Service.GetTxInfo(txHashBytes)
+	txInfo, err := api.Service.GetTxInfo(r.Context(), txHashBytes)
 	if err != nil {
 		api.rw.WriteErrorResponse(w, fmt.Errorf("failed to load tx with txHash %s : %w", txHash, err))
 		return
@@ -53,9 +54,20 @@ func (api *MoneyRestAPI) getTx(w http.ResponseWriter, r *http.Request) {
 // @Success 200 {array} api.TxInfo "Successfully retrieved list of transactions"
 // @Router /txs [get]
 func (api *MoneyRestAPI) getTxs(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	partitionIDStr, ok := vars["partitionID"]
+	if !ok {
+		http.Error(w, "Missing 'partitionID' variable in the URL", http.StatusBadRequest)
+		return
+	}
+	partitionID, err := strconv.ParseUint(partitionIDStr, 10, 64)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("invalid partitionID: %s", partitionIDStr), http.StatusBadRequest)
+		return
+	}
+
 	seqStr := r.URL.Query().Get("startSeqNumber")
 	seq := uint64(0)
-	var err error
 	if seqStr != "" {
 		seq, err = strconv.ParseUint(seqStr, 10, 64)
 		if err != nil {
@@ -72,7 +84,7 @@ func (api *MoneyRestAPI) getTxs(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	txs, prev, err := api.Service.GetTxs(seq, limit)
+	txs, prev, err := api.Service.GetTxsInRange(r.Context(), types.PartitionID(partitionID), seq, limit)
 	if err != nil {
 		api.rw.WriteErrorResponse(w, fmt.Errorf("failed to load txs with startSeqNumber %d and limit %d : %w", seq, limit, err))
 		return
@@ -99,14 +111,23 @@ func (api *MoneyRestAPI) getBlockTxsByBlockNumber(w http.ResponseWriter, r *http
 		http.Error(w, "Missing 'blockNumber' variable in the URL", http.StatusBadRequest)
 		return
 	}
-
 	blockNumber, err := strconv.ParseUint(blockNumberStr, 10, 64)
 	if err != nil {
 		http.Error(w, "Invalid 'blockNumber' format", http.StatusBadRequest)
 		return
 	}
+	partitionIDStr, ok := vars["partitionID"]
+	if !ok {
+		http.Error(w, "Missing 'partitionID' variable in the URL", http.StatusBadRequest)
+		return
+	}
+	partitionID, err := strconv.ParseUint(partitionIDStr, 10, 64)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("invalid partitionID: %s", partitionIDStr), http.StatusBadRequest)
+		return
+	}
 
-	txs, err := api.Service.GetBlockTxsByBlockNumber(blockNumber)
+	txs, err := api.Service.GetTxsByBlockNumber(r.Context(), blockNumber, types.PartitionID(partitionID))
 	if err != nil {
 		api.rw.WriteErrorResponse(w, fmt.Errorf("failed to load txs with blockNumber %d : %w", blockNumber, err))
 		return
@@ -142,7 +163,7 @@ func (api *MoneyRestAPI) getTxsByUnitID(w http.ResponseWriter, r *http.Request) 
 		http.Error(w, "Invalid 'unitID' format", http.StatusBadRequest)
 		return
 	}
-	txs, err := api.Service.GetTxsByUnitID(uid)
+	txs, err := api.Service.GetTxsByUnitID(r.Context(), uid)
 	if err != nil {
 		api.rw.WriteErrorResponse(w, fmt.Errorf("failed to load txs with unitID %s : %w", unitID, err))
 		return

@@ -46,16 +46,16 @@ func (api *MoneyRestAPI) Router() *mux.Router {
 
 	//block
 	apiV1.HandleFunc("/blocks/{blockNumber}", api.getBlock).Methods("GET", "OPTIONS")
-	apiV1.HandleFunc("/blocks", api.getBlocks).Methods("GET", "OPTIONS")
+	apiV1.HandleFunc("/{partitionID}/blocks", api.getBlocksInRange).Methods("GET", "OPTIONS")
 
 	//tx
 	apiV1.HandleFunc("/txs/{txHash}", api.getTx).Methods("GET", "OPTIONS")
-	apiV1.HandleFunc("/txs", api.getTxs).Methods("GET", "OPTIONS")
-	apiV1.HandleFunc("/blocks/{blockNumber}/txs", api.getBlockTxsByBlockNumber).Methods("GET", "OPTIONS")
+	apiV1.HandleFunc("/{partitionID}/txs", api.getTxs).Methods("GET", "OPTIONS")
+	apiV1.HandleFunc("/{partitionID}/blocks/{blockNumber}/txs", api.getBlockTxsByBlockNumber).Methods("GET", "OPTIONS")
 	apiV1.HandleFunc("/units/{unitID}/txs", api.getTxsByUnitID).Methods("GET", "OPTIONS")
 
 	//bill
-	apiV1.HandleFunc("/address/{pubKey}/bills", api.getBillsByPubKey).Methods("GET", "OPTIONS")
+	//apiV1.HandleFunc("/address/{pubKey}/bills", api.getBillsByPubKey).Methods("GET", "OPTIONS")
 	return router
 }
 

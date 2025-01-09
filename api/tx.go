@@ -3,6 +3,7 @@ package api
 import (
 	"crypto"
 	"fmt"
+
 	"github.com/alphabill-org/alphabill-go-base/types"
 )
 
@@ -11,9 +12,10 @@ type TxInfo struct {
 	TxOrderHash  TxHash
 	BlockNumber  uint64
 	Transaction  *types.TransactionRecord
+	PartitionID  types.PartitionID
 }
 
-func NewTxInfo(blockNo uint64, txRecord *types.TransactionRecord) (*TxInfo, error) {
+func NewTxInfo(PartitionID types.PartitionID, blockNo uint64, txRecord *types.TransactionRecord) (*TxInfo, error) {
 	if txRecord == nil {
 		return nil, fmt.Errorf("transaction record is nil")
 	}
@@ -40,6 +42,7 @@ func NewTxInfo(blockNo uint64, txRecord *types.TransactionRecord) (*TxInfo, erro
 		TxOrderHash:  txoHash,
 		BlockNumber:  blockNo,
 		Transaction:  txRecord,
+		PartitionID:  PartitionID,
 	}
 	return txInfo, nil
 }
