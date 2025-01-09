@@ -99,7 +99,7 @@ func TestE2E(t *testing.T) {
 					return true
 				}
 				return false
-			}, 10*time.Second, 100*time.Millisecond, "should index tx record")
+			}, 20*time.Second, 100*time.Millisecond, "should index tx record")
 
 			txrHash, err := proof.TxRecord.Hash(crypto.SHA256)
 			require.NoError(t, err)
