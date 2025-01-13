@@ -10,13 +10,11 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"path/filepath"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/alphabill-org/alphabill-explorer-backend/api"
-	"github.com/alphabill-org/alphabill-explorer-backend/bill_store"
 	"github.com/alphabill-org/alphabill-explorer-backend/restapi"
 	"github.com/alphabill-org/alphabill-go-base/types"
 	"github.com/alphabill-org/alphabill-wallet/cli/alphabill/cmd/wallet/args"
@@ -31,6 +29,8 @@ import (
 const (
 	abMoneyRpcUrl        = "dev-ab-money.abdev1.guardtime.com/rpc"
 	abMoneyArchiveRpcUrl = "dev-ab-money-archive.abdev1.guardtime.com/rpc"
+	partitionID          = types.PartitionID(1)
+	dbConnectionString   = "mongodb://localhost:27017"
 	maxFee               = 10
 )
 
@@ -50,7 +50,7 @@ func TestE2E(t *testing.T) {
 
 	fmt.Printf("Round number: %d\n", rn)
 
-	_ = runService(t, ctx, host, rn)
+	_ = runService(t, ctx, host, rn-1)
 	awaitStartup(t, host)
 
 	client := http.Client{Timeout: 5 * time.Second}
@@ -91,13 +91,14 @@ func TestE2E(t *testing.T) {
 			err := unicityCertificate.UnmarshalCBOR(proof.TxProof.UnicityCertificate)
 			require.NoError(t, err)
 			txRn := unicityCertificate.GetRoundNumber()
-			blockInfo := &api.BlockInfo{}
+
+			blockMap := make(map[types.PartitionID]*api.BlockInfo)
 			require.Eventually(t, func() bool {
 				resp, err := client.Get(fmt.Sprintf("http://%s/api/v1/blocks/%d", host, txRn))
 				require.NoError(t, err)
 				fmt.Printf("Checking block %d, status code: %d\n", txRn, resp.StatusCode)
 				if resp.StatusCode == http.StatusOK {
-					require.NoError(t, restapi.DecodeResponse(resp, http.StatusOK, blockInfo, false))
+					require.NoError(t, restapi.DecodeResponse(resp, http.StatusOK, &blockMap, false))
 					return true
 				}
 				return false
@@ -105,6 +106,9 @@ func TestE2E(t *testing.T) {
 
 			txrHash, err := proof.TxRecord.Hash(crypto.SHA256)
 			require.NoError(t, err)
+
+			blockInfo := blockMap[partitionID]
+			require.NotNil(t, blockInfo)
 
 			t.Run("Check tx record hash is in the block info", func(t *testing.T) {
 				require.Contains(t, blockInfo.TxHashes, api.TxHash(txrHash))
@@ -126,7 +130,7 @@ func TestE2E(t *testing.T) {
 			})
 
 			t.Run("check latest transactions to contain the tx", func(t *testing.T) {
-				resp, err := client.Get(fmt.Sprintf("http://%s/api/v1/txs", host))
+				resp, err := client.Get(fmt.Sprintf("http://%s/api/v1/%s/txs", host, partitionID))
 				require.NoError(t, err)
 				require.Equal(t, http.StatusOK, resp.StatusCode)
 				txInfos := make([]*api.TxInfo, 0)
@@ -150,10 +154,7 @@ func createMoneyWallet(t *testing.T, ctx context.Context, walletDir string) *wal
 	moneyClient, err := client.NewMoneyPartitionClient(ctx, args.BuildRpcUrl(abMoneyRpcUrl))
 	require.NoError(t, err)
 
-	nodeInfo, err := moneyClient.GetNodeInfo(ctx)
-	require.NoError(t, err)
-
-	w, err := wallet.NewWallet(nodeInfo.NetworkID, nodeInfo.PartitionID, am, feeManagerDB, moneyClient, maxFee, slog.Default())
+	w, err := wallet.NewWallet(ctx, am, feeManagerDB, moneyClient, maxFee, slog.Default())
 	require.NoError(t, err)
 
 	err = wallet.GenerateKeys(am, "prison tone orbit inside kitten clean page enrich plastic ring gather cross")
@@ -181,10 +182,10 @@ func runService(t *testing.T, ctx context.Context, host string, startFromBlock u
 		defer wg.Done()
 		require.NotPanics(t, func() {
 			err := Run(ctx, &Config{
-				AlphabillUrl: abMoneyArchiveRpcUrl,
-				ServerAddr:   host,
-				DbFile:       filepath.Join(t.TempDir(), bill_store.BoltExplorerStoreFileName),
-				BlockNumber:  startFromBlock,
+				Nodes:       []Node{{abMoneyArchiveRpcUrl}},
+				Server:      Server{Address: host},
+				DB:          DB{URL: dbConnectionString},
+				BlockNumber: startFromBlock,
 			})
 			require.NoError(t, err)
 		}, "should not panic")

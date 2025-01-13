@@ -12,6 +12,8 @@ type BlockInfo struct {
 	Header             *types.Header
 	TxHashes           []TxHash
 	UnicityCertificate types.TaggedCBOR
+	PartitionID        types.PartitionID
+	BlockNumber        uint64
 }
 
 func NewBlockInfo(b *types.Block) (*BlockInfo, error) {
@@ -28,9 +30,16 @@ func NewBlockInfo(b *types.Block) (*BlockInfo, error) {
 		txHashes = append(txHashes, hash)
 	}
 
+	roundNumber, err := b.GetRoundNumber()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get round number from block: %w", err)
+	}
+
 	return &BlockInfo{
 		Header:             b.Header,
 		TxHashes:           txHashes,
 		UnicityCertificate: b.UnicityCertificate,
+		PartitionID:        b.PartitionID(),
+		BlockNumber:        roundNumber,
 	}, nil
 }

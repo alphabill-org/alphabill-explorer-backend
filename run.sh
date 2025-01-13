@@ -2,7 +2,7 @@
 
 make build
 
-./build/abexplorer 'dev-ab-money-archive.abdev1.guardtime.com/rpc' 'localhost:9666' 1
+./build/abexplorer './cmd/config.yaml'
 
 #
 #curl -H 'Content-Type: application/json' \
