@@ -20,7 +20,12 @@ type (
 		GetTxInfo(ctx context.Context, txHash api.TxHash) (*api.TxInfo, error)
 		GetTxsByBlockNumber(ctx context.Context, blockNumber uint64, partitionID types.PartitionID) ([]*api.TxInfo, error)
 		GetTxsByUnitID(ctx context.Context, unitID types.UnitID) ([]*api.TxInfo, error)
-		GetTxsInRange(ctx context.Context, partitionID types.PartitionID, startSequenceNumber uint64, count int) (res []*api.TxInfo, prevSequenceNumber uint64, err error)
+		GetTxsPage(
+			ctx context.Context,
+			partitionID types.PartitionID,
+			startID string,
+			limit int,
+		) (transactions []*api.TxInfo, previousID string, err error)
 	}
 
 	ABClient interface {
@@ -84,12 +89,21 @@ func (ex *ExplorerBackend) GetTxsByUnitID(ctx context.Context, unitID types.Unit
 	return ex.store.GetTxsByUnitID(ctx, unitID)
 }
 
-func (ex *ExplorerBackend) GetTxsInRange(ctx context.Context, partitionID types.PartitionID, startSequenceNumber uint64, count int) (res []*api.TxInfo, prevSequenceNumber uint64, err error) {
-	return ex.store.GetTxsInRange(ctx, partitionID, startSequenceNumber, count)
+func (ex *ExplorerBackend) GetTxsPage(
+	ctx context.Context,
+	partitionID types.PartitionID,
+	startID string,
+	limit int,
+) (transactions []*api.TxInfo, previousID string, err error) {
+	return ex.store.GetTxsPage(ctx, partitionID, startID, limit)
 }
 
 /*func (ex *ExplorerBackend) GetUnitsByOwnerID(ctx context.Context, ownerID hex.Bytes) ([]types.UnitID, error) {
 	return ex.client.GetUnitsByOwnerID(ctx, ownerID)
+}
+
+func (ex *ExplorerBackend) GetUnitsByOwnerID(ctx context.Context, ownerID hex.Bytes) ([]types.UnitID, error) {
+	return ex.GetUnitsByOwnerID(ctx, ownerID)
 }
 
 // bill

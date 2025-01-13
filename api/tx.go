@@ -3,11 +3,12 @@ package api
 import (
 	"crypto"
 	"fmt"
-
 	"github.com/alphabill-org/alphabill-go-base/types"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type TxInfo struct {
+	ID           primitive.ObjectID `bson:"_id,omitempty"` // MongoDB's ObjectId field
 	TxRecordHash TxHash
 	TxOrderHash  TxHash
 	BlockNumber  uint64
@@ -24,11 +25,7 @@ func NewTxInfo(PartitionID types.PartitionID, blockNo uint64, txRecord *types.Tr
 		return nil, err
 	}
 	txOrder := types.TransactionOrder{}
-	bytes, err := txRecord.TransactionOrder.MarshalCBOR()
-	if err != nil {
-		return nil, err
-	}
-	if err = txOrder.UnmarshalCBOR(bytes); err != nil {
+	if err = txOrder.UnmarshalCBOR(txRecord.TransactionOrder); err != nil {
 		return nil, err
 	}
 

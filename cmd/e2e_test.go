@@ -1,4 +1,4 @@
-//go:build manual
+///go:build manual
 
 package main
 
@@ -10,23 +10,29 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"path/filepath"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/alphabill-org/alphabill-explorer-backend/api"
-	"github.com/alphabill-org/alphabill-explorer-backend/bill_store"
 	"github.com/alphabill-org/alphabill-explorer-backend/restapi"
+	"github.com/alphabill-org/alphabill-go-base/types"
 	"github.com/alphabill-org/alphabill-wallet/cli/alphabill/cmd/wallet/args"
-	"github.com/alphabill-org/alphabill-wallet/client/rpc"
+	"github.com/alphabill-org/alphabill-wallet/client"
+	sdktypes "github.com/alphabill-org/alphabill-wallet/client/types"
 	"github.com/alphabill-org/alphabill-wallet/wallet/account"
 	"github.com/alphabill-org/alphabill-wallet/wallet/fees"
 	wallet "github.com/alphabill-org/alphabill-wallet/wallet/money"
 	"github.com/stretchr/testify/require"
 )
 
-const abMoneyRpcUrl = "https://money-partition.testnet.alphabill.org"
+const (
+	abMoneyRpcUrl        = "dev-ab-money.abdev1.guardtime.com/rpc"
+	abMoneyArchiveRpcUrl = "dev-ab-money-archive.abdev1.guardtime.com/rpc"
+	partitionID          = types.PartitionID(1)
+	dbConnectionString   = "mongodb://localhost:27017"
+	maxFee               = 10
+)
 
 func TestE2E(t *testing.T) {
 	startTime := time.Now()
@@ -36,13 +42,15 @@ func TestE2E(t *testing.T) {
 	port := findFreePort(t)
 	host := fmt.Sprintf("localhost:%s", port)
 
+	fmt.Printf("Starting server on %s\n", host)
+
 	w := createMoneyWallet(t, ctx, t.TempDir())
 	rn, err := w.GetRoundNumber(ctx)
 	require.NoError(t, err)
 
 	fmt.Printf("Round number: %d\n", rn)
 
-	_ = runService(t, ctx, host, rn)
+	_ = runService(t, ctx, host, rn-1)
 	awaitStartup(t, host)
 
 	client := http.Client{Timeout: 5 * time.Second}
@@ -53,33 +61,54 @@ func TestE2E(t *testing.T) {
 		// Check first key's balance
 		balance, err := w.GetBalance(ctx, wallet.GetBalanceCmd{AccountIndex: 0})
 		require.NoError(t, err)
-		require.Greater(t, balance, uint64(0))
 		fmt.Printf("Balance: %d\n", balance)
+		require.Greater(t, balance, uint64(0))
+	})
+
+	t.Run("Check first key's fee credit record", func(t *testing.T) {
+		var fcr *sdktypes.FeeCreditRecord
+		fcr, err = w.GetFeeCredit(ctx, fees.GetFeeCreditCmd{AccountIndex: 0})
+		require.NoError(t, err)
+		if fcr == nil || fcr.Balance < maxFee*10 {
+			_, err := w.AddFeeCredit(ctx, fees.AddFeeCmd{AccountIndex: 0, Amount: 100})
+			require.NoError(t, err)
+			fcr, err = w.GetFeeCredit(ctx, fees.GetFeeCreditCmd{AccountIndex: 0})
+			require.NoError(t, err)
+		}
+		fmt.Printf("FCR balance: %d\n", fcr.Balance)
 	})
 
 	t.Run("ensure all tx records are indexed and returned by the explorer API", func(t *testing.T) {
 		pk1, err := w.GetAccountManager().GetPublicKey(1)
 		require.NoError(t, err)
 		// send 1 unit to the second key
-		proofs, err := w.Send(ctx, wallet.SendCmd{Receivers: []wallet.ReceiverData{{PubKey: pk1, Amount: 1}}, WaitForConfirmation: true, AccountIndex: 0})
+		proofs, err := w.Send(ctx, wallet.SendCmd{Receivers: []wallet.ReceiverData{{PubKey: pk1, Amount: 1}}, WaitForConfirmation: true, AccountIndex: 0, MaxFee: maxFee})
 		require.NoError(t, err)
 		require.NotEmpty(t, proofs)
 
 		for _, proof := range proofs {
-			txRn := proof.TxProof.UnicityCertificate.GetRoundNumber()
-			blockInfo := &api.BlockInfo{}
+			unicityCertificate := types.UnicityCertificate{}
+			err := unicityCertificate.UnmarshalCBOR(proof.TxProof.UnicityCertificate)
+			require.NoError(t, err)
+			txRn := unicityCertificate.GetRoundNumber()
+
+			blockMap := make(map[types.PartitionID]*api.BlockInfo)
 			require.Eventually(t, func() bool {
 				resp, err := client.Get(fmt.Sprintf("http://%s/api/v1/blocks/%d", host, txRn))
 				require.NoError(t, err)
 				fmt.Printf("Checking block %d, status code: %d\n", txRn, resp.StatusCode)
 				if resp.StatusCode == http.StatusOK {
-					require.NoError(t, restapi.DecodeResponse(resp, http.StatusOK, blockInfo, false))
+					require.NoError(t, restapi.DecodeResponse(resp, http.StatusOK, &blockMap, false))
 					return true
 				}
 				return false
-			}, 10*time.Second, 100*time.Millisecond, "should index tx record")
+			}, 20*time.Second, 100*time.Millisecond, "should index tx record")
 
-			txrHash := proof.TxRecord.Hash(crypto.SHA256)
+			txrHash, err := proof.TxRecord.Hash(crypto.SHA256)
+			require.NoError(t, err)
+
+			blockInfo := blockMap[partitionID]
+			require.NotNil(t, blockInfo)
 
 			t.Run("Check tx record hash is in the block info", func(t *testing.T) {
 				require.Contains(t, blockInfo.TxHashes, api.TxHash(txrHash))
@@ -95,11 +124,13 @@ func TestE2E(t *testing.T) {
 				require.EqualValues(t, txrHash, txInfo.TxRecordHash)
 				require.Equal(t, txRn, txInfo.BlockNumber)
 				require.Equal(t, proof.TxRecord, txInfo.Transaction)
-				fmt.Printf("Tx record %X indexed, type: %s\n", txrHash, txInfo.Transaction.TransactionOrder.PayloadType())
+				txOrder := types.TransactionOrder{}
+				require.NoError(t, txOrder.UnmarshalCBOR(txInfo.Transaction.TransactionOrder))
+				fmt.Printf("Tx record %X indexed, type: %d\n", txrHash, txOrder.Payload.Type)
 			})
 
 			t.Run("check latest transactions to contain the tx", func(t *testing.T) {
-				resp, err := client.Get(fmt.Sprintf("http://%s/api/v1/txs", host))
+				resp, err := client.Get(fmt.Sprintf("http://%s/api/v1/%s/txs", host, partitionID))
 				require.NoError(t, err)
 				require.Equal(t, http.StatusOK, resp.StatusCode)
 				txInfos := make([]*api.TxInfo, 0)
@@ -117,20 +148,27 @@ func createMoneyWallet(t *testing.T, ctx context.Context, walletDir string) *wal
 	am, err := account.NewManager(walletDir, "", true)
 	require.NoError(t, err)
 
-	err = wallet.CreateNewWallet(am, "prison tone orbit inside kitten clean page enrich plastic ring gather cross")
-	require.NoError(t, err)
-
 	feeManagerDB, err := fees.NewFeeManagerDB(walletDir)
 	require.NoError(t, err)
 
-	moneyClient, err := rpc.DialContext(ctx, args.BuildRpcUrl(abMoneyRpcUrl))
+	moneyClient, err := client.NewMoneyPartitionClient(ctx, args.BuildRpcUrl(abMoneyRpcUrl))
 	require.NoError(t, err)
 
-	w, err := wallet.LoadExistingWallet(am, feeManagerDB, moneyClient, slog.Default())
+	w, err := wallet.NewWallet(ctx, am, feeManagerDB, moneyClient, maxFee, slog.Default())
 	require.NoError(t, err)
 
-	_, _, err = w.GetAccountManager().AddAccount()
+	err = wallet.GenerateKeys(am, "prison tone orbit inside kitten clean page enrich plastic ring gather cross")
 	require.NoError(t, err)
+
+	_, _, err = am.AddAccount()
+	require.NoError(t, err)
+
+	keys, err := am.GetPublicKeys()
+	require.NoError(t, err)
+
+	for idx, key := range keys {
+		fmt.Printf("Account #%d Pubkey: 0x%X\n", idx, key)
+	}
 
 	return w
 }
@@ -144,10 +182,10 @@ func runService(t *testing.T, ctx context.Context, host string, startFromBlock u
 		defer wg.Done()
 		require.NotPanics(t, func() {
 			err := Run(ctx, &Config{
-				AlphabillUrl: abMoneyRpcUrl,
-				ServerAddr:   host,
-				DbFile:       filepath.Join(t.TempDir(), bill_store.BoltExplorerStoreFileName),
-				BlockNumber:  startFromBlock,
+				Nodes:       []Node{{abMoneyArchiveRpcUrl}},
+				Server:      Server{Address: host},
+				DB:          DB{URL: dbConnectionString},
+				BlockNumber: startFromBlock,
 			})
 			require.NoError(t, err)
 		}, "should not panic")

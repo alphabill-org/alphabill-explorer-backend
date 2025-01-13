@@ -151,6 +151,36 @@ func TestMongoBillStore_GetTxsByUnitID(t *testing.T) {
 	require.EqualValues(t, txList[1].Transaction.ServerMetadata.TargetUnits, []types.UnitID{unit4, unit5})
 }
 
+func TestMongoBillStore_GetTxsPage(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+
+	store, err := NewMongoBillStore(ctx, connectionString)
+	require.NoError(t, err)
+
+	initTestDB(t, ctx, store)
+	txList, previousID, err := store.GetTxsPage(ctx, partition1, "", 5)
+	require.NoError(t, err)
+	require.Len(t, txList, 5)
+	require.EqualValues(t, 5, txList[0].BlockNumber)
+	require.EqualValues(t, 5, txList[1].BlockNumber)
+	require.EqualValues(t, 5, txList[2].BlockNumber)
+	require.EqualValues(t, 4, txList[3].BlockNumber)
+	require.EqualValues(t, 4, txList[4].BlockNumber)
+
+	txList, previousID, err = store.GetTxsPage(ctx, partition1, previousID, 2)
+	require.NoError(t, err)
+	require.Len(t, txList, 2)
+	require.EqualValues(t, 4, txList[0].BlockNumber)
+	require.EqualValues(t, 3, txList[1].BlockNumber)
+
+	txList, previousID, err = store.GetTxsPage(ctx, partition1, previousID, 200)
+	require.NoError(t, err)
+	require.Len(t, txList, 8)
+	require.EqualValues(t, 3, txList[0].BlockNumber)
+	require.EqualValues(t, 1, txList[len(txList)-1].BlockNumber)
+}
+
 func TestMongoBillStore_GetLastBlocks(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()

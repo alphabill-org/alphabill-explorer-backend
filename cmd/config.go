@@ -9,20 +9,26 @@ import (
 
 type (
 	Config struct {
-		Nodes []struct {
-			URL string `yaml:"url"`
-		} `yaml:"nodes"`
+		Nodes []Node `yaml:"nodes"`
 
-		DB struct {
-			URL string `yaml:"url"` // MongoDB connection string
-		} `yaml:"db"`
+		DB DB `yaml:"db"`
 
-		Server struct {
-			Address string `yaml:"address"`
-		} `yaml:"server"`
+		Server Server `yaml:"server"`
 
 		BlockNumber        uint64 `yaml:"blockNumber"`
 		ListBillsPageLimit int
+	}
+
+	Node struct {
+		URL string `yaml:"url"`
+	}
+
+	DB struct {
+		URL string `yaml:"url"` // MongoDB connection string
+	}
+
+	Server struct {
+		Address string `yaml:"address"`
 	}
 )
 

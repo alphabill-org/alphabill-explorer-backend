@@ -66,14 +66,7 @@ func (api *MoneyRestAPI) getTxs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	seqStr := r.URL.Query().Get("startSeqNumber")
-	seq := uint64(0)
-	if seqStr != "" {
-		seq, err = strconv.ParseUint(seqStr, 10, 64)
-		if err != nil {
-			api.rw.InvalidParamResponse(w, "startSeqNumber", err)
-		}
-	}
+	startID := r.URL.Query().Get("startID")
 	limitStr := r.URL.Query().Get("limit")
 	limit := 20
 	if limitStr != "" {
@@ -84,13 +77,13 @@ func (api *MoneyRestAPI) getTxs(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	txs, prev, err := api.Service.GetTxsInRange(r.Context(), types.PartitionID(partitionID), seq, limit)
+	txs, previousID, err := api.Service.GetTxsPage(r.Context(), types.PartitionID(partitionID), startID, limit)
 	if err != nil {
-		api.rw.WriteErrorResponse(w, fmt.Errorf("failed to load txs with startSeqNumber %d and limit %d : %w", seq, limit, err))
+		api.rw.WriteErrorResponse(w, fmt.Errorf("failed to load txs with startID %s and limit %d : %w", startID, limit, err))
 		return
 	}
 
-	setLinkHeader(r.URL, w, fmt.Sprintf("%d", prev))
+	setLinkHeader(r.URL, w, previousID)
 	api.rw.WriteResponse(w, txs)
 }
 

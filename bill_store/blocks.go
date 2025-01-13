@@ -18,16 +18,11 @@ func (s *boltBillStore) SetBlockInfo(blockInfo *exTypes.BlockInfo) error {
 			return fmt.Errorf("bucket %s not found", blockInfoBucket)
 		}
 
-		unicityCertificate := types.UnicityCertificate{}
-		bytes, err := blockInfo.UnicityCertificate.MarshalCBOR()
-		if err != nil {
+		unicityCertificate := &types.UnicityCertificate{}
+		if err := unicityCertificate.UnmarshalCBOR(blockInfo.UnicityCertificate); err != nil {
 			return err
 		}
-		if err = unicityCertificate.UnmarshalCBOR(bytes); err != nil {
-			return err
-		}
-
-		blockNumber := unicityCertificate.InputRecord.RoundNumber
+		blockNumber := unicityCertificate.GetRoundNumber()
 		blockNumberBytes := util.Uint64ToBytes(blockNumber)
 
 		blockInfoBytes, err := json.Marshal(blockInfo)
@@ -72,6 +67,9 @@ func (s *boltBillStore) GetBlockInfo(blockNumber uint64) (*exTypes.BlockInfo, er
 	blockNumberBytes := util.Uint64ToBytes(blockNumber)
 	err := s.db.View(func(tx *bolt.Tx) error {
 		blockInfoBytes := tx.Bucket(blockInfoBucket).Get(blockNumberBytes)
+		if blockInfoBytes == nil {
+			return nil
+		}
 		return json.Unmarshal(blockInfoBytes, &b)
 	})
 	if err != nil {

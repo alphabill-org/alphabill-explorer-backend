@@ -6,6 +6,7 @@ import (
 	"github.com/alphabill-org/alphabill-explorer-backend/api"
 	"github.com/alphabill-org/alphabill-go-base/types"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -97,8 +98,50 @@ func (s *MongoBillStore) GetTxsByUnitID(ctx context.Context, unitID types.UnitID
 	return transactions, nil
 }
 
-// GetTxsInRange returns a list of transactions starting from the given sequence number. startSequenceNumber=0 means it's not set and cursor.last() is used.
-func (s *MongoBillStore) GetTxsInRange(ctx context.Context, partitionID types.PartitionID, startSequenceNumber uint64, count int) (res []*api.TxInfo, prevSequenceNumber uint64, err error) {
-	// todo
-	return nil, 0, nil
+func (s *MongoBillStore) GetTxsPage(
+	ctx context.Context,
+	partitionID types.PartitionID,
+	startID string,
+	limit int,
+) (transactions []*api.TxInfo, previousID string, err error) {
+	filter := bson.M{partitionIDKey: partitionID}
+	if startID != "" {
+		objectID, err := primitive.ObjectIDFromHex(startID)
+		if err != nil {
+			return nil, "", fmt.Errorf("invalid startID: %w", err)
+		}
+		filter["_id"] = bson.M{"$lte": objectID}
+	}
+
+	opts := options.Find().
+		SetSort(bson.D{{Key: "_id", Value: -1}}).
+		SetLimit(int64(limit + 1)) // Fetch one extra to identify the previous ID
+
+	cursor, err := s.db.Collection(txCollectionName).Find(ctx, filter, opts)
+	if err != nil {
+		return nil, "", fmt.Errorf("failed to query transactions: %w", err)
+	}
+	defer cursor.Close(ctx)
+
+	count := 0
+	for cursor.Next(ctx) {
+		var tx api.TxInfo
+		if err = cursor.Decode(&tx); err != nil {
+			return nil, "", fmt.Errorf("failed to decode transaction: %w", err)
+		}
+
+		if count == limit {
+			previousID = tx.ID.Hex()
+			break
+		}
+
+		transactions = append(transactions, &tx)
+		count++
+	}
+
+	if err = cursor.Err(); err != nil {
+		return nil, "", fmt.Errorf("cursor encountered an error: %w", err)
+	}
+
+	return transactions, previousID, nil
 }

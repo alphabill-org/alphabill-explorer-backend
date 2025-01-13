@@ -28,7 +28,12 @@ type (
 		GetTxInfo(ctx context.Context, txHash api.TxHash) (res *api.TxInfo, err error)
 		GetTxsByBlockNumber(ctx context.Context, blockNumber uint64, partitionID types.PartitionID) ([]*api.TxInfo, error)
 		GetTxsByUnitID(ctx context.Context, unitID types.UnitID) ([]*api.TxInfo, error)
-		GetTxsInRange(ctx context.Context, partitionID types.PartitionID, startSequenceNumber uint64, count int) (res []*api.TxInfo, prevSequenceNumber uint64, err error)
+		GetTxsPage(
+			ctx context.Context,
+			partitionID types.PartitionID,
+			startID string,
+			limit int,
+		) (transactions []*api.TxInfo, previousID string, err error)
 
 		//bill
 		//GetBillsByPubKey(ctx context.Context, ownerID types.Bytes) (res []*moneyApi.Bill, err error)

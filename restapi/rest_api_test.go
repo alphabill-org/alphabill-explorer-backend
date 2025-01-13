@@ -20,6 +20,10 @@ type MockExplorerBackendService struct {
 	//getBillsByPubKey             func(ctx context.Context, ownerID types.Bytes) (res []*moneyApi.Bill, err error)
 }
 
+func (m *MockExplorerBackendService) GetTxsPage(ctx context.Context, partitionID types.PartitionID, startID string, limit int) (transactions []*api.TxInfo, previousID string, err error) {
+	panic("implement me")
+}
+
 func (m *MockExplorerBackendService) GetUnitsByOwnerID(ctx context.Context, ownerID hex.Bytes) ([]types.UnitID, error) {
 	panic("implement me")
 }
@@ -43,10 +47,6 @@ func (m *MockExplorerBackendService) GetTxsByBlockNumber(ctx context.Context, bl
 }
 
 func (m *MockExplorerBackendService) GetTxsByUnitID(ctx context.Context, unitID types.UnitID) ([]*api.TxInfo, error) {
-	panic("implement me")
-}
-
-func (m *MockExplorerBackendService) GetTxsInRange(ctx context.Context, partitionID types.PartitionID, startSequenceNumber uint64, count int) (res []*api.TxInfo, prevSequenceNumber uint64, err error) {
 	panic("implement me")
 }
 

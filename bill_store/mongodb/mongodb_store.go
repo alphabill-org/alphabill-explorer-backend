@@ -90,7 +90,10 @@ func createIndexes(ctx context.Context, db *mongo.Database) error {
 			Keys:    bson.D{{Key: txRecordHashKey, Value: 1}},
 			Options: options.Index().SetUnique(true),
 		},
-		{Keys: bson.D{{Key: partitionIDKey, Value: 1}}},
+		{Keys: bson.D{
+			{Key: partitionIDKey, Value: 1},
+			{Key: "_id", Value: -1},
+		}},
 		{Keys: bson.D{{Key: targetUnitsKey, Value: 1}}},
 		{Keys: bson.D{{Key: blockNumberKey, Value: 1}, {Key: partitionIDKey, Value: 1}}},
 	})
