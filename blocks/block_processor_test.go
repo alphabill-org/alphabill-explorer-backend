@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/alphabill-org/alphabill-explorer-backend/api"
+	"github.com/alphabill-org/alphabill-explorer-backend/domain"
 	"github.com/alphabill-org/alphabill-go-base/types"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -25,12 +25,12 @@ func (m *MockStore) SetBlockNumber(ctx context.Context, partitionID types.Partit
 	return args.Error(0)
 }
 
-func (m *MockStore) SetTxInfo(ctx context.Context, txExplorer *api.TxInfo) error {
+func (m *MockStore) SetTxInfo(ctx context.Context, txExplorer *domain.TxInfo) error {
 	args := m.Called(ctx, txExplorer)
 	return args.Error(0)
 }
 
-func (m *MockStore) SetBlockInfo(ctx context.Context, blockInfo *api.BlockInfo) error {
+func (m *MockStore) SetBlockInfo(ctx context.Context, blockInfo *domain.BlockInfo) error {
 	args := m.Called(ctx, blockInfo)
 	return args.Error(0)
 }
@@ -38,6 +38,7 @@ func (m *MockStore) SetBlockInfo(ctx context.Context, blockInfo *api.BlockInfo) 
 func TestBlockProcessor_Success(t *testing.T) {
 	store := new(MockStore)
 	partitionID := types.PartitionID(1)
+	partitionTypeID := types.PartitionTypeID(2)
 	store.On("GetBlockNumber", mock.Anything, partitionID).Return(uint64(1), nil)
 	store.On("SetBlockNumber", mock.Anything, partitionID, uint64(2)).Return(nil)
 	store.On("SetTxInfo", mock.Anything, mock.Anything).Return(nil)
@@ -62,7 +63,7 @@ func TestBlockProcessor_Success(t *testing.T) {
 		UnicityCertificate: unicityCertificate,
 	}
 
-	err = blockProcessor.ProcessBlock(context.Background(), block)
+	err = blockProcessor.ProcessBlock(context.Background(), block, partitionTypeID)
 	require.NoError(t, err)
 
 	store.AssertExpectations(t)
@@ -71,6 +72,7 @@ func TestBlockProcessor_Success(t *testing.T) {
 func TestBlockProcessor_FailOnGetBlockNumber(t *testing.T) {
 	store := new(MockStore)
 	partitionID := types.PartitionID(1)
+	partitionTypeID := types.PartitionTypeID(2)
 	store.On("GetBlockNumber", mock.Anything, partitionID).Return(uint64(0), fmt.Errorf("some error"))
 
 	blockProcessor, err := NewBlockProcessor(store)
@@ -91,9 +93,8 @@ func TestBlockProcessor_FailOnGetBlockNumber(t *testing.T) {
 		},
 	}
 
-	err = blockProcessor.ProcessBlock(context.Background(), block)
+	err = blockProcessor.ProcessBlock(context.Background(), block, partitionTypeID)
 	require.Error(t, err)
-	fmt.Printf("error: %v", err)
 
 	store.AssertExpectations(t)
 }
@@ -101,6 +102,7 @@ func TestBlockProcessor_FailOnGetBlockNumber(t *testing.T) {
 func TestBlockProcessor_FailOnSetBlockNumber(t *testing.T) {
 	store := new(MockStore)
 	partitionID := types.PartitionID(1)
+	partitionTypeID := types.PartitionTypeID(2)
 	store.On("GetBlockNumber", mock.Anything, partitionID).Return(uint64(1), nil)
 	store.On("SetBlockNumber", mock.Anything, partitionID, uint64(2)).Return(fmt.Errorf("some error"))
 	store.On("SetTxInfo", mock.Anything, mock.Anything).Return(nil)
@@ -125,7 +127,7 @@ func TestBlockProcessor_FailOnSetBlockNumber(t *testing.T) {
 		UnicityCertificate: unicityCertificate,
 	}
 
-	err = blockProcessor.ProcessBlock(context.Background(), block)
+	err = blockProcessor.ProcessBlock(context.Background(), block, partitionTypeID)
 	require.Error(t, err)
 
 	store.AssertExpectations(t)

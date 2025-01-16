@@ -3,7 +3,8 @@ package mongodb
 import (
 	"context"
 	"fmt"
-	"github.com/alphabill-org/alphabill-explorer-backend/api"
+
+	"github.com/alphabill-org/alphabill-explorer-backend/domain"
 	"github.com/alphabill-org/alphabill-go-base/types"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -11,7 +12,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-func (s *MongoBillStore) SetTxInfo(ctx context.Context, txInfo *api.TxInfo) error {
+func (s *MongoBlockStore) SetTxInfo(ctx context.Context, txInfo *domain.TxInfo) error {
 	filter := bson.M{txRecordHashKey: txInfo.TxRecordHash}
 	update := bson.M{"$set": txInfo}
 
@@ -22,10 +23,15 @@ func (s *MongoBillStore) SetTxInfo(ctx context.Context, txInfo *api.TxInfo) erro
 	return nil
 }
 
-func (s *MongoBillStore) GetTxInfo(ctx context.Context, txHash api.TxHash) (*api.TxInfo, error) {
-	filter := bson.M{txRecordHashKey: txHash}
+func (s *MongoBlockStore) GetTxInfo(ctx context.Context, txHash domain.TxHash) (*domain.TxInfo, error) {
+	filter := bson.M{
+		"$or": []bson.M{
+			{txRecordHashKey: txHash},
+			{txOrderHashKey: txHash},
+		},
+	}
 
-	var tx api.TxInfo
+	var tx domain.TxInfo
 	err := s.db.Collection(txCollectionName).FindOne(ctx, filter).Decode(&tx)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
@@ -37,7 +43,7 @@ func (s *MongoBillStore) GetTxInfo(ctx context.Context, txHash api.TxHash) (*api
 	return &tx, nil
 }
 
-func (s *MongoBillStore) GetTxsByBlockNumber(ctx context.Context, blockNumber uint64, partitionID types.PartitionID) ([]*api.TxInfo, error) {
+func (s *MongoBlockStore) GetTxsByBlockNumber(ctx context.Context, blockNumber uint64, partitionID types.PartitionID) ([]*domain.TxInfo, error) {
 	blockMap, err := s.GetBlock(ctx, blockNumber, []types.PartitionID{partitionID})
 	if err != nil {
 		return nil, err
@@ -48,7 +54,7 @@ func (s *MongoBillStore) GetTxsByBlockNumber(ctx context.Context, blockNumber ui
 	return s.getTxsByHashes(ctx, blockMap[partitionID].TxHashes)
 }
 
-func (s *MongoBillStore) getTxsByHashes(ctx context.Context, hashes []api.TxHash) ([]*api.TxInfo, error) {
+func (s *MongoBlockStore) getTxsByHashes(ctx context.Context, hashes []domain.TxHash) ([]*domain.TxInfo, error) {
 	filter := bson.M{txRecordHashKey: bson.M{"$in": hashes}}
 
 	cursor, err := s.db.Collection(txCollectionName).Find(ctx, filter)
@@ -57,9 +63,9 @@ func (s *MongoBillStore) getTxsByHashes(ctx context.Context, hashes []api.TxHash
 	}
 	defer cursor.Close(ctx)
 
-	var transactions []*api.TxInfo
+	var transactions []*domain.TxInfo
 	for cursor.Next(ctx) {
-		var tx api.TxInfo
+		var tx domain.TxInfo
 		if err = cursor.Decode(&tx); err != nil {
 			return nil, fmt.Errorf("failed to decode transaction: %w", err)
 		}
@@ -73,7 +79,7 @@ func (s *MongoBillStore) getTxsByHashes(ctx context.Context, hashes []api.TxHash
 	return transactions, nil
 }
 
-func (s *MongoBillStore) GetTxsByUnitID(ctx context.Context, unitID types.UnitID) ([]*api.TxInfo, error) {
+func (s *MongoBlockStore) GetTxsByUnitID(ctx context.Context, unitID types.UnitID) ([]*domain.TxInfo, error) {
 	filter := bson.M{targetUnitsKey: unitID}
 
 	cursor, err := s.db.Collection(txCollectionName).Find(ctx, filter)
@@ -82,9 +88,9 @@ func (s *MongoBillStore) GetTxsByUnitID(ctx context.Context, unitID types.UnitID
 	}
 	defer cursor.Close(ctx)
 
-	var transactions []*api.TxInfo
+	var transactions []*domain.TxInfo
 	for cursor.Next(ctx) {
-		var tx api.TxInfo
+		var tx domain.TxInfo
 		if err := cursor.Decode(&tx); err != nil {
 			return nil, fmt.Errorf("failed to decode transaction: %w", err)
 		}
@@ -98,12 +104,12 @@ func (s *MongoBillStore) GetTxsByUnitID(ctx context.Context, unitID types.UnitID
 	return transactions, nil
 }
 
-func (s *MongoBillStore) GetTxsPage(
+func (s *MongoBlockStore) GetTxsPage(
 	ctx context.Context,
 	partitionID types.PartitionID,
 	startID string,
 	limit int,
-) (transactions []*api.TxInfo, previousID string, err error) {
+) (transactions []*domain.TxInfo, previousID string, err error) {
 	filter := bson.M{partitionIDKey: partitionID}
 	if startID != "" {
 		objectID, err := primitive.ObjectIDFromHex(startID)
@@ -125,7 +131,7 @@ func (s *MongoBillStore) GetTxsPage(
 
 	count := 0
 	for cursor.Next(ctx) {
-		var tx api.TxInfo
+		var tx domain.TxInfo
 		if err = cursor.Decode(&tx); err != nil {
 			return nil, "", fmt.Errorf("failed to decode transaction: %w", err)
 		}

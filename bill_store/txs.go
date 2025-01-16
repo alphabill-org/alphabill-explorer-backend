@@ -4,13 +4,13 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/alphabill-org/alphabill-explorer-backend/api"
+	"github.com/alphabill-org/alphabill-explorer-backend/domain"
 	"github.com/alphabill-org/alphabill-go-base/types"
 	"github.com/alphabill-org/alphabill-go-base/util"
 	bolt "go.etcd.io/bbolt"
 )
 
-func (s *boltBillStore) SetTxInfo(txInfo *api.TxInfo) error {
+func (s *boltBillStore) SetTxInfo(txInfo *domain.TxInfo) error {
 	return s.db.Update(func(tx *bolt.Tx) error {
 		txInfoBytes, err := json.Marshal(txInfo)
 		if err != nil {
@@ -34,7 +34,7 @@ func (s *boltBillStore) SetTxInfo(txInfo *api.TxInfo) error {
 	})
 }
 
-func (s *boltBillStore) addTxInOrder(tx *bolt.Tx, txRecHash api.TxHash) error {
+func (s *boltBillStore) addTxInOrder(tx *bolt.Tx, txRecHash domain.TxHash) error {
 	bucket := tx.Bucket(orderedTxRecHashes)
 	if bucket == nil {
 		return fmt.Errorf("bucket %s not found", orderedTxRecHashes)
@@ -46,7 +46,7 @@ func (s *boltBillStore) addTxInOrder(tx *bolt.Tx, txRecHash api.TxHash) error {
 	return bucket.Put(util.Uint64ToBytes(nextIndex), txRecHash)
 }
 
-func (s *boltBillStore) addUnitTxHash(tx *bolt.Tx, unitID types.UnitID, txRecordHash api.TxHash) error {
+func (s *boltBillStore) addUnitTxHash(tx *bolt.Tx, unitID types.UnitID, txRecordHash domain.TxHash) error {
 	bucket, err := EnsureSubBucket(tx, unitIDsToTxRecHashBucket, unitID, false)
 	if err != nil {
 		return fmt.Errorf("failed to ensure sub-bucket for unitID %s: %v", unitID, err)
@@ -58,7 +58,7 @@ func (s *boltBillStore) addUnitTxHash(tx *bolt.Tx, unitID types.UnitID, txRecord
 	return nil
 }
 
-func (s *boltBillStore) addTxHashMapping(tx *bolt.Tx, txOrderHash, txRecHash api.TxHash) error {
+func (s *boltBillStore) addTxHashMapping(tx *bolt.Tx, txOrderHash, txRecHash domain.TxHash) error {
 	bucket := tx.Bucket(txOrderHashToTxRecHash)
 	err := bucket.Put(txOrderHash, txRecHash)
 	if err != nil {
@@ -67,8 +67,8 @@ func (s *boltBillStore) addTxHashMapping(tx *bolt.Tx, txOrderHash, txRecHash api
 	return nil
 }
 
-func (s *boltBillStore) GetTxInfo(txHash api.TxHash) (*api.TxInfo, error) {
-	var txInfo *api.TxInfo
+func (s *boltBillStore) GetTxInfo(txHash domain.TxHash) (*domain.TxInfo, error) {
+	var txInfo *domain.TxInfo
 	err := s.db.View(func(tx *bolt.Tx) error {
 		var err error
 		txInfo, err = s.getTxInfo(tx, txHash)
@@ -77,8 +77,8 @@ func (s *boltBillStore) GetTxInfo(txHash api.TxHash) (*api.TxInfo, error) {
 	return txInfo, err
 }
 
-func (s *boltBillStore) getTxInfo(tx *bolt.Tx, txHash api.TxHash) (*api.TxInfo, error) {
-	var txInfo *api.TxInfo
+func (s *boltBillStore) getTxInfo(tx *bolt.Tx, txHash domain.TxHash) (*domain.TxInfo, error) {
+	var txInfo *domain.TxInfo
 	txInfoBytes := tx.Bucket(txInfoBucket).Get(txHash)
 	err := json.Unmarshal(txInfoBytes, &txInfo)
 	if err != nil {
@@ -88,13 +88,13 @@ func (s *boltBillStore) getTxInfo(tx *bolt.Tx, txHash api.TxHash) (*api.TxInfo, 
 }
 
 // GetTxs returns a list of transactions starting from the given sequence number. startSequenceNumber=0 means it's not set and cursor.last() is used.
-func (s *boltBillStore) GetTxs(startSequenceNumber uint64, count int) (res []*api.TxInfo, prevSequenceNumber uint64, err error) {
+func (s *boltBillStore) GetTxs(startSequenceNumber uint64, count int) (res []*domain.TxInfo, prevSequenceNumber uint64, err error) {
 	return res, prevSequenceNumber, s.db.View(func(tx *bolt.Tx) error {
 		return s.getTxs(tx, startSequenceNumber, count, &res, &prevSequenceNumber)
 	})
 }
 
-func (s *boltBillStore) getTxs(tx *bolt.Tx, startSequenceNumber uint64, count int, res *[]*api.TxInfo, prevSequenceNumber *uint64) error {
+func (s *boltBillStore) getTxs(tx *bolt.Tx, startSequenceNumber uint64, count int, res *[]*domain.TxInfo, prevSequenceNumber *uint64) error {
 	orderedTxRecHashes := tx.Bucket(orderedTxRecHashes)
 
 	var startKey []byte
@@ -119,7 +119,7 @@ func (s *boltBillStore) getTxs(tx *bolt.Tx, startSequenceNumber uint64, count in
 	return nil
 }
 
-func (s *boltBillStore) GetBlockTxsByBlockNumber(blockNumber uint64) (res []*api.TxInfo, err error) {
+func (s *boltBillStore) GetBlockTxsByBlockNumber(blockNumber uint64) (res []*domain.TxInfo, err error) {
 	return res, s.db.View(func(tx *bolt.Tx) error {
 		var err error
 		res, err = s.getBlockTxsByBlockNumber(tx, blockNumber)
@@ -127,8 +127,8 @@ func (s *boltBillStore) GetBlockTxsByBlockNumber(blockNumber uint64) (res []*api
 	})
 }
 
-func (s *boltBillStore) getBlockTxsByBlockNumber(tx *bolt.Tx, blockNumber uint64) ([]*api.TxInfo, error) {
-	var txs []*api.TxInfo
+func (s *boltBillStore) getBlockTxsByBlockNumber(tx *bolt.Tx, blockNumber uint64) ([]*domain.TxInfo, error) {
+	var txs []*domain.TxInfo
 	blockNumberBytes := util.Uint64ToBytes(blockNumber)
 
 	blockInfoBytes := tx.Bucket(blockInfoBucket).Get(blockNumberBytes)
@@ -136,7 +136,7 @@ func (s *boltBillStore) getBlockTxsByBlockNumber(tx *bolt.Tx, blockNumber uint64
 		return nil, fmt.Errorf("no block data found for block number %d", blockNumber)
 	}
 
-	var b api.BlockInfo
+	var b domain.BlockInfo
 	if err := json.Unmarshal(blockInfoBytes, &b); err != nil {
 		return nil, err
 	}
@@ -149,7 +149,7 @@ func (s *boltBillStore) getBlockTxsByBlockNumber(tx *bolt.Tx, blockNumber uint64
 			continue
 		}
 
-		t := &api.TxInfo{}
+		t := &domain.TxInfo{}
 		if err := json.Unmarshal(txBytes, t); err != nil {
 			return nil, err
 		}
@@ -159,8 +159,8 @@ func (s *boltBillStore) getBlockTxsByBlockNumber(tx *bolt.Tx, blockNumber uint64
 	return txs, nil
 }
 
-func (s *boltBillStore) GetTxsByUnitID(unitID types.UnitID) ([]*api.TxInfo, error) {
-	var txs []*api.TxInfo
+func (s *boltBillStore) GetTxsByUnitID(unitID types.UnitID) ([]*domain.TxInfo, error) {
+	var txs []*domain.TxInfo
 
 	err := s.db.View(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket(unitIDsToTxRecHashBucket)
@@ -184,7 +184,7 @@ func (s *boltBillStore) GetTxsByUnitID(unitID types.UnitID) ([]*api.TxInfo, erro
 				return fmt.Errorf("no transaction info found for txHash %s", txHash)
 			}
 
-			var txInfo *api.TxInfo
+			var txInfo *domain.TxInfo
 			if err := json.Unmarshal(txBytes, &txInfo); err != nil {
 				return err
 			}

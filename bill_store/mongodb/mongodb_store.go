@@ -3,6 +3,7 @@ package mongodb
 import (
 	"context"
 	"fmt"
+
 	"github.com/alphabill-org/alphabill-go-base/types"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -18,21 +19,23 @@ const (
 	partitionIDKey       = "partitionid"
 	blockNumberKey       = "blocknumber"
 	txRecordHashKey      = "txrecordhash"
+	txOrderHashKey       = "txorderhash"
+	txHashesKey          = "txhashes"
 	targetUnitsKey       = "transaction.servermetadata.targetunits"
 	latestBlockNumberKey = "latestblocknumber"
 )
 
-type MongoBillStore struct {
+type MongoBlockStore struct {
 	db *mongo.Database
 }
 
-func NewMongoBillStore(ctx context.Context, uri string) (*MongoBillStore, error) {
+func NewMongoBlockStore(ctx context.Context, uri string) (*MongoBlockStore, error) {
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI(uri))
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to mongo: %w", err)
 	}
 
-	store := &MongoBillStore{db: client.Database(databaseName)}
+	store := &MongoBlockStore{db: client.Database(databaseName)}
 	if err = store.createCollections(ctx); err != nil {
 		return nil, err
 	}
@@ -89,6 +92,9 @@ func createIndexes(ctx context.Context, db *mongo.Database) error {
 			Keys:    bson.D{{Key: txRecordHashKey, Value: 1}},
 			Options: options.Index().SetUnique(true),
 		},
+		{
+			Keys: bson.D{{Key: txOrderHashKey, Value: 1}},
+		},
 		{Keys: bson.D{
 			{Key: partitionIDKey, Value: 1},
 			{Key: "_id", Value: -1},
@@ -99,26 +105,64 @@ func createIndexes(ctx context.Context, db *mongo.Database) error {
 	return err
 }
 
-func (s *MongoBillStore) GetBlockNumber(ctx context.Context, partitionID types.PartitionID) (uint64, error) {
-	filter := bson.M{partitionIDKey: partitionID}
-
-	var result struct {
-		PartitionID       types.PartitionID
-		LatestBlockNumber uint64
-	}
-
-	err := s.db.Collection(metadataCollectionName).FindOne(ctx, filter).Decode(&result)
-	if err == mongo.ErrNoDocuments {
-		return 0, s.SetBlockNumber(ctx, partitionID, 0)
-	}
+func (s *MongoBlockStore) GetBlockNumber(ctx context.Context, partitionID types.PartitionID) (uint64, error) {
+	blockNumberMap, err := s.GetBlockNumbers(ctx, []types.PartitionID{partitionID})
 	if err != nil {
-		return 0, fmt.Errorf("failed to get latest block number: %w", err)
+		return 0, err
 	}
-
-	return result.LatestBlockNumber, nil
+	return blockNumberMap[partitionID], nil
 }
 
-func (s *MongoBillStore) SetBlockNumber(ctx context.Context, partitionID types.PartitionID, blockNumber uint64) error {
+func (s *MongoBlockStore) GetBlockNumbers(ctx context.Context, partitionIDs []types.PartitionID) (map[types.PartitionID]uint64, error) {
+	var filter bson.M
+
+	// If partitionIDs is nil, retrieve all partitions
+	if partitionIDs == nil {
+		filter = bson.M{}
+	} else {
+		filter = bson.M{partitionIDKey: bson.M{"$in": partitionIDs}}
+	}
+
+	cursor, err := s.db.Collection(metadataCollectionName).Find(ctx, filter)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query latest block numbers: %w", err)
+	}
+	defer cursor.Close(ctx)
+
+	blockNumbers := make(map[types.PartitionID]uint64)
+	for cursor.Next(ctx) {
+		var result struct {
+			PartitionID       types.PartitionID `bson:"partitionid"`
+			LatestBlockNumber uint64            `bson:"latestblocknumber"`
+		}
+
+		if err = cursor.Decode(&result); err != nil {
+			return nil, fmt.Errorf("failed to decode block number: %w", err)
+		}
+
+		blockNumbers[result.PartitionID] = result.LatestBlockNumber
+	}
+
+	if err = cursor.Err(); err != nil {
+		return nil, fmt.Errorf("cursor encountered an error: %w", err)
+	}
+
+	// If partitionIDs is not nil, ensure all requested partitions are accounted for
+	if partitionIDs != nil {
+		for _, partitionID := range partitionIDs {
+			if _, found := blockNumbers[partitionID]; !found {
+				if err = s.SetBlockNumber(ctx, partitionID, 0); err != nil {
+					return nil, fmt.Errorf("failed to set default block number for partition %s: %w", partitionID, err)
+				}
+				blockNumbers[partitionID] = 0
+			}
+		}
+	}
+
+	return blockNumbers, nil
+}
+
+func (s *MongoBlockStore) SetBlockNumber(ctx context.Context, partitionID types.PartitionID, blockNumber uint64) error {
 	filter := bson.M{partitionIDKey: partitionID}
 	update := bson.M{
 		"$set": bson.M{
@@ -134,7 +178,7 @@ func (s *MongoBillStore) SetBlockNumber(ctx context.Context, partitionID types.P
 	return nil
 }
 
-func (s *MongoBillStore) ResetCollections(ctx context.Context) error {
+func (s *MongoBlockStore) ResetCollections(ctx context.Context) error {
 	if err := s.db.Collection(blocksCollectionName).Drop(ctx); err != nil {
 		return err
 	}
@@ -147,7 +191,7 @@ func (s *MongoBillStore) ResetCollections(ctx context.Context) error {
 	return s.createCollections(ctx)
 }
 
-func (s *MongoBillStore) createCollections(ctx context.Context) error {
+func (s *MongoBlockStore) createCollections(ctx context.Context) error {
 	if err := ensureCollectionExists(ctx, s.db, blocksCollectionName); err != nil {
 		return err
 	}

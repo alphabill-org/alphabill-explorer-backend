@@ -1,4 +1,4 @@
-package api
+package domain
 
 import (
 	"crypto"
@@ -13,10 +13,11 @@ type BlockInfo struct {
 	TxHashes           []TxHash
 	UnicityCertificate types.TaggedCBOR
 	PartitionID        types.PartitionID
+	PartitionTypeID    types.PartitionTypeID
 	BlockNumber        uint64
 }
 
-func NewBlockInfo(b *types.Block) (*BlockInfo, error) {
+func NewBlockInfo(b *types.Block, partitionTypeID types.PartitionTypeID) (*BlockInfo, error) {
 	if b == nil {
 		return nil, fmt.Errorf("block is nil")
 	}
@@ -40,6 +41,7 @@ func NewBlockInfo(b *types.Block) (*BlockInfo, error) {
 		TxHashes:           txHashes,
 		UnicityCertificate: b.UnicityCertificate,
 		PartitionID:        b.PartitionID(),
+		PartitionTypeID:    partitionTypeID,
 		BlockNumber:        roundNumber,
 	}, nil
 }

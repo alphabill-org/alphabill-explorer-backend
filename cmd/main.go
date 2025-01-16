@@ -23,12 +23,17 @@ import (
 func main() {
 	fmt.Println("Starting AB Explorer")
 
-	config, err := ReadConfig(os.Args[1])
+	configPath := ""
+	if len(os.Args) > 1 {
+		configPath = os.Args[1]
+		fmt.Printf("reading config from %s\n", configPath)
+	}
+
+	config, err := LoadConfig(configPath)
 	if err != nil {
 		panic(fmt.Errorf("failed to read config: %w", err))
 	}
-
-	fmt.Printf("config: %+v", config)
+	fmt.Printf("config: %+v\n", config)
 
 	err = Run(context.Background(), config)
 	if err != nil {
@@ -38,7 +43,7 @@ func main() {
 
 func Run(ctx context.Context, config *Config) error {
 	println("creating bill store...")
-	store, err := mongodb.NewMongoBillStore(ctx, config.DB.URL)
+	store, err := mongodb.NewMongoBlockStore(ctx, config.DB.URL)
 	if err != nil {
 		return fmt.Errorf("failed to get storage: %w", err)
 	}
@@ -50,7 +55,7 @@ func Run(ctx context.Context, config *Config) error {
 		println("block explorer backend REST server starting on ", config.Server.Address)
 		explorerBackend := service.NewExplorerBackend(store)
 
-		handler := &ra.MoneyRestAPI{
+		handler := &ra.RestAPI{
 			Service:            explorerBackend,
 			ListBillsPageLimit: config.ListBillsPageLimit,
 		}
@@ -69,8 +74,8 @@ func Run(ctx context.Context, config *Config) error {
 	})
 
 	for _, node := range config.Nodes {
-		println("getting node info for %s...", node.URL)
-		adminClient, err := rpc.NewAdminAPIClient(ctx, args.BuildRpcUrl(node.URL))
+		println("getting node info for %s...", node)
+		adminClient, err := rpc.NewAdminAPIClient(ctx, args.BuildRpcUrl(node))
 		if err != nil {
 			return fmt.Errorf("failed to dial rpc client: %w", err)
 		}
@@ -81,7 +86,7 @@ func Run(ctx context.Context, config *Config) error {
 		}
 		println("partition ID: ", info.PartitionID)
 
-		moneyClient, err := rpc.NewStateAPIClient(ctx, args.BuildRpcUrl(node.URL))
+		stateClient, err := rpc.NewStateAPIClient(ctx, args.BuildRpcUrl(node))
 		if err != nil {
 			return fmt.Errorf("failed to dial rpc client: %w", err)
 		}
@@ -106,7 +111,8 @@ func Run(ctx context.Context, config *Config) error {
 			// just retry in a loop until ctx is cancelled
 			for {
 				println("starting block sync")
-				err := runBlockSync(ctx, moneyClient.GetBlock, getBlockNumber, 100, blockProcessor.ProcessBlock, info.PartitionID)
+				err := runBlockSync(ctx, stateClient.GetBlock, getBlockNumber, 100,
+					blockProcessor.ProcessBlock, info.PartitionID, info.PartitionTypeID)
 				if err != nil {
 					println(fmt.Errorf("synchronizing blocks returned error: %w", err).Error())
 				}
@@ -129,6 +135,7 @@ func runBlockSync(
 	batchSize int,
 	processor blocksync.BlockProcessorFunc,
 	partitionID types.PartitionID,
+	partitionTypeID types.PartitionTypeID,
 ) error {
 	blockNumber, err := getBlockNumber(ctx, partitionID)
 	if err != nil {
@@ -136,5 +143,5 @@ func runBlockSync(
 	}
 	// on bootstrap storage returns 0 as current block and as block numbering
 	// starts from 1 by adding 1 to it we start with the first block
-	return blocksync.Run(ctx, getBlocks, blockNumber+1, 0, batchSize, processor)
+	return blocksync.Run(ctx, getBlocks, blockNumber+1, 0, batchSize, processor, partitionTypeID)
 }

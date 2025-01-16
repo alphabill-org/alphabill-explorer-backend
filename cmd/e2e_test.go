@@ -14,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/alphabill-org/alphabill-explorer-backend/api"
+	"github.com/alphabill-org/alphabill-explorer-backend/domain"
 	"github.com/alphabill-org/alphabill-explorer-backend/restapi"
 	"github.com/alphabill-org/alphabill-go-base/types"
 	"github.com/alphabill-org/alphabill-wallet/cli/alphabill/cmd/wallet/args"
@@ -92,7 +92,7 @@ func TestE2E(t *testing.T) {
 			require.NoError(t, err)
 			txRn := unicityCertificate.GetRoundNumber()
 
-			blockMap := make(map[types.PartitionID]*api.BlockInfo)
+			blockMap := make(map[types.PartitionID]restapi.BlockInfo)
 			require.Eventually(t, func() bool {
 				resp, err := client.Get(fmt.Sprintf("http://%s/api/v1/blocks/%d", host, txRn))
 				require.NoError(t, err)
@@ -111,10 +111,10 @@ func TestE2E(t *testing.T) {
 			require.NotNil(t, blockInfo)
 
 			t.Run("Check tx record hash is in the block info", func(t *testing.T) {
-				require.Contains(t, blockInfo.TxHashes, api.TxHash(txrHash))
+				require.Contains(t, blockInfo.TxHashes, domain.TxHash(txrHash))
 			})
 
-			txInfo := &api.TxInfo{}
+			txInfo := &restapi.TxInfo{}
 			t.Run("Check tx info is correct", func(t *testing.T) {
 				resp, err := client.Get(fmt.Sprintf("http://%s/api/v1/txs/0x%X", host, txrHash))
 				require.NoError(t, err)
@@ -133,7 +133,7 @@ func TestE2E(t *testing.T) {
 				resp, err := client.Get(fmt.Sprintf("http://%s/api/v1/%s/txs", host, partitionID))
 				require.NoError(t, err)
 				require.Equal(t, http.StatusOK, resp.StatusCode)
-				txInfos := make([]*api.TxInfo, 0)
+				txInfos := make([]restapi.TxInfo, 0)
 				err = restapi.DecodeResponse(resp, http.StatusOK, &txInfos, false)
 				require.NoError(t, err)
 				require.Contains(t, txInfos, txInfo)
@@ -182,7 +182,7 @@ func runService(t *testing.T, ctx context.Context, host string, startFromBlock u
 		defer wg.Done()
 		require.NotPanics(t, func() {
 			err := Run(ctx, &Config{
-				Nodes:       []Node{{abMoneyArchiveRpcUrl}},
+				Nodes:       []string{abMoneyArchiveRpcUrl},
 				Server:      Server{Address: host},
 				DB:          DB{URL: dbConnectionString},
 				BlockNumber: startFromBlock,
