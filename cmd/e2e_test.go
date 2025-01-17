@@ -136,7 +136,7 @@ func TestE2E(t *testing.T) {
 				txInfos := make([]restapi.TxInfo, 0)
 				err = restapi.DecodeResponse(resp, http.StatusOK, &txInfos, false)
 				require.NoError(t, err)
-				require.Contains(t, txInfos, txInfo)
+				require.Contains(t, txInfos, *txInfo)
 			})
 		}
 	})
