@@ -2,9 +2,9 @@ package restapi
 
 import (
 	"context"
-	"github.com/alphabill-org/alphabill-explorer-backend/service"
 
 	"github.com/alphabill-org/alphabill-explorer-backend/domain"
+	"github.com/alphabill-org/alphabill-explorer-backend/service"
 	"github.com/alphabill-org/alphabill-go-base/types"
 	"github.com/alphabill-org/alphabill-go-base/types/hex"
 )

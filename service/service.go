@@ -3,16 +3,16 @@ package service
 import (
 	"context"
 	"fmt"
-	"github.com/alphabill-org/alphabill-wallet/client/rpc"
 	"sync"
 
 	"github.com/alphabill-org/alphabill-explorer-backend/domain"
 	"github.com/alphabill-org/alphabill-go-base/types"
+	"github.com/alphabill-org/alphabill-wallet/client/rpc"
 )
 
 type (
 	BillStore interface {
-		//block
+		////block
 		GetLastBlocks(ctx context.Context, partitionIDs []types.PartitionID, count int, includeEmpty bool) (map[types.PartitionID][]*domain.BlockInfo, error)
 		GetBlock(ctx context.Context, blockNumber uint64, partitionIDs []types.PartitionID) (map[types.PartitionID]*domain.BlockInfo, error)
 		GetBlocksInRange(
