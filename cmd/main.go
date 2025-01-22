@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/ainvaltin/httpsrv"
-	"github.com/alphabill-org/alphabill-explorer-backend/bill_store/mongodb"
+	"github.com/alphabill-org/alphabill-explorer-backend/block_store/mongodb"
 	"github.com/alphabill-org/alphabill-explorer-backend/blocks"
 	"github.com/alphabill-org/alphabill-explorer-backend/blocksync"
 	ra "github.com/alphabill-org/alphabill-explorer-backend/restapi"

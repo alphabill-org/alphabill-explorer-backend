@@ -19,6 +19,7 @@ require (
 	github.com/swaggo/http-swagger/v2 v2.0.2
 	github.com/swaggo/swag v1.16.4
 	github.com/testcontainers/testcontainers-go v0.35.0
+	github.com/testcontainers/testcontainers-go/modules/mongodb v0.35.0
 	go.etcd.io/bbolt v1.3.11
 	go.mongodb.org/mongo-driver v1.17.1
 	golang.org/x/sync v0.10.0

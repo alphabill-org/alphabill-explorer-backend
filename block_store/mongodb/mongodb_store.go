@@ -116,8 +116,8 @@ func (s *MongoBlockStore) GetBlockNumber(ctx context.Context, partitionID types.
 func (s *MongoBlockStore) GetBlockNumbers(ctx context.Context, partitionIDs []types.PartitionID) (map[types.PartitionID]uint64, error) {
 	var filter bson.M
 
-	// If partitionIDs is nil, retrieve all partitions
-	if partitionIDs == nil {
+	// If no partitions specified, retrieve all partitions
+	if len(partitionIDs) == 0 {
 		filter = bson.M{}
 	} else {
 		filter = bson.M{partitionIDKey: bson.M{"$in": partitionIDs}}

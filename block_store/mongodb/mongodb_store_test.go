@@ -12,22 +12,25 @@ import (
 	"github.com/alphabill-org/alphabill-go-base/types"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	"github.com/testcontainers/testcontainers-go"
+	mongocontainer "github.com/testcontainers/testcontainers-go/modules/mongodb"
+	"github.com/testcontainers/testcontainers-go/wait"
 )
 
 type MongoBillStoreSuite struct {
 	suite.Suite
-	container     *MongoTestContainer
-	connectionURI string
-	store         *MongoBlockStore
-	ctx           context.Context
-	cancel        context.CancelFunc
+	container *mongocontainer.MongoDBContainer
+	store     *MongoBlockStore
+	ctx       context.Context
+	cancel    context.CancelFunc
 }
 
 const (
-	blockCount  = 5
-	txsPerBlock = 3
-	partition1  = types.PartitionID(1)
-	partition2  = types.PartitionID(2)
+	mongoDBImage = "mongo:7.0"
+	blockCount   = 5
+	txsPerBlock  = 3
+	partition1   = types.PartitionID(1)
+	partition2   = types.PartitionID(2)
 )
 
 func TestMongoBillStoreSuite(t *testing.T) {
@@ -37,16 +40,19 @@ func TestMongoBillStoreSuite(t *testing.T) {
 func (suite *MongoBillStoreSuite) SetupSuite() {
 	suite.ctx, suite.cancel = context.WithTimeout(context.Background(), 5*time.Minute)
 
-	mongoContainer, err := StartMongoContainer(suite.ctx)
+	mongoContainer, err := mongocontainer.Run(suite.ctx, mongoDBImage, testcontainers.WithWaitStrategy(wait.ForLog("Waiting for connections")))
 	suite.Require().NoError(err, "failed to start MongoDB container")
 	suite.container = mongoContainer
 
-	suite.store, err = NewMongoBlockStore(suite.ctx, mongoContainer.URI)
+	connectionString, err := mongoContainer.ConnectionString(suite.ctx)
+	suite.Require().NoError(err)
+
+	suite.store, err = NewMongoBlockStore(suite.ctx, connectionString)
 	suite.Require().NoError(err, "failed to initialize MongoBlockStore")
 }
 
 func (suite *MongoBillStoreSuite) TearDownSuite() {
-	suite.Require().NoError(suite.container.Stop(suite.ctx), "failed to stop MongoDB container")
+	suite.Require().NoError(suite.container.Stop(suite.ctx, nil), "failed to stop MongoDB container")
 	suite.cancel()
 }
 
@@ -123,6 +129,25 @@ func (suite *MongoBillStoreSuite) TestMongoBillStore_GetLastBlocks() {
 	})
 
 	blocks, err := suite.store.GetLastBlocks(suite.ctx, []types.PartitionID{partition1, partition2}, 4, true)
+	require.NoError(suite.T(), err)
+	require.NotNil(suite.T(), blocks)
+	require.Len(suite.T(), blocks[partition1], 4)
+	require.EqualValues(suite.T(), blockCount+1, blocks[partition1][0].BlockNumber)
+	require.Len(suite.T(), blocks[partition2], 4)
+	require.EqualValues(suite.T(), blockCount, blocks[partition2][0].BlockNumber)
+}
+
+func (suite *MongoBillStoreSuite) TestMongoBillStore_GetLastBlocks_NoPartitionsSpecified() {
+	err := suite.store.SetBlockInfo(suite.ctx, &domain.BlockInfo{
+		TxHashes:    []domain.TxHash{},
+		PartitionID: partition1,
+		BlockNumber: blockCount + 1,
+	})
+
+	require.NoError(suite.T(), suite.store.SetBlockNumber(suite.ctx, partition1, blockCount+1))
+	require.NoError(suite.T(), suite.store.SetBlockNumber(suite.ctx, partition2, blockCount))
+
+	blocks, err := suite.store.GetLastBlocks(suite.ctx, []types.PartitionID{}, 4, true)
 	require.NoError(suite.T(), err)
 	require.NotNil(suite.T(), blocks)
 	require.Len(suite.T(), blocks[partition1], 4)

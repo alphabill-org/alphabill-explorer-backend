@@ -60,7 +60,7 @@ func (api *RestAPI) getTx(w http.ResponseWriter, r *http.Request) {
 // @Param startID query string false "ID of the transaction to start from, if not provided, the latest transactions are returned"
 // @Param limit query int false "The maximum number of transactions to retrieve, default 20"
 // @Success 200 {array} TxInfo "Successfully retrieved list of transactions"
-// @Router /{partitionID}/txs [get]
+// @Router /partitions/{partitionID}/txs [get]
 func (api *RestAPI) getTxs(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	partitionIDStr, ok := vars[paramPartitionID]
@@ -116,7 +116,7 @@ func (api *RestAPI) getTxs(w http.ResponseWriter, r *http.Request) {
 // @Success 200 {array} TxInfo "Successfully retrieved list of transactions for the block"
 // @Failure 400 {string} string "Missing or invalid 'blockNumber' variable in the URL"
 // @Failure 404 {string} string "No transactions found for the specified block number"
-// @Router /{partitionID}/blocks/{blockNumber}/txs [get]
+// @Router /partitions/{partitionID}/blocks/{blockNumber}/txs [get]
 func (api *RestAPI) getBlockTxsByBlockNumber(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	blockNumberStr, ok := vars[paramBlockNumber]

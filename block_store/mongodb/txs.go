@@ -104,15 +104,17 @@ func (s *MongoBlockStore) GetTxsByUnitID(ctx context.Context, unitID types.UnitI
 	return transactions, nil
 }
 
+// GetTxsPage retrieves a paginated list of transactions for a given partition, starting from the specified latestID.
+// Returns the transactions, the latest ID for the previous page, and any error encountered.
 func (s *MongoBlockStore) GetTxsPage(
 	ctx context.Context,
 	partitionID types.PartitionID,
-	startID string,
+	latestID string,
 	limit int,
 ) (transactions []*domain.TxInfo, previousID string, err error) {
 	filter := bson.M{partitionIDKey: partitionID}
-	if startID != "" {
-		objectID, err := primitive.ObjectIDFromHex(startID)
+	if latestID != "" {
+		objectID, err := primitive.ObjectIDFromHex(latestID)
 		if err != nil {
 			return nil, "", fmt.Errorf("invalid startID: %w", err)
 		}

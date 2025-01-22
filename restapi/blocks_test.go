@@ -166,11 +166,11 @@ func TestGetBlocks_Success(t *testing.T) {
 			}, 0, nil
 		},
 	}}
-	r.HandleFunc("/{partitionID}/blocks", restapi.getBlocksInRange)
+	r.HandleFunc("/partitions/{partitionID}/blocks", restapi.getBlocksInRange)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 
-	res, err := http.Get(fmt.Sprintf("%s/%d/blocks?startBlock=1&limit=10", ts.URL, partitionID1))
+	res, err := http.Get(fmt.Sprintf("%s/partitions/%d/blocks?startBlock=1&limit=10", ts.URL, partitionID1))
 	require.NoError(t, err)
 
 	require.Equal(t, http.StatusOK, res.StatusCode)
@@ -200,11 +200,11 @@ func TestGetBlocks_Success_ExcludeEmpty(t *testing.T) {
 			}, 0, nil
 		},
 	}}
-	r.HandleFunc("/{partitionID}/blocks", restapi.getBlocksInRange)
+	r.HandleFunc("/partitions/{partitionID}/blocks", restapi.getBlocksInRange)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 
-	res, err := http.Get(fmt.Sprintf("%s/%d/blocks?startBlock=1&limit=10&includeEmpty=false", ts.URL, partitionID1))
+	res, err := http.Get(fmt.Sprintf("%s/partitions/%d/blocks?startBlock=1&limit=10&includeEmpty=false", ts.URL, partitionID1))
 	require.NoError(t, err)
 
 	require.Equal(t, http.StatusOK, res.StatusCode)

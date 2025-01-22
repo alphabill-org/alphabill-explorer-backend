@@ -54,11 +54,11 @@ func TestGetTxs_Success(t *testing.T) {
 			}, "xxx", nil
 		},
 	}}
-	r.HandleFunc("/{partitionID}/txs", restapi.getTxs)
+	r.HandleFunc("/partitions/{partitionID}/txs", restapi.getTxs)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
 
-	res, err := http.Get(fmt.Sprintf("%s/%d/txs", ts.URL, partitionID1))
+	res, err := http.Get(fmt.Sprintf("%s/partitions/%d/txs", ts.URL, partitionID1))
 	require.NoError(t, err)
 
 	require.Equal(t, http.StatusOK, res.StatusCode)

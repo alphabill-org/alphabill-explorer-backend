@@ -24,7 +24,7 @@ func (s *MongoBlockStore) SetBlockInfo(ctx context.Context, blockInfo *domain.Bl
 
 func (s *MongoBlockStore) GetBlock(ctx context.Context, blockNumber uint64, partitionIDs []types.PartitionID) (map[types.PartitionID]*domain.BlockInfo, error) {
 	filter := bson.M{blockNumberKey: blockNumber}
-	if partitionIDs != nil && len(partitionIDs) > 0 {
+	if len(partitionIDs) > 0 {
 		filter[partitionIDKey] = bson.M{"$in": partitionIDs}
 	}
 
@@ -58,6 +58,16 @@ func (s *MongoBlockStore) GetLastBlocks(
 ) (map[types.PartitionID][]*domain.BlockInfo, error) {
 	blockMap := make(map[types.PartitionID][]*domain.BlockInfo)
 
+	if len(partitionIDs) == 0 {
+		latestBlockNumbers, err := s.GetBlockNumbers(ctx, nil)
+		if err != nil {
+			return nil, err
+		}
+		for partitionID, _ := range latestBlockNumbers {
+			partitionIDs = append(partitionIDs, partitionID)
+		}
+	}
+
 	for _, partitionID := range partitionIDs {
 		blocks, _, err := s.GetBlocksInRange(ctx, partitionID, math.MaxInt64, count, includeEmpty)
 		if err != nil {
@@ -72,13 +82,13 @@ func (s *MongoBlockStore) GetLastBlocks(
 func (s *MongoBlockStore) GetBlocksInRange(
 	ctx context.Context,
 	partitionID types.PartitionID,
-	dbStartBlock uint64,
+	latestBlock uint64,
 	count int,
 	includeEmpty bool,
-) (blocks []*domain.BlockInfo, prevBlockNumber uint64, err error) {
+) ([]*domain.BlockInfo, uint64, error) {
 	filter := bson.M{
 		partitionIDKey: partitionID,
-		blockNumberKey: bson.M{"$lte": dbStartBlock},
+		blockNumberKey: bson.M{"$lte": latestBlock},
 	}
 
 	if !includeEmpty {
@@ -98,6 +108,7 @@ func (s *MongoBlockStore) GetBlocksInRange(
 	}
 	defer cursor.Close(ctx)
 
+	var blocks []*domain.BlockInfo
 	for cursor.Next(ctx) {
 		var block domain.BlockInfo
 		if err = cursor.Decode(&block); err != nil {
@@ -110,10 +121,9 @@ func (s *MongoBlockStore) GetBlocksInRange(
 		return blocks, 0, nil
 	}
 
+	prevBlockNumber := uint64(0)
 	if len(blocks) == count {
 		prevBlockNumber = blocks[len(blocks)-1].BlockNumber - 1
-	} else {
-		prevBlockNumber = 0
 	}
 
 	return blocks, prevBlockNumber, nil

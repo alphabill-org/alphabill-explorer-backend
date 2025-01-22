@@ -52,7 +52,9 @@ func (api *RestAPI) getBlock(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		for partitionID, blocks := range blockMap {
-			result[partitionID] = blockInfoResponse(blocks[0])
+			if len(blocks) > 0 {
+				result[partitionID] = blockInfoResponse(blocks[0])
+			}
 		}
 		api.rw.WriteResponse(w, result)
 		return
@@ -90,7 +92,7 @@ func (api *RestAPI) getBlock(w http.ResponseWriter, r *http.Request) {
 // @Param limit query string false "optionally specify the number of blocks to return, defaults to 10"
 // @Param includeEmpty query boolean false "whether to include blocks without transactions, defaults to true"
 // @Success 200 {array} BlockInfo
-// @Router /{partitionID}/blocks [get]
+// @Router /partitions/{partitionID}/blocks [get]
 // @Tags Blocks
 func (api *RestAPI) getBlocksInRange(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)

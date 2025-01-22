@@ -46,12 +46,12 @@ func (api *RestAPI) Router() *mux.Router {
 
 	//block
 	apiV1.HandleFunc("/blocks/{blockNumber}", api.getBlock).Methods(http.MethodGet, http.MethodOptions)
-	apiV1.HandleFunc("/{partitionID}/blocks", api.getBlocksInRange).Methods(http.MethodGet, http.MethodOptions)
+	apiV1.HandleFunc("/partitions/{partitionID}/blocks", api.getBlocksInRange).Methods(http.MethodGet, http.MethodOptions)
 
 	//tx
 	apiV1.HandleFunc("/txs/{txHash}", api.getTx).Methods(http.MethodGet, http.MethodOptions)
-	apiV1.HandleFunc("/{partitionID}/txs", api.getTxs).Methods(http.MethodGet, http.MethodOptions)
-	apiV1.HandleFunc("/{partitionID}/blocks/{blockNumber}/txs", api.getBlockTxsByBlockNumber).Methods(http.MethodGet, http.MethodOptions)
+	apiV1.HandleFunc("/partitions/{partitionID}/txs", api.getTxs).Methods(http.MethodGet, http.MethodOptions)
+	apiV1.HandleFunc("/partitions/{partitionID}/blocks/{blockNumber}/txs", api.getBlockTxsByBlockNumber).Methods(http.MethodGet, http.MethodOptions)
 	apiV1.HandleFunc("/units/{unitID}/txs", api.getTxsByUnitID).Methods(http.MethodGet, http.MethodOptions)
 
 	//bill

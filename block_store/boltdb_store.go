@@ -1,4 +1,4 @@
-package bill_store
+package block_store
 
 import (
 	"bytes"

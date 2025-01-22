@@ -11,8 +11,8 @@ import (
 )
 
 type (
-	BillStore interface {
-		////block
+	BlockStore interface {
+		//block
 		GetLastBlocks(ctx context.Context, partitionIDs []types.PartitionID, count int, includeEmpty bool) (map[types.PartitionID][]*domain.BlockInfo, error)
 		GetBlock(ctx context.Context, blockNumber uint64, partitionIDs []types.PartitionID) (map[types.PartitionID]*domain.BlockInfo, error)
 		GetBlocksInRange(
@@ -32,7 +32,7 @@ type (
 	}
 
 	ExplorerBackend struct {
-		store            BillStore
+		store            BlockStore
 		partitionClients map[types.PartitionID]*PartitionClient
 		sync.RWMutex
 	}
@@ -51,7 +51,7 @@ type (
 	}
 )
 
-func NewExplorerBackend(store BillStore) *ExplorerBackend {
+func NewExplorerBackend(store BlockStore) *ExplorerBackend {
 	return &ExplorerBackend{
 		store:            store,
 		partitionClients: map[types.PartitionID]*PartitionClient{},
