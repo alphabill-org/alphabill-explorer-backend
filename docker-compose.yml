@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  abexplorer:
+    build:
+      context: .
+      dockerfile: ./scripts/Dockerfile
+    image: abexplorer:latest
+    container_name: abexplorer-container
+    depends_on:
+      - mongo
+    environment:
+      - BLOCK_EXPLORER_NODES=dev-ab-money-archive.abdev1.guardtime.com/rpc,dev-ab-tokens-archive.abdev1.guardtime.com/rpc
+      - BLOCK_EXPLORER_DB_URL=mongodb://admin:adminpassword@mongo:27017/
+      - BLOCK_EXPLORER_SERVER_ADDRESS=localhost:9666
+      - BLOCK_EXPLORER_BLOCK_NUMBER=100000
+    ports:
+      - "9666:9666"
+    volumes:
+      - ./cmd/config.yaml:/app/config.yaml
+
+  mongo:
+    image: mongo:7.0
+    container_name: mongo-container
+    restart: unless-stopped
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=adminpassword
+      - MONGO_INITDB_DATABASE=blockExplorerDB
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+
+volumes:
+  mongo-data:
