@@ -22,3 +22,7 @@ BLOCK_EXPLORER_BLOCK_NUMBER=123 - first block number to fetch, must be > 0
 BLOCK_EXPLORER_DB_URL=mongodb://<username>:<password>@localhost:27017 - connection string for Mongo DB
 BLOCK_EXPLORER_SERVER_ADDRESS=localhost:9666 - address of the REST API server
 ```
+
+## Rest API
+
+Documentation of REST API endpoints can be found at http://localhost:9666/swagger/index.html
