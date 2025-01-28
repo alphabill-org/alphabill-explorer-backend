@@ -11,11 +11,14 @@ import (
 
 type (
 	Config struct {
-		Nodes              []string `mapstructure:"nodes"`
-		DB                 DB       `mapstructure:"db"`
-		Server             Server   `mapstructure:"server"`
-		BlockNumber        uint64   `mapstructure:"block_number"`
-		ListBillsPageLimit int      `mapstructure:"list_bills_page_limit"`
+		Nodes  []Node `mapstructure:"nodes"`
+		DB     DB     `mapstructure:"db"`
+		Server Server `mapstructure:"server"`
+	}
+
+	Node struct {
+		URL         string `mapstructure:"url"`
+		BlockNumber uint64 `mapstructure:"block_number"`
 	}
 
 	DB struct {
@@ -54,6 +57,21 @@ func LoadConfig(configFilePath string) (*Config, error) {
 	} else {
 		log.Println("No config file provided, using environment variables only.")
 	}
+
+	// Build the nodes structure manually from environment variables
+	var nodes []map[string]interface{}
+	for i := 0; ; i++ {
+		url := viper.GetString(fmt.Sprintf("nodes.%d.url", i))
+		blockNumber := viper.GetInt(fmt.Sprintf("nodes.%d.block_number", i))
+		if url == "" && blockNumber == 0 {
+			break
+		}
+		nodes = append(nodes, map[string]interface{}{
+			"url":          url,
+			"block_number": blockNumber,
+		})
+	}
+	viper.Set("nodes", nodes)
 
 	var config Config
 	if err := viper.Unmarshal(&config); err != nil {

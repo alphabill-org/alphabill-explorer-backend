@@ -172,11 +172,13 @@ func (api *RestAPI) getBlocksInRange(w http.ResponseWriter, r *http.Request) {
 
 func blockInfoResponse(block *domain.BlockInfo) BlockInfo {
 	return BlockInfo{
-		Header:             block.Header,
-		TxHashes:           block.TxHashes,
-		UnicityCertificate: block.UnicityCertificate,
 		PartitionID:        block.PartitionID,
 		PartitionTypeID:    block.PartitionTypeID,
+		ShardID:            block.ShardID,
+		ProposerID:         block.ProposerID,
+		PreviousBlockHash:  block.PreviousBlockHash,
+		TxHashes:           block.TxHashes,
+		UnicityCertificate: block.UnicityCertificate,
 		BlockNumber:        block.BlockNumber,
 	}
 }

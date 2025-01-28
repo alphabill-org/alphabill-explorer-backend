@@ -4,12 +4,18 @@ definitions:
     properties:
       blockNumber:
         type: integer
-      header:
-        $ref: '#/definitions/types.Header'
       partitionID:
         type: integer
       partitionTypeID:
         type: integer
+      previousBlockHash:
+        items:
+          type: integer
+        type: array
+      proposerID:
+        type: string
+      shardID:
+        $ref: '#/definitions/types.ShardID'
       txHashes:
         items:
           items:
@@ -46,21 +52,6 @@ definitions:
         items:
           type: integer
         type: array
-    type: object
-  types.Header:
-    properties:
-      partitionID:
-        type: integer
-      previousBlockHash:
-        items:
-          type: integer
-        type: array
-      proposerID:
-        type: string
-      shardID:
-        $ref: '#/definitions/types.ShardID'
-      version:
-        type: integer
     type: object
   types.ServerMetadata:
     properties:

@@ -5,15 +5,17 @@ import (
 	"fmt"
 
 	"github.com/alphabill-org/alphabill-go-base/types"
+	"github.com/alphabill-org/alphabill-go-base/types/hex"
 )
 
 type BlockInfo struct {
-	_                  struct{} `cbor:",toarray"`
-	Header             *types.Header
-	TxHashes           []TxHash
-	UnicityCertificate types.TaggedCBOR
 	PartitionID        types.PartitionID
 	PartitionTypeID    types.PartitionTypeID
+	ShardID            types.ShardID
+	ProposerID         string
+	PreviousBlockHash  hex.Bytes
+	TxHashes           []TxHash
+	UnicityCertificate types.TaggedCBOR
 	BlockNumber        uint64
 }
 
@@ -36,12 +38,23 @@ func NewBlockInfo(b *types.Block, partitionTypeID types.PartitionTypeID) (*Block
 		return nil, fmt.Errorf("failed to get round number from block: %w", err)
 	}
 
+	var (
+		shardID           types.ShardID
+		previousBlockHash hex.Bytes
+	)
+	if b.Header != nil {
+		shardID = b.Header.ShardID
+		previousBlockHash = b.Header.PreviousBlockHash
+	}
+
 	return &BlockInfo{
-		Header:             b.Header,
-		TxHashes:           txHashes,
-		UnicityCertificate: b.UnicityCertificate,
 		PartitionID:        b.PartitionID(),
 		PartitionTypeID:    partitionTypeID,
+		ShardID:            shardID,
+		ProposerID:         b.GetProposerID(),
+		PreviousBlockHash:  previousBlockHash,
+		TxHashes:           txHashes,
+		UnicityCertificate: b.UnicityCertificate,
 		BlockNumber:        roundNumber,
 	}, nil
 }

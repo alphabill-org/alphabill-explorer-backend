@@ -324,14 +324,23 @@ const docTemplate = `{
                 "blockNumber": {
                     "type": "integer"
                 },
-                "header": {
-                    "$ref": "#/definitions/types.Header"
-                },
                 "partitionID": {
                     "type": "integer"
                 },
                 "partitionTypeID": {
                     "type": "integer"
+                },
+                "previousBlockHash": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "proposerID": {
+                    "type": "string"
+                },
+                "shardID": {
+                    "$ref": "#/definitions/types.ShardID"
                 },
                 "txHashes": {
                     "type": "array",
@@ -387,29 +396,6 @@ const docTemplate = `{
                     "items": {
                         "type": "integer"
                     }
-                }
-            }
-        },
-        "types.Header": {
-            "type": "object",
-            "properties": {
-                "partitionID": {
-                    "type": "integer"
-                },
-                "previousBlockHash": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "proposerID": {
-                    "type": "string"
-                },
-                "shardID": {
-                    "$ref": "#/definitions/types.ShardID"
-                },
-                "version": {
-                    "type": "integer"
                 }
             }
         },

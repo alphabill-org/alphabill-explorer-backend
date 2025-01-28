@@ -8,6 +8,7 @@ import (
 	"github.com/alphabill-org/alphabill-explorer-backend/domain"
 	"github.com/alphabill-org/alphabill-explorer-backend/service"
 	"github.com/alphabill-org/alphabill-go-base/types"
+	"github.com/alphabill-org/alphabill-go-base/types/hex"
 )
 
 const (
@@ -53,9 +54,8 @@ type (
 	}
 
 	RestAPI struct {
-		Service            ExplorerBackendService
-		ListBillsPageLimit int
-		rw                 *ResponseWriter
+		Service ExplorerBackendService
+		rw      *ResponseWriter
 	}
 
 	RoundNumberResponse []service.PartitionRoundInfo
@@ -63,11 +63,13 @@ type (
 	BlockResponse map[types.PartitionID]BlockInfo
 
 	BlockInfo struct {
-		Header             *types.Header
-		TxHashes           []domain.TxHash
-		UnicityCertificate types.TaggedCBOR
 		PartitionID        types.PartitionID
 		PartitionTypeID    types.PartitionTypeID
+		ShardID            types.ShardID
+		ProposerID         string
+		PreviousBlockHash  hex.Bytes
+		TxHashes           []domain.TxHash
+		UnicityCertificate types.TaggedCBOR
 		BlockNumber        uint64
 	}
 

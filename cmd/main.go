@@ -56,8 +56,7 @@ func Run(ctx context.Context, config *Config) error {
 		explorerBackend := service.NewExplorerBackend(store)
 
 		handler := &ra.RestAPI{
-			Service:            explorerBackend,
-			ListBillsPageLimit: config.ListBillsPageLimit,
+			Service: explorerBackend,
 		}
 
 		return httpsrv.Run(
@@ -74,21 +73,30 @@ func Run(ctx context.Context, config *Config) error {
 	})
 
 	for _, node := range config.Nodes {
-		println("getting node info for %s...", node)
-		adminClient, err := rpc.NewAdminAPIClient(ctx, args.BuildRpcUrl(node))
+		println("getting node info for ", node.URL)
+		adminClient, err := rpc.NewAdminAPIClient(ctx, args.BuildRpcUrl(node.URL))
 		if err != nil {
 			return fmt.Errorf("failed to dial rpc client: %w", err)
 		}
 
-		info, err := adminClient.GetNodeInfo(ctx)
+		nodeInfo, err := adminClient.GetNodeInfo(ctx)
 		if err != nil {
 			return fmt.Errorf("failed to get node info: %w", err)
 		}
-		println("partition ID: ", info.PartitionID)
+		println("partition ID: ", nodeInfo.PartitionID)
 
-		stateClient, err := rpc.NewStateAPIClient(ctx, args.BuildRpcUrl(node))
+		stateClient, err := rpc.NewStateAPIClient(ctx, args.BuildRpcUrl(node.URL))
 		if err != nil {
 			return fmt.Errorf("failed to dial rpc client: %w", err)
+		}
+
+		roundInfo, err := stateClient.GetRoundInfo(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to get round info: %w", err)
+		}
+		if node.BlockNumber > roundInfo.RoundNumber {
+			return fmt.Errorf("current round number for partition %d (%d) is smaller than configured starting block number (%d)",
+				nodeInfo.PartitionID, roundInfo.RoundNumber, node.BlockNumber)
 		}
 
 		g.Go(func() error {
@@ -102,8 +110,8 @@ func Run(ctx context.Context, config *Config) error {
 				if err != nil {
 					return 0, fmt.Errorf("failed to read current block number: %w", err)
 				}
-				if config.BlockNumber > storedBN {
-					return config.BlockNumber, nil
+				if node.BlockNumber > storedBN {
+					return node.BlockNumber, nil
 				}
 				return storedBN, nil
 			}
@@ -112,7 +120,7 @@ func Run(ctx context.Context, config *Config) error {
 			for {
 				println("starting block sync")
 				err := runBlockSync(ctx, stateClient.GetBlock, getBlockNumber, 100,
-					blockProcessor.ProcessBlock, info.PartitionID, info.PartitionTypeID)
+					blockProcessor.ProcessBlock, nodeInfo.PartitionID, nodeInfo.PartitionTypeID)
 				if err != nil {
 					println(fmt.Errorf("synchronizing blocks returned error: %w", err).Error())
 				}

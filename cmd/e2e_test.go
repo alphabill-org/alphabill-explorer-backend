@@ -24,13 +24,16 @@ import (
 	"github.com/alphabill-org/alphabill-wallet/wallet/fees"
 	wallet "github.com/alphabill-org/alphabill-wallet/wallet/money"
 	"github.com/stretchr/testify/require"
+	"github.com/testcontainers/testcontainers-go"
+	mongocontainer "github.com/testcontainers/testcontainers-go/modules/mongodb"
+	"github.com/testcontainers/testcontainers-go/wait"
 )
 
 const (
 	abMoneyRpcUrl        = "dev-ab-money.abdev1.guardtime.com/rpc"
 	abMoneyArchiveRpcUrl = "dev-ab-money-archive.abdev1.guardtime.com/rpc"
 	partitionID          = types.PartitionID(1)
-	dbConnectionString   = "mongodb://localhost:27017"
+	mongoDBImage         = "mongo:7.0"
 	maxFee               = 10
 )
 
@@ -38,6 +41,8 @@ func TestE2E(t *testing.T) {
 	startTime := time.Now()
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
+
+	dbConnectionString := startDB(t, ctx)
 
 	port := findFreePort(t)
 	host := fmt.Sprintf("localhost:%s", port)
@@ -50,7 +55,7 @@ func TestE2E(t *testing.T) {
 
 	fmt.Printf("Round number: %d\n", rn)
 
-	_ = runService(t, ctx, host, rn-1)
+	_ = runService(t, ctx, host, dbConnectionString, rn-1)
 	awaitStartup(t, host)
 
 	client := http.Client{Timeout: 5 * time.Second}
@@ -130,7 +135,7 @@ func TestE2E(t *testing.T) {
 			})
 
 			t.Run("check latest transactions to contain the tx", func(t *testing.T) {
-				resp, err := client.Get(fmt.Sprintf("http://%s/api/v1/%s/txs", host, partitionID))
+				resp, err := client.Get(fmt.Sprintf("http://%s/api/v1/partitions/%s/txs", host, partitionID))
 				require.NoError(t, err)
 				require.Equal(t, http.StatusOK, resp.StatusCode)
 				txInfos := make([]restapi.TxInfo, 0)
@@ -173,7 +178,7 @@ func createMoneyWallet(t *testing.T, ctx context.Context, walletDir string) *wal
 	return w
 }
 
-func runService(t *testing.T, ctx context.Context, host string, startFromBlock uint64) *sync.WaitGroup {
+func runService(t *testing.T, ctx context.Context, host string, dbConnectionString string, startFromBlock uint64) *sync.WaitGroup {
 	os.Args = []string{t.TempDir()}
 
 	var wg sync.WaitGroup
@@ -182,10 +187,9 @@ func runService(t *testing.T, ctx context.Context, host string, startFromBlock u
 		defer wg.Done()
 		require.NotPanics(t, func() {
 			err := Run(ctx, &Config{
-				Nodes:       []string{abMoneyArchiveRpcUrl},
-				Server:      Server{Address: host},
-				DB:          DB{URL: dbConnectionString},
-				BlockNumber: startFromBlock,
+				Nodes:  []Node{{URL: abMoneyArchiveRpcUrl, BlockNumber: startFromBlock}},
+				Server: Server{Address: host},
+				DB:     DB{URL: dbConnectionString},
 			})
 			require.NoError(t, err)
 		}, "should not panic")
@@ -218,4 +222,12 @@ func findFreePort(t *testing.T) string {
 	require.NoError(t, err)
 
 	return port
+}
+
+func startDB(t *testing.T, ctx context.Context) string {
+	mongoContainer, err := mongocontainer.Run(ctx, mongoDBImage, testcontainers.WithWaitStrategy(wait.ForLog("Waiting for connections")))
+	require.NoError(t, err)
+	connectionString, err := mongoContainer.ConnectionString(ctx)
+	require.NoError(t, err)
+	return connectionString
 }
