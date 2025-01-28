@@ -1,19 +1,22 @@
-package api
+package domain
 
 import (
 	"crypto"
 	"fmt"
 	"github.com/alphabill-org/alphabill-go-base/types"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type TxInfo struct {
+	ID           primitive.ObjectID `bson:"_id,omitempty"` // MongoDB's ObjectId field
 	TxRecordHash TxHash
 	TxOrderHash  TxHash
 	BlockNumber  uint64
 	Transaction  *types.TransactionRecord
+	PartitionID  types.PartitionID
 }
 
-func NewTxInfo(blockNo uint64, txRecord *types.TransactionRecord) (*TxInfo, error) {
+func NewTxInfo(PartitionID types.PartitionID, blockNo uint64, txRecord *types.TransactionRecord) (*TxInfo, error) {
 	if txRecord == nil {
 		return nil, fmt.Errorf("transaction record is nil")
 	}
@@ -36,6 +39,7 @@ func NewTxInfo(blockNo uint64, txRecord *types.TransactionRecord) (*TxInfo, erro
 		TxOrderHash:  txoHash,
 		BlockNumber:  blockNo,
 		Transaction:  txRecord,
+		PartitionID:  PartitionID,
 	}
 	return txInfo, nil
 }

@@ -10,13 +10,11 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"path/filepath"
 	"sync"
 	"testing"
 	"time"
 
-	"github.com/alphabill-org/alphabill-explorer-backend/api"
-	"github.com/alphabill-org/alphabill-explorer-backend/bill_store"
+	"github.com/alphabill-org/alphabill-explorer-backend/domain"
 	"github.com/alphabill-org/alphabill-explorer-backend/restapi"
 	"github.com/alphabill-org/alphabill-go-base/types"
 	"github.com/alphabill-org/alphabill-wallet/cli/alphabill/cmd/wallet/args"
@@ -26,11 +24,16 @@ import (
 	"github.com/alphabill-org/alphabill-wallet/wallet/fees"
 	wallet "github.com/alphabill-org/alphabill-wallet/wallet/money"
 	"github.com/stretchr/testify/require"
+	"github.com/testcontainers/testcontainers-go"
+	mongocontainer "github.com/testcontainers/testcontainers-go/modules/mongodb"
+	"github.com/testcontainers/testcontainers-go/wait"
 )
 
 const (
 	abMoneyRpcUrl        = "dev-ab-money.abdev1.guardtime.com/rpc"
 	abMoneyArchiveRpcUrl = "dev-ab-money-archive.abdev1.guardtime.com/rpc"
+	partitionID          = types.PartitionID(1)
+	mongoDBImage         = "mongo:7.0"
 	maxFee               = 10
 )
 
@@ -38,6 +41,8 @@ func TestE2E(t *testing.T) {
 	startTime := time.Now()
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
+
+	dbConnectionString := startDB(t, ctx)
 
 	port := findFreePort(t)
 	host := fmt.Sprintf("localhost:%s", port)
@@ -50,7 +55,7 @@ func TestE2E(t *testing.T) {
 
 	fmt.Printf("Round number: %d\n", rn)
 
-	_ = runService(t, ctx, host, rn)
+	_ = runService(t, ctx, host, dbConnectionString, rn-1)
 	awaitStartup(t, host)
 
 	client := http.Client{Timeout: 5 * time.Second}
@@ -91,13 +96,14 @@ func TestE2E(t *testing.T) {
 			err := unicityCertificate.UnmarshalCBOR(proof.TxProof.UnicityCertificate)
 			require.NoError(t, err)
 			txRn := unicityCertificate.GetRoundNumber()
-			blockInfo := &api.BlockInfo{}
+
+			blockMap := make(map[types.PartitionID]restapi.BlockInfo)
 			require.Eventually(t, func() bool {
 				resp, err := client.Get(fmt.Sprintf("http://%s/api/v1/blocks/%d", host, txRn))
 				require.NoError(t, err)
 				fmt.Printf("Checking block %d, status code: %d\n", txRn, resp.StatusCode)
 				if resp.StatusCode == http.StatusOK {
-					require.NoError(t, restapi.DecodeResponse(resp, http.StatusOK, blockInfo, false))
+					require.NoError(t, restapi.DecodeResponse(resp, http.StatusOK, &blockMap, false))
 					return true
 				}
 				return false
@@ -106,11 +112,14 @@ func TestE2E(t *testing.T) {
 			txrHash, err := proof.TxRecord.Hash(crypto.SHA256)
 			require.NoError(t, err)
 
+			blockInfo := blockMap[partitionID]
+			require.NotNil(t, blockInfo)
+
 			t.Run("Check tx record hash is in the block info", func(t *testing.T) {
-				require.Contains(t, blockInfo.TxHashes, api.TxHash(txrHash))
+				require.Contains(t, blockInfo.TxHashes, domain.TxHash(txrHash))
 			})
 
-			txInfo := &api.TxInfo{}
+			txInfo := &restapi.TxInfo{}
 			t.Run("Check tx info is correct", func(t *testing.T) {
 				resp, err := client.Get(fmt.Sprintf("http://%s/api/v1/txs/0x%X", host, txrHash))
 				require.NoError(t, err)
@@ -126,13 +135,13 @@ func TestE2E(t *testing.T) {
 			})
 
 			t.Run("check latest transactions to contain the tx", func(t *testing.T) {
-				resp, err := client.Get(fmt.Sprintf("http://%s/api/v1/txs", host))
+				resp, err := client.Get(fmt.Sprintf("http://%s/api/v1/partitions/%s/txs", host, partitionID))
 				require.NoError(t, err)
 				require.Equal(t, http.StatusOK, resp.StatusCode)
-				txInfos := make([]*api.TxInfo, 0)
+				txInfos := make([]restapi.TxInfo, 0)
 				err = restapi.DecodeResponse(resp, http.StatusOK, &txInfos, false)
 				require.NoError(t, err)
-				require.Contains(t, txInfos, txInfo)
+				require.Contains(t, txInfos, *txInfo)
 			})
 		}
 	})
@@ -150,10 +159,7 @@ func createMoneyWallet(t *testing.T, ctx context.Context, walletDir string) *wal
 	moneyClient, err := client.NewMoneyPartitionClient(ctx, args.BuildRpcUrl(abMoneyRpcUrl))
 	require.NoError(t, err)
 
-	nodeInfo, err := moneyClient.GetNodeInfo(ctx)
-	require.NoError(t, err)
-
-	w, err := wallet.NewWallet(nodeInfo.NetworkID, nodeInfo.PartitionID, am, feeManagerDB, moneyClient, maxFee, slog.Default())
+	w, err := wallet.NewWallet(ctx, am, feeManagerDB, moneyClient, maxFee, slog.Default())
 	require.NoError(t, err)
 
 	err = wallet.GenerateKeys(am, "prison tone orbit inside kitten clean page enrich plastic ring gather cross")
@@ -172,7 +178,7 @@ func createMoneyWallet(t *testing.T, ctx context.Context, walletDir string) *wal
 	return w
 }
 
-func runService(t *testing.T, ctx context.Context, host string, startFromBlock uint64) *sync.WaitGroup {
+func runService(t *testing.T, ctx context.Context, host string, dbConnectionString string, startFromBlock uint64) *sync.WaitGroup {
 	os.Args = []string{t.TempDir()}
 
 	var wg sync.WaitGroup
@@ -181,10 +187,9 @@ func runService(t *testing.T, ctx context.Context, host string, startFromBlock u
 		defer wg.Done()
 		require.NotPanics(t, func() {
 			err := Run(ctx, &Config{
-				AlphabillUrl: abMoneyArchiveRpcUrl,
-				ServerAddr:   host,
-				DbFile:       filepath.Join(t.TempDir(), bill_store.BoltExplorerStoreFileName),
-				BlockNumber:  startFromBlock,
+				Nodes:  []Node{{URL: abMoneyArchiveRpcUrl, BlockNumber: startFromBlock}},
+				Server: Server{Address: host},
+				DB:     DB{URL: dbConnectionString},
 			})
 			require.NoError(t, err)
 		}, "should not panic")
@@ -217,4 +222,12 @@ func findFreePort(t *testing.T) string {
 	require.NoError(t, err)
 
 	return port
+}
+
+func startDB(t *testing.T, ctx context.Context) string {
+	mongoContainer, err := mongocontainer.Run(ctx, mongoDBImage, testcontainers.WithWaitStrategy(wait.ForLog("Waiting for connections")))
+	require.NoError(t, err)
+	connectionString, err := mongoContainer.ConnectionString(ctx)
+	require.NoError(t, err)
+	return connectionString
 }

@@ -15,93 +15,9 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/address/{pubKey}/bills": {
-            "get": {
-                "description": "Get bills associated with a specific public key",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Bills"
-                ],
-                "summary": "Retrieve bills by public key",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Public Key",
-                        "name": "pubKey",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "List of bills",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Error: Missing 'pubKey' variable in the URL",
-                        "schema": {
-                            "$ref": "#/definitions/restapi.ErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Error: Bills with specified public key not found",
-                        "schema": {
-                            "$ref": "#/definitions/restapi.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/blocks": {
-            "get": {
-                "description": "Get blocks, given a start block number and limit.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Blocks"
-                ],
-                "summary": "Get blocks, given a start block number and limit.",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "optionally specify the start block number",
-                        "name": "startBlock",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "optionally specify the number of blocks to return, defaults to 10",
-                        "name": "limit",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/api.BlockInfo"
-                            }
-                        }
-                    }
-                }
-            }
-        },
         "/blocks/{blockNumber}": {
             "get": {
-                "description": "Retrieves a block by using the provided block number as a path parameter, or retrieves the latest block if no number is specified.",
+                "description": "Retrieves a block for all given partitions by using the provided block number as a path parameter, or retrieves the latest block if no number is specified.",
                 "consumes": [
                     "application/json"
                 ],
@@ -117,14 +33,21 @@ const docTemplate = `{
                         "type": "string",
                         "description": "Block number ('latest' or a specific number)",
                         "name": "blockNumber",
-                        "in": "path"
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "List of partitions to get the blocks for. If not provided then get for all partitions",
+                        "name": "partitionID",
+                        "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
                         "description": "Block information successfully retrieved",
                         "schema": {
-                            "$ref": "#/definitions/api.BlockInfo"
+                            "$ref": "#/definitions/restapi.BlockResponse"
                         }
                     },
                     "400": {
@@ -148,7 +71,57 @@ const docTemplate = `{
                 }
             }
         },
-        "/blocks/{blockNumber}/txs": {
+        "/partitions/{partitionID}/blocks": {
+            "get": {
+                "description": "Get blocks in a single partition, given a start block number and limit.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Blocks"
+                ],
+                "summary": "Get blocks in a single partition, given a start block number and limit.",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Partition ID to get the blocks for",
+                        "name": "partitionID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "optionally specify the start block number",
+                        "name": "startBlock",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "optionally specify the number of blocks to return, defaults to 10",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "whether to include blocks without transactions, defaults to true",
+                        "name": "includeEmpty",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/restapi.BlockInfo"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/partitions/{partitionID}/blocks/{blockNumber}/txs": {
             "get": {
                 "description": "Retrieves a list of transactions for a given block number.",
                 "consumes": [
@@ -164,6 +137,13 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "integer",
+                        "description": "Partition ID to get the transactions for",
+                        "name": "partitionID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
                         "description": "The block number for which to retrieve transactions",
                         "name": "blockNumber",
                         "in": "path",
@@ -176,7 +156,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/api.TxInfo"
+                                "$ref": "#/definitions/restapi.TxInfo"
                             }
                         }
                     },
@@ -195,7 +175,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/txs": {
+        "/partitions/{partitionID}/txs": {
             "get": {
                 "description": "Retrieves a list of transactions.",
                 "produces": [
@@ -208,8 +188,15 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "The sequence number of the transaction to start from, if not provided, the latest transactions are returned",
-                        "name": "startSeqNumber",
+                        "description": "Partition ID to get the transactions for",
+                        "name": "partitionID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "ID of the transaction to start from, if not provided, the latest transactions are returned",
+                        "name": "startID",
                         "in": "query"
                     },
                     {
@@ -225,7 +212,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/api.TxInfo"
+                                "$ref": "#/definitions/restapi.TxInfo"
                             }
                         }
                     }
@@ -258,7 +245,7 @@ const docTemplate = `{
                     "200": {
                         "description": "Successfully retrieved the transaction information",
                         "schema": {
-                            "$ref": "#/definitions/api.TxInfo"
+                            "$ref": "#/definitions/restapi.TxInfo"
                         }
                     },
                     "400": {
@@ -310,7 +297,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/api.TxInfo"
+                                "$ref": "#/definitions/restapi.TxInfo"
                             }
                         }
                     },
@@ -331,11 +318,29 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "api.BlockInfo": {
+        "restapi.BlockInfo": {
             "type": "object",
             "properties": {
-                "header": {
-                    "$ref": "#/definitions/types.Header"
+                "blockNumber": {
+                    "type": "integer"
+                },
+                "partitionID": {
+                    "type": "integer"
+                },
+                "partitionTypeID": {
+                    "type": "integer"
+                },
+                "previousBlockHash": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "proposerID": {
+                    "type": "string"
+                },
+                "shardID": {
+                    "$ref": "#/definitions/types.ShardID"
                 },
                 "txHashes": {
                     "type": "array",
@@ -354,10 +359,27 @@ const docTemplate = `{
                 }
             }
         },
-        "api.TxInfo": {
+        "restapi.BlockResponse": {
+            "type": "object",
+            "additionalProperties": {
+                "$ref": "#/definitions/restapi.BlockInfo"
+            }
+        },
+        "restapi.ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string"
+                }
+            }
+        },
+        "restapi.TxInfo": {
             "type": "object",
             "properties": {
                 "blockNumber": {
+                    "type": "integer"
+                },
+                "partitionID": {
                     "type": "integer"
                 },
                 "transaction": {
@@ -374,37 +396,6 @@ const docTemplate = `{
                     "items": {
                         "type": "integer"
                     }
-                }
-            }
-        },
-        "restapi.ErrorResponse": {
-            "type": "object",
-            "properties": {
-                "message": {
-                    "type": "string"
-                }
-            }
-        },
-        "types.Header": {
-            "type": "object",
-            "properties": {
-                "partitionID": {
-                    "type": "integer"
-                },
-                "previousBlockHash": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "proposerID": {
-                    "type": "string"
-                },
-                "shardID": {
-                    "$ref": "#/definitions/types.ShardID"
-                },
-                "version": {
-                    "type": "integer"
                 }
             }
         },
@@ -477,7 +468,7 @@ var SwaggerInfo = &swag.Spec{
 	BasePath:         "/api/v1",
 	Schemes:          []string{},
 	Title:            "Alphabill Blockchain Explorer API",
-	Description:      "API to query blocks and transactions of Alphabill's Money Partition",
+	Description:      "API to query blocks and transactions of Alphabill",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 	LeftDelim:        "{{",

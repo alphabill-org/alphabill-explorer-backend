@@ -1,4 +1,4 @@
-package bill_store
+package block_store
 
 import (
 	"bytes"
@@ -14,8 +14,8 @@ import (
 const BoltExplorerStoreFileName = "blocks.db"
 
 var (
-	blockInfoBucket          = []byte("blockInfoBucket")        // block_number => api.BlockInfo
-	txInfoBucket             = []byte("txInfoBucket")           // txRecHash => api.TxInfo
+	blockInfoBucket          = []byte("blockInfoBucket")        // block_number => domain.BlockInfo
+	txInfoBucket             = []byte("txInfoBucket")           // txRecHash => domain.TxInfo
 	unitIDsToTxRecHashBucket = []byte("unitIDBucket")           // unitID => [txRecHash]
 	txOrderHashToTxRecHash   = []byte("txOrderHashToTxRecHash") // txOrderHash => txRecHash mapping
 	orderedTxRecHashes       = []byte("orderedTxRecHashes")     // uint64 => txRecHash allows for ordered retrieval

@@ -15,10 +15,10 @@ import (
 
 // @title		Alphabill Blockchain Explorer API
 // @version		1.0
-// @description	API to query blocks and transactions of Alphabill's Money Partition
+// @description	API to query blocks and transactions of Alphabill
 // @BasePath	/api/v1
 
-func (api *MoneyRestAPI) Router() *mux.Router {
+func (api *RestAPI) Router() *mux.Router {
 	// TODO add request/response headers middleware
 	router := mux.NewRouter().StrictSlash(true)
 
@@ -45,21 +45,21 @@ func (api *MoneyRestAPI) Router() *mux.Router {
 	apiV1 := apiRouter.PathPrefix("/v1").Subrouter()
 
 	//block
-	apiV1.HandleFunc("/blocks/{blockNumber}", api.getBlock).Methods("GET", "OPTIONS")
-	apiV1.HandleFunc("/blocks", api.getBlocks).Methods("GET", "OPTIONS")
+	apiV1.HandleFunc("/blocks/{blockNumber}", api.getBlock).Methods(http.MethodGet, http.MethodOptions)
+	apiV1.HandleFunc("/partitions/{partitionID}/blocks", api.getBlocksInRange).Methods(http.MethodGet, http.MethodOptions)
 
 	//tx
-	apiV1.HandleFunc("/txs/{txHash}", api.getTx).Methods("GET", "OPTIONS")
-	apiV1.HandleFunc("/txs", api.getTxs).Methods("GET", "OPTIONS")
-	apiV1.HandleFunc("/blocks/{blockNumber}/txs", api.getBlockTxsByBlockNumber).Methods("GET", "OPTIONS")
-	apiV1.HandleFunc("/units/{unitID}/txs", api.getTxsByUnitID).Methods("GET", "OPTIONS")
+	apiV1.HandleFunc("/txs/{txHash}", api.getTx).Methods(http.MethodGet, http.MethodOptions)
+	apiV1.HandleFunc("/partitions/{partitionID}/txs", api.getTxs).Methods(http.MethodGet, http.MethodOptions)
+	apiV1.HandleFunc("/partitions/{partitionID}/blocks/{blockNumber}/txs", api.getBlockTxsByBlockNumber).Methods(http.MethodGet, http.MethodOptions)
+	apiV1.HandleFunc("/units/{unitID}/txs", api.getTxsByUnitID).Methods(http.MethodGet, http.MethodOptions)
 
 	//bill
-	apiV1.HandleFunc("/address/{pubKey}/bills", api.getBillsByPubKey).Methods("GET", "OPTIONS")
+	//apiV1.HandleFunc("/address/{pubKey}/bills", api.getBillsByPubKey).Methods("GET", "OPTIONS")
 	return router
 }
 
-func (api *MoneyRestAPI) healthRequest(w http.ResponseWriter, _ *http.Request) {
+func (api *RestAPI) healthRequest(w http.ResponseWriter, _ *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(fmt.Sprintf("OK - %v", time.Now())))
 }

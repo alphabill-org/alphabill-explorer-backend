@@ -1,11 +1,11 @@
-package bill_store
+package block_store
 
 import (
 	"encoding/json"
 	"path/filepath"
 	"testing"
 
-	"github.com/alphabill-org/alphabill-explorer-backend/api"
+	"github.com/alphabill-org/alphabill-explorer-backend/domain"
 	"github.com/stretchr/testify/require"
 	bolt "go.etcd.io/bbolt"
 )
@@ -26,7 +26,7 @@ func TestBoltBillStore_GetTxs(t *testing.T) {
 		for i := 0; i < max; i++ {
 			txInfoBucket := tx.Bucket(txInfoBucket)
 			hash := []byte{byte(i)}
-			txInfo := &api.TxInfo{TxRecordHash: hash}
+			txInfo := &domain.TxInfo{TxRecordHash: hash}
 			bytes, err := json.Marshal(txInfo)
 			require.NoError(t, err)
 			require.NoError(t, txInfoBucket.Put(hash, bytes))

@@ -1,9 +1,21 @@
 basePath: /api/v1
 definitions:
-  api.BlockInfo:
+  restapi.BlockInfo:
     properties:
-      header:
-        $ref: '#/definitions/types.Header'
+      blockNumber:
+        type: integer
+      partitionID:
+        type: integer
+      partitionTypeID:
+        type: integer
+      previousBlockHash:
+        items:
+          type: integer
+        type: array
+      proposerID:
+        type: string
+      shardID:
+        $ref: '#/definitions/types.ShardID'
       txHashes:
         items:
           items:
@@ -15,9 +27,20 @@ definitions:
           type: integer
         type: array
     type: object
-  api.TxInfo:
+  restapi.BlockResponse:
+    additionalProperties:
+      $ref: '#/definitions/restapi.BlockInfo'
+    type: object
+  restapi.ErrorResponse:
+    properties:
+      message:
+        type: string
+    type: object
+  restapi.TxInfo:
     properties:
       blockNumber:
+        type: integer
+      partitionID:
         type: integer
       transaction:
         $ref: '#/definitions/types.TransactionRecord'
@@ -29,26 +52,6 @@ definitions:
         items:
           type: integer
         type: array
-    type: object
-  restapi.ErrorResponse:
-    properties:
-      message:
-        type: string
-    type: object
-  types.Header:
-    properties:
-      partitionID:
-        type: integer
-      previousBlockHash:
-        items:
-          type: integer
-        type: array
-      proposerID:
-        type: string
-      shardID:
-        $ref: '#/definitions/types.ShardID'
-      version:
-        type: integer
     type: object
   types.ServerMetadata:
     properties:
@@ -92,76 +95,27 @@ definitions:
     - TxErrOutOfGas
 info:
   contact: {}
-  description: API to query blocks and transactions of Alphabill's Money Partition
+  description: API to query blocks and transactions of Alphabill
   title: Alphabill Blockchain Explorer API
   version: "1.0"
 paths:
-  /address/{pubKey}/bills:
-    get:
-      consumes:
-      - application/json
-      description: Get bills associated with a specific public key
-      parameters:
-      - description: Public Key
-        in: path
-        name: pubKey
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: List of bills
-          schema:
-            items:
-              type: string
-            type: array
-        "400":
-          description: 'Error: Missing ''pubKey'' variable in the URL'
-          schema:
-            $ref: '#/definitions/restapi.ErrorResponse'
-        "404":
-          description: 'Error: Bills with specified public key not found'
-          schema:
-            $ref: '#/definitions/restapi.ErrorResponse'
-      summary: Retrieve bills by public key
-      tags:
-      - Bills
-  /blocks:
-    get:
-      description: Get blocks, given a start block number and limit.
-      parameters:
-      - description: optionally specify the start block number
-        in: query
-        name: startBlock
-        type: string
-      - description: optionally specify the number of blocks to return, defaults to
-          10
-        in: query
-        name: limit
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/api.BlockInfo'
-            type: array
-      summary: Get blocks, given a start block number and limit.
-      tags:
-      - Blocks
   /blocks/{blockNumber}:
     get:
       consumes:
       - application/json
-      description: Retrieves a block by using the provided block number as a path
-        parameter, or retrieves the latest block if no number is specified.
+      description: Retrieves a block for all given partitions by using the provided
+        block number as a path parameter, or retrieves the latest block if no number
+        is specified.
       parameters:
       - description: Block number ('latest' or a specific number)
         in: path
         name: blockNumber
+        required: true
+        type: string
+      - description: List of partitions to get the blocks for. If not provided then
+          get for all partitions
+        in: query
+        name: partitionID
         type: string
       produces:
       - application/json
@@ -169,7 +123,7 @@ paths:
         "200":
           description: Block information successfully retrieved
           schema:
-            $ref: '#/definitions/api.BlockInfo'
+            $ref: '#/definitions/restapi.BlockResponse'
         "400":
           description: Missing or invalid block number
           schema:
@@ -185,12 +139,52 @@ paths:
       summary: Retrieve a blockchain block by number, or the latest if unspecified
       tags:
       - Blocks
-  /blocks/{blockNumber}/txs:
+  /partitions/{partitionID}/blocks:
+    get:
+      description: Get blocks in a single partition, given a start block number and
+        limit.
+      parameters:
+      - description: Partition ID to get the blocks for
+        in: path
+        name: partitionID
+        required: true
+        type: string
+      - description: optionally specify the start block number
+        in: query
+        name: startBlock
+        type: string
+      - description: optionally specify the number of blocks to return, defaults to
+          10
+        in: query
+        name: limit
+        type: string
+      - description: whether to include blocks without transactions, defaults to true
+        in: query
+        name: includeEmpty
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/restapi.BlockInfo'
+            type: array
+      summary: Get blocks in a single partition, given a start block number and limit.
+      tags:
+      - Blocks
+  /partitions/{partitionID}/blocks/{blockNumber}/txs:
     get:
       consumes:
       - application/json
       description: Retrieves a list of transactions for a given block number.
       parameters:
+      - description: Partition ID to get the transactions for
+        in: path
+        name: partitionID
+        required: true
+        type: integer
       - description: The block number for which to retrieve transactions
         in: path
         name: blockNumber
@@ -203,7 +197,7 @@ paths:
           description: Successfully retrieved list of transactions for the block
           schema:
             items:
-              $ref: '#/definitions/api.TxInfo'
+              $ref: '#/definitions/restapi.TxInfo'
             type: array
         "400":
           description: Missing or invalid 'blockNumber' variable in the URL
@@ -216,14 +210,19 @@ paths:
       summary: Retrieve transactions by block number
       tags:
       - Transactions
-  /txs:
+  /partitions/{partitionID}/txs:
     get:
       description: Retrieves a list of transactions.
       parameters:
-      - description: The sequence number of the transaction to start from, if not
-          provided, the latest transactions are returned
+      - description: Partition ID to get the transactions for
+        in: path
+        name: partitionID
+        required: true
+        type: string
+      - description: ID of the transaction to start from, if not provided, the latest
+          transactions are returned
         in: query
-        name: startSeqNumber
+        name: startID
         type: string
       - description: The maximum number of transactions to retrieve, default 20
         in: query
@@ -236,7 +235,7 @@ paths:
           description: Successfully retrieved list of transactions
           schema:
             items:
-              $ref: '#/definitions/api.TxInfo'
+              $ref: '#/definitions/restapi.TxInfo'
             type: array
       summary: Retrieve transactions, latest first.
       tags:
@@ -259,7 +258,7 @@ paths:
         "200":
           description: Successfully retrieved the transaction information
           schema:
-            $ref: '#/definitions/api.TxInfo'
+            $ref: '#/definitions/restapi.TxInfo'
         "400":
           description: Missing 'txHash' variable in the URL
           schema:
@@ -293,7 +292,7 @@ paths:
           description: List of transactions
           schema:
             items:
-              $ref: '#/definitions/api.TxInfo'
+              $ref: '#/definitions/restapi.TxInfo'
             type: array
         "400":
           description: 'Error: Missing ''unitID'' variable in the URL'

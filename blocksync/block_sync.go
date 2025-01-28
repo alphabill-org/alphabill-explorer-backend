@@ -12,7 +12,7 @@ import (
 )
 
 type BlockLoaderFunc func(ctx context.Context, rn uint64) (*types.Block, error)
-type BlockProcessorFunc func(context.Context, *types.Block) error
+type BlockProcessorFunc func(context.Context, *types.Block, types.PartitionTypeID) error
 
 /*
 Run loads blocks using "getBlocks" and processes them using "processor" until:
@@ -29,7 +29,15 @@ Other parameters:
 Run returns non-nil error unless maxBlockNumber param is not zero and that block is
 loaded and processed successfully.
 */
-func Run(ctx context.Context, getBlock BlockLoaderFunc, startingBlockNumber, maxBlockNumber uint64, batchSize int, processor BlockProcessorFunc) error {
+func Run(
+	ctx context.Context,
+	getBlock BlockLoaderFunc,
+	startingBlockNumber,
+	maxBlockNumber uint64,
+	batchSize int,
+	processor BlockProcessorFunc,
+	partitionTypeID types.PartitionTypeID,
+) error {
 	if startingBlockNumber <= 0 {
 		return fmt.Errorf("invalid sync condition: starting block number must be greater than zero, got %d", startingBlockNumber)
 	}
@@ -56,7 +64,7 @@ func Run(ctx context.Context, getBlock BlockLoaderFunc, startingBlockNumber, max
 	})
 
 	g.Go(func() error {
-		return processBlocks(ctx, blocks, processor)
+		return processBlocks(ctx, blocks, processor, partitionTypeID)
 	})
 
 	return g.Wait()
@@ -71,13 +79,12 @@ func fetchBlocks(ctx context.Context, getBlock BlockLoaderFunc, blockNumber uint
 		if err != nil {
 			return fmt.Errorf("failed to fetch blocks [%d...]: %w", blockNumber, err)
 		}
-
-		round, err := block.GetRoundNumber()
-		if err != nil {
-			return err
-		}
-
 		if block != nil {
+			round, err := block.GetRoundNumber()
+			if err != nil {
+				return fmt.Errorf("failed to get block round number: %w", err)
+			}
+
 			out <- block
 			blockNumber = round + 1
 			continue
@@ -91,9 +98,9 @@ func fetchBlocks(ctx context.Context, getBlock BlockLoaderFunc, blockNumber uint
 	}
 }
 
-func processBlocks(ctx context.Context, blocks <-chan *types.Block, processor BlockProcessorFunc) error {
+func processBlocks(ctx context.Context, blocks <-chan *types.Block, processor BlockProcessorFunc, partitionTypeID types.PartitionTypeID) error {
 	for b := range blocks {
-		if err := processor(ctx, b); err != nil {
+		if err := processor(ctx, b, partitionTypeID); err != nil {
 			round, _ := b.GetRoundNumber()
 			return fmt.Errorf("failed to process block {%x : %d}: %w", b.PartitionID(), round, err)
 		}
