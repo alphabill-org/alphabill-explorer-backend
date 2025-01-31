@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   abexplorer:
     build:
@@ -8,7 +6,8 @@ services:
     image: abexplorer:latest
     container_name: abexplorer-container
     depends_on:
-      - mongo
+      mongo:
+        condition: service_healthy
     environment:
       - BLOCK_EXPLORER_NODES_0_URL=dev-ab-money-archive.abdev1.guardtime.com/rpc
       - BLOCK_EXPLORER_NODES_0_BLOCK_NUMBER=100
@@ -33,6 +32,11 @@ services:
       - "27017:27017"
     volumes:
       - mongo-data:/data/db
+    healthcheck:
+      test: [ "CMD", "mongosh", "-u", "root", "-p", "pass", "--eval", "db.adminCommand('ping')" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
 volumes:
   mongo-data:
