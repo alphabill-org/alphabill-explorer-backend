@@ -1,8 +1,6 @@
 nodes:
   - url: "dev-ab-money-archive.abdev1.guardtime.com/rpc"
     block_number: 100
-  - url: "dev-ab-tokens-archive.abdev1.guardtime.com/rpc"
-    block_number: 100
 
 db:
   url: "mongodb://localhost:27017"

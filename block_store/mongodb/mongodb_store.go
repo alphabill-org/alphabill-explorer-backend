@@ -3,6 +3,7 @@ package mongodb
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/alphabill-org/alphabill-go-base/types"
 	"go.mongodb.org/mongo-driver/bson"
@@ -23,6 +24,10 @@ const (
 	txHashesKey          = "txhashes"
 	targetUnitsKey       = "transaction.servermetadata.targetunits"
 	latestBlockNumberKey = "latestblocknumber"
+
+	connectTimeout       = time.Minute
+	connectionRetries    = 5
+	connectionRetryDelay = 5 * time.Second
 )
 
 type MongoBlockStore struct {
@@ -30,16 +35,22 @@ type MongoBlockStore struct {
 }
 
 func NewMongoBlockStore(ctx context.Context, uri string) (*MongoBlockStore, error) {
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI(uri))
-	if err != nil {
-		return nil, fmt.Errorf("failed to connect to mongo: %w", err)
+	for i := 0; ; i++ {
+		client, err := mongo.Connect(ctx, options.Client().ApplyURI(uri), options.Client().SetConnectTimeout(connectTimeout))
+		if err != nil {
+			if i == connectionRetries {
+				return nil, fmt.Errorf("failed to connect to mongo: %w", err)
+			}
+			fmt.Printf("Failed to connect to mongo, retrying after %v... err = %s\n", connectionRetryDelay, err)
+			time.Sleep(connectionRetryDelay)
+			continue
+		}
+		store := &MongoBlockStore{db: client.Database(databaseName)}
+		if err = store.createCollections(ctx); err != nil {
+			return nil, err
+		}
+		return store, nil
 	}
-
-	store := &MongoBlockStore{db: client.Database(databaseName)}
-	if err = store.createCollections(ctx); err != nil {
-		return nil, err
-	}
-	return store, nil
 }
 
 // ensureCollectionExists creates the collection if it doesn't exist

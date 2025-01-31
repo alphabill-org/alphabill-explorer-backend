@@ -144,11 +144,10 @@ func (api *RestAPI) getBlocksInRange(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "unable to get last blocks", http.StatusBadRequest)
 			return
 		}
-		var response []BlockInfo
+		var response = []BlockInfo{}
 		for _, block := range lastBlocks[partitionID] {
 			response = append(response, blockInfoResponse(block))
 		}
-
 		api.rw.WriteResponse(w, response)
 		return
 	}
@@ -162,11 +161,10 @@ func (api *RestAPI) getBlocksInRange(w http.ResponseWriter, r *http.Request) {
 	prevBlockNumberStr := strconv.FormatUint(prevBlockNumber, 10)
 	setLinkHeader(r.URL, w, prevBlockNumberStr)
 
-	var response []BlockInfo
+	var response = []BlockInfo{}
 	for _, block := range blocks {
 		response = append(response, blockInfoResponse(block))
 	}
-
 	api.rw.WriteResponse(w, response)
 }
 

@@ -11,8 +11,13 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-type BlockLoaderFunc func(ctx context.Context, rn uint64) (*types.Block, error)
-type BlockProcessorFunc func(context.Context, *types.Block, types.PartitionTypeID) error
+type (
+	BlockLoaderFunc    func(ctx context.Context, rn uint64) (*types.Block, error)
+	BlockProcessorFunc func(context.Context, *types.Block, types.PartitionTypeID) error
+	GetRoundNumberFunc func(context.Context) (uint64, error)
+)
+
+const fetchBlockRetryCount = 5
 
 /*
 Run loads blocks using "getBlocks" and processes them using "processor" until:
@@ -32,6 +37,7 @@ loaded and processed successfully.
 func Run(
 	ctx context.Context,
 	getBlock BlockLoaderFunc,
+	getRoundNumber GetRoundNumberFunc,
 	startingBlockNumber,
 	maxBlockNumber uint64,
 	batchSize int,
@@ -56,7 +62,7 @@ func Run(
 
 	g.Go(func() error {
 		defer close(blocks)
-		err := fetchBlocks(ctx, getBlock, startingBlockNumber, blocks)
+		err := fetchBlocks(ctx, getBlock, getRoundNumber, startingBlockNumber, blocks)
 		if err != nil && errors.Is(err, errMaxBlockReached) {
 			return nil
 		}
@@ -70,7 +76,14 @@ func Run(
 	return g.Wait()
 }
 
-func fetchBlocks(ctx context.Context, getBlock BlockLoaderFunc, blockNumber uint64, out chan<- *types.Block) error {
+func fetchBlocks(
+	ctx context.Context,
+	getBlock BlockLoaderFunc,
+	getRoundNumber GetRoundNumberFunc,
+	blockNumber uint64,
+	out chan<- *types.Block,
+) error {
+	retries := 0
 	for {
 		if err := ctx.Err(); err != nil {
 			return err
@@ -87,8 +100,24 @@ func fetchBlocks(ctx context.Context, getBlock BlockLoaderFunc, blockNumber uint
 
 			out <- block
 			blockNumber = round + 1
+			retries = 0
 			continue
 		}
+
+		// if after retries the block is still nil, check if round number has increased and move on to next block
+		if retries >= fetchBlockRetryCount {
+			roundNumber, err := getRoundNumber(ctx)
+			if err != nil {
+				fmt.Println("Failed to get latest round number: ", err)
+			} else if roundNumber > blockNumber {
+				fmt.Printf("Could not get block %d after %d retries, skipping (current round = %d)\n", blockNumber, retries, roundNumber)
+				blockNumber++
+			}
+			retries = 0
+			continue
+		}
+		retries++
+
 		// we have reached to the last block the source currently has - wait a bit before asking for more
 		select {
 		case <-ctx.Done():

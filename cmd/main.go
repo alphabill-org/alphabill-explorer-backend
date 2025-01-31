@@ -42,7 +42,7 @@ func main() {
 }
 
 func Run(ctx context.Context, config *Config) error {
-	println("creating bill store...")
+	println("creating block store...")
 	store, err := mongodb.NewMongoBlockStore(ctx, config.DB.URL)
 	if err != nil {
 		return fmt.Errorf("failed to get storage: %w", err)
@@ -115,11 +115,20 @@ func Run(ctx context.Context, config *Config) error {
 				}
 				return storedBN, nil
 			}
+
+			getRoundNumber := func(ctx context.Context) (uint64, error) {
+				info, err := stateClient.GetRoundInfo(ctx)
+				if err != nil {
+					return 0, err
+				}
+				return info.RoundNumber, nil
+			}
+
 			// we act as if all errors returned by block sync are recoverable ie we
 			// just retry in a loop until ctx is cancelled
 			for {
 				println("starting block sync")
-				err := runBlockSync(ctx, stateClient.GetBlock, getBlockNumber, 100,
+				err := runBlockSync(ctx, stateClient.GetBlock, getRoundNumber, getBlockNumber, 100,
 					blockProcessor.ProcessBlock, nodeInfo.PartitionID, nodeInfo.PartitionTypeID)
 				if err != nil {
 					println(fmt.Errorf("synchronizing blocks returned error: %w", err).Error())
@@ -139,6 +148,7 @@ func Run(ctx context.Context, config *Config) error {
 func runBlockSync(
 	ctx context.Context,
 	getBlocks blocksync.BlockLoaderFunc,
+	getRoundNumber blocksync.GetRoundNumberFunc,
 	getBlockNumber func(ctx context.Context, partitionID types.PartitionID) (uint64, error),
 	batchSize int,
 	processor blocksync.BlockProcessorFunc,
@@ -151,5 +161,5 @@ func runBlockSync(
 	}
 	// on bootstrap storage returns 0 as current block and as block numbering
 	// starts from 1 by adding 1 to it we start with the first block
-	return blocksync.Run(ctx, getBlocks, blockNumber+1, 0, batchSize, processor, partitionTypeID)
+	return blocksync.Run(ctx, getBlocks, getRoundNumber, blockNumber+1, 0, batchSize, processor, partitionTypeID)
 }

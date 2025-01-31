@@ -91,7 +91,7 @@ func (api *RestAPI) getTxs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var response []TxInfo
+	var response = []TxInfo{}
 	for _, txInfo := range txs {
 		response = append(response, TxInfo{
 			TxRecordHash: txInfo.TxRecordHash,
@@ -151,7 +151,7 @@ func (api *RestAPI) getBlockTxsByBlockNumber(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	var response []TxInfo
+	var response = []TxInfo{}
 	for _, txInfo := range txs {
 		response = append(response, TxInfo{
 			TxRecordHash: txInfo.TxRecordHash,
@@ -199,7 +199,7 @@ func (api *RestAPI) getTxsByUnitID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var response []TxInfo
+	var response = []TxInfo{}
 	for _, txInfo := range txs {
 		response = append(response, TxInfo{
 			TxRecordHash: txInfo.TxRecordHash,
