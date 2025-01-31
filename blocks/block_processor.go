@@ -8,16 +8,18 @@ import (
 	"github.com/alphabill-org/alphabill-go-base/types"
 )
 
-type Store interface {
-	GetBlockNumber(ctx context.Context, partitionID types.PartitionID) (uint64, error)
-	SetBlockNumber(ctx context.Context, partitionID types.PartitionID, blockNumber uint64) error
-	SetTxInfo(ctx context.Context, txInfo *domain.TxInfo) error
-	SetBlockInfo(ctx context.Context, blockInfo *domain.BlockInfo) error
-}
+type (
+	Store interface {
+		GetBlockNumber(ctx context.Context, partitionID types.PartitionID) (uint64, error)
+		SetBlockNumber(ctx context.Context, partitionID types.PartitionID, blockNumber uint64) error
+		SetTxInfo(ctx context.Context, txInfo *domain.TxInfo) error
+		SetBlockInfo(ctx context.Context, blockInfo *domain.BlockInfo) error
+	}
 
-type BlockProcessor struct {
-	store Store
-}
+	BlockProcessor struct {
+		store Store
+	}
+)
 
 func NewBlockProcessor(store Store) (*BlockProcessor, error) {
 	return &BlockProcessor{store: store}, nil
