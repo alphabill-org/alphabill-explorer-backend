@@ -6,7 +6,7 @@
 
 ## Starting Block Explorer
 
-Run `docker-compose up --build` in project root directory. This will start the block explorer and MongoDB containers.
+Run `docker compose up --build` in project root directory. This will start the block explorer and MongoDB containers.
 The explorer will start fetching blocks from all the configured partition nodes and a REST API server will be started at the configured address (http://localhost:9666 by default).
 
 ## Configuration
