@@ -150,7 +150,7 @@ func (ex *ExplorerService) GetTxsPage(
 }
 
 func (ex *ExplorerService) FindTxs(ctx context.Context, searchKey []byte) ([]*domain.TxInfo, error) {
-	return ex.FindTxs(ctx, searchKey)
+	return ex.store.FindTxs(ctx, searchKey)
 }
 
 func (ex *ExplorerService) GetBillsByPubKey(ctx context.Context, ownerID hex.Bytes) ([]*wallettypes.Bill, error) {

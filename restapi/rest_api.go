@@ -97,6 +97,17 @@ func (api *RestAPI) roundNumberFunc(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// @Summary Retrieve blocks and transactions matching the search key
+// @Description Retrieve blocks and transactions matching the search key
+// @Tags Search
+// @Produce json
+// @Param q query string true "Search key"
+// @Param partitionID query int false "Filter results by partition ID(s)"
+// @Success 200 {object} SearchResponse "Block information successfully retrieved"
+// @Failure 400 {object} string "Empty search key"
+// @Failure 400 {object} string "invalid partitionID"
+// @Failure 404 {object} string "no results found"
+// @Router /search [get]
 func (api *RestAPI) search(w http.ResponseWriter, r *http.Request) {
 	qp := r.URL.Query()
 
