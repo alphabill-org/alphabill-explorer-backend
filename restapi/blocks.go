@@ -72,7 +72,7 @@ func (api *RestAPI) getBlock(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if blockMap == nil || len(blockMap) == 0 {
+	if len(blockMap) == 0 {
 		api.rw.ErrorResponse(w, http.StatusNotFound, fmt.Errorf("block with block number %d not found", blockNumber))
 		return
 	}

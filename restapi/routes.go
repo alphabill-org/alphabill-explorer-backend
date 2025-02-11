@@ -44,6 +44,8 @@ func (api *RestAPI) Router() *mux.Router {
 	// version v1 router
 	apiV1 := apiRouter.PathPrefix("/v1").Subrouter()
 
+	apiV1.HandleFunc("/search", api.search).Methods(http.MethodGet, http.MethodOptions)
+
 	//block
 	apiV1.HandleFunc("/blocks/{blockNumber}", api.getBlock).Methods(http.MethodGet, http.MethodOptions)
 	apiV1.HandleFunc("/partitions/{partitionID}/blocks", api.getBlocksInRange).Methods(http.MethodGet, http.MethodOptions)
@@ -55,7 +57,7 @@ func (api *RestAPI) Router() *mux.Router {
 	apiV1.HandleFunc("/units/{unitID}/txs", api.getTxsByUnitID).Methods(http.MethodGet, http.MethodOptions)
 
 	//bill
-	//apiV1.HandleFunc("/address/{pubKey}/bills", api.getBillsByPubKey).Methods("GET", "OPTIONS")
+	apiV1.HandleFunc("/address/{pubKey}/bills", api.getBillsByPubKey).Methods(http.MethodGet, http.MethodOptions)
 	return router
 }
 

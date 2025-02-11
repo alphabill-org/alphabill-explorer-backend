@@ -2,6 +2,7 @@ package restapi
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -9,19 +10,18 @@ import (
 	"github.com/alphabill-org/alphabill-explorer-backend/service"
 	"github.com/alphabill-org/alphabill-go-base/types"
 	"github.com/alphabill-org/alphabill-go-base/types/hex"
+	wallettypes "github.com/alphabill-org/alphabill-wallet/client/types"
 )
 
 const (
-	paramIncludeDcBills = "includeDcBills"
-	paramPubKey         = "pubkey"
-	paramPartitionID    = "partitionID"
-	paramBlockNumber    = "blockNumber"
-	paramStartBlock     = "startBlock"
-	paramLimit          = "limit"
-	paramIncludeEmpty   = "includeEmpty"
-	paramTxHash         = "txHash"
-	paramStartID        = "startID"
-	paramUnitID         = "unitID"
+	paramPartitionID  = "partitionID"
+	paramBlockNumber  = "blockNumber"
+	paramStartBlock   = "startBlock"
+	paramLimit        = "limit"
+	paramIncludeEmpty = "includeEmpty"
+	paramTxHash       = "txHash"
+	paramStartID      = "startID"
+	paramUnitID       = "unitID"
 
 	blockNumberLatest = "latest"
 
@@ -32,7 +32,6 @@ const (
 type (
 	ExplorerBackendService interface {
 		GetRoundNumber(ctx context.Context) ([]service.PartitionRoundInfo, error)
-		//GetUnitsByOwnerID(ctx context.Context, ownerID hex.Bytes) ([]types.UnitID, error)
 
 		//block
 		GetLastBlocks(ctx context.Context, partitionIDs []types.PartitionID, count int, includeEmpty bool) (map[types.PartitionID][]*domain.BlockInfo, error)
@@ -42,15 +41,16 @@ type (
 		) (res []*domain.BlockInfo, prevBlockNumber uint64, err error)
 
 		//tx
-		GetTxInfo(ctx context.Context, txHash domain.TxHash) (res *domain.TxInfo, err error)
+		GetTxByHash(ctx context.Context, txHash domain.TxHash) (res *domain.TxInfo, err error)
 		GetTxsByBlockNumber(ctx context.Context, blockNumber uint64, partitionID types.PartitionID) ([]*domain.TxInfo, error)
 		GetTxsByUnitID(ctx context.Context, unitID types.UnitID) ([]*domain.TxInfo, error)
 		GetTxsPage(
 			ctx context.Context, partitionID types.PartitionID, startID string, limit int,
 		) (transactions []*domain.TxInfo, previousID string, err error)
+		FindTxs(ctx context.Context, searchKey []byte) ([]*domain.TxInfo, error)
 
 		//bill
-		//GetBillsByPubKey(ctx context.Context, ownerID types.Bytes) (res []*moneyApi.Bill, err error)
+		GetBillsByPubKey(ctx context.Context, ownerID hex.Bytes) (res []*wallettypes.Bill, err error)
 	}
 
 	RestAPI struct {
@@ -59,6 +59,11 @@ type (
 	}
 
 	RoundNumberResponse []service.PartitionRoundInfo
+
+	SearchResponse struct {
+		Blocks map[types.PartitionID]BlockInfo
+		Txs    []TxInfo
+	}
 
 	BlockResponse map[types.PartitionID]BlockInfo
 
@@ -92,20 +97,69 @@ func (api *RestAPI) roundNumberFunc(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (api *RestAPI) getInfo(w http.ResponseWriter, _ *http.Request) {
-	res := InfoResponse{
-		Name: "blocks backend",
-	}
-	api.rw.WriteResponse(w, res)
-}
+func (api *RestAPI) search(w http.ResponseWriter, r *http.Request) {
+	qp := r.URL.Query()
 
-func parsePubKeyQueryParam(r *http.Request) (domain.PubKey, error) {
-	return DecodePubKeyHex(r.URL.Query().Get(paramPubKey))
-}
-
-func parseIncludeDCBillsQueryParam(r *http.Request, defaultValue bool) (bool, error) {
-	if r.URL.Query().Has(paramIncludeDcBills) {
-		return strconv.ParseBool(r.URL.Query().Get(paramIncludeDcBills))
+	searchKey := qp.Get("q")
+	if searchKey == "" {
+		http.Error(w, "Empty search key", http.StatusBadRequest)
+		return
 	}
-	return defaultValue, nil
+
+	var partitionIDs []types.PartitionID
+	for _, pid := range qp[paramPartitionID] {
+		id, err := strconv.ParseUint(pid, 10, 64)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("invalid partitionID: %s", pid), http.StatusBadRequest)
+			return
+		}
+		partitionIDs = append(partitionIDs, types.PartitionID(id))
+	}
+
+	result := SearchResponse{
+		Blocks: map[types.PartitionID]BlockInfo{},
+		Txs:    []TxInfo{},
+	}
+
+	blockNumber, err := strconv.ParseUint(searchKey, 10, 64)
+	if err == nil {
+		blockMap, err := api.Service.GetBlock(r.Context(), blockNumber, partitionIDs)
+		if err == nil {
+			if len(blockMap) == 0 {
+				http.Error(w, fmt.Sprintf("no blocks found for number %d", blockNumber), http.StatusNotFound)
+				return
+			}
+			for partitionID, block := range blockMap {
+				result.Blocks[partitionID] = blockInfoResponse(block)
+			}
+			api.rw.WriteResponse(w, result)
+			return
+		} else {
+			fmt.Printf("Error getting block by number (%d): %s\n", blockNumber, err)
+		}
+	}
+
+	hashBytes, err := ParseHex[[]byte](searchKey, true)
+	if err == nil {
+		txs, err := api.Service.FindTxs(r.Context(), hashBytes)
+		if err == nil {
+			if len(txs) > 0 {
+				for _, txInfo := range txs {
+					result.Txs = append(result.Txs, TxInfo{
+						TxRecordHash: txInfo.TxRecordHash,
+						TxOrderHash:  txInfo.TxOrderHash,
+						BlockNumber:  txInfo.BlockNumber,
+						Transaction:  txInfo.Transaction,
+						PartitionID:  txInfo.PartitionID,
+					})
+				}
+				api.rw.WriteResponse(w, result)
+				return
+			}
+		} else {
+			fmt.Printf("Error finding transactions: %s\n", err)
+		}
+	}
+
+	http.Error(w, fmt.Sprintf("no results found for '%s'", searchKey), http.StatusNotFound)
 }

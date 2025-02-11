@@ -33,7 +33,7 @@ func (api *RestAPI) getTx(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid 'txHash' format", http.StatusBadRequest)
 		return
 	}
-	txInfo, err := api.Service.GetTxInfo(r.Context(), txHashBytes)
+	txInfo, err := api.Service.GetTxByHash(r.Context(), txHashBytes)
 	if err != nil {
 		api.rw.WriteErrorResponse(w, fmt.Errorf("failed to load tx with txHash %s : %w", txHash, err))
 		return
