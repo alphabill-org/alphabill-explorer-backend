@@ -16,6 +16,7 @@ import (
 
 	"github.com/alphabill-org/alphabill-explorer-backend/domain"
 	"github.com/alphabill-org/alphabill-explorer-backend/restapi"
+	"github.com/alphabill-org/alphabill-explorer-backend/util"
 	"github.com/alphabill-org/alphabill-go-base/types"
 	"github.com/alphabill-org/alphabill-wallet/cli/alphabill/cmd/wallet/args"
 	"github.com/alphabill-org/alphabill-wallet/client"
@@ -114,10 +115,7 @@ func TestE2E(t *testing.T) {
 
 			blockInfo := blockMap[partitionID]
 			require.NotNil(t, blockInfo)
-
-			t.Run("Check tx record hash is in the block info", func(t *testing.T) {
-				require.Contains(t, blockInfo.TxHashes, domain.TxHash(txrHash))
-			})
+			require.Contains(t, blockInfo.TxHashes, domain.TxHash(txrHash))
 
 			txInfo := &restapi.TxInfo{}
 			t.Run("Check tx info is correct", func(t *testing.T) {
@@ -142,6 +140,28 @@ func TestE2E(t *testing.T) {
 				err = restapi.DecodeResponse(resp, http.StatusOK, &txInfos, false)
 				require.NoError(t, err)
 				require.Contains(t, txInfos, *txInfo)
+			})
+
+			t.Run("check tx returned in search", func(t *testing.T) {
+				txHashHex := util.ToHex(txrHash)
+				resp, err := client.Get(fmt.Sprintf("http://%s/api/v1/search?q=%s", host, txHashHex))
+				require.NoError(t, err)
+				require.Equal(t, http.StatusOK, resp.StatusCode)
+				searchResponse := restapi.SearchResponse{}
+				err = restapi.DecodeResponse(resp, http.StatusOK, &searchResponse, false)
+				require.NoError(t, err)
+				require.Contains(t, searchResponse.Txs, *txInfo)
+			})
+
+			t.Run("check block returned in search", func(t *testing.T) {
+				resp, err := client.Get(fmt.Sprintf("http://%s/api/v1/search?q=%d", host, blockInfo.BlockNumber))
+				require.NoError(t, err)
+				require.Equal(t, http.StatusOK, resp.StatusCode)
+				searchResponse := restapi.SearchResponse{}
+				err = restapi.DecodeResponse(resp, http.StatusOK, &searchResponse, false)
+				require.NoError(t, err)
+				require.NotNil(t, searchResponse.Blocks[partitionID])
+				require.Equal(t, searchResponse.Blocks[partitionID].BlockNumber, blockInfo.BlockNumber)
 			})
 		}
 	})

@@ -81,6 +81,17 @@ definitions:
           type: integer
         type: array
     type: object
+  service.PartitionRoundInfo:
+    properties:
+      epochNumber:
+        type: integer
+      partitionID:
+        type: integer
+      partitionTypeID:
+        type: integer
+      roundNumber:
+        type: integer
+    type: object
   types.NetworkID:
     enum:
     - 1
@@ -309,6 +320,21 @@ paths:
       summary: Retrieve transactions, latest first.
       tags:
       - Transactions
+  /round-number:
+    get:
+      description: Retrieve round and epoch number for each partition
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/service.PartitionRoundInfo'
+            type: array
+      summary: Retrieve round and epoch number for each partition
+      tags:
+      - Info
   /search:
     get:
       description: Retrieve blocks and transactions matching the search key

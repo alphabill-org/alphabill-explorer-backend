@@ -52,8 +52,8 @@ type (
 	}
 
 	PartitionRoundInfo struct {
-		partitionID     types.PartitionID
-		partitionTypeID types.PartitionTypeID
+		PartitionID     types.PartitionID
+		PartitionTypeID types.PartitionTypeID
 		RoundNumber     uint64
 		EpochNumber     uint64
 	}
@@ -94,8 +94,8 @@ func (ex *ExplorerService) GetRoundNumber(ctx context.Context) ([]PartitionRound
 			return nil, fmt.Errorf("failed to get round info for partition %d: %w", client.partitionID, err)
 		}
 		result = append(result, PartitionRoundInfo{
-			partitionID:     client.partitionID,
-			partitionTypeID: client.partitionTypeID,
+			PartitionID:     client.partitionID,
+			PartitionTypeID: client.partitionTypeID,
 			RoundNumber:     info.RoundNumber,
 			EpochNumber:     info.Epoch,
 		})

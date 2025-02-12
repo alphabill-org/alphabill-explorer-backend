@@ -266,6 +266,29 @@ const docTemplate = `{
                 }
             }
         },
+        "/round-number": {
+            "get": {
+                "description": "Retrieve round and epoch number for each partition",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Info"
+                ],
+                "summary": "Retrieve round and epoch number for each partition",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/service.PartitionRoundInfo"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/search": {
             "get": {
                 "description": "Retrieve blocks and transactions matching the search key",
@@ -533,6 +556,23 @@ const docTemplate = `{
                     "items": {
                         "type": "integer"
                     }
+                }
+            }
+        },
+        "service.PartitionRoundInfo": {
+            "type": "object",
+            "properties": {
+                "epochNumber": {
+                    "type": "integer"
+                },
+                "partitionID": {
+                    "type": "integer"
+                },
+                "partitionTypeID": {
+                    "type": "integer"
+                },
+                "roundNumber": {
+                    "type": "integer"
                 }
             }
         },

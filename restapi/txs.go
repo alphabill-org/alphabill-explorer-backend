@@ -25,22 +25,22 @@ func (api *RestAPI) getTx(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	txHash, ok := vars[paramTxHash]
 	if !ok {
-		http.Error(w, "Missing 'txHash' variable in the URL", http.StatusBadRequest)
+		api.rw.WriteMissingParamResponse(w, paramTxHash)
 		return
 	}
 	txHashBytes, err := ParseHex[[]byte](txHash, true)
 	if err != nil {
-		http.Error(w, "Invalid 'txHash' format", http.StatusBadRequest)
+		api.rw.WriteInvalidParamResponse(w, paramTxHash)
 		return
 	}
 	txInfo, err := api.Service.GetTxByHash(r.Context(), txHashBytes)
 	if err != nil {
-		api.rw.WriteErrorResponse(w, fmt.Errorf("failed to load tx with txHash %s : %w", txHash, err))
+		api.rw.WriteInternalErrorResponse(w, fmt.Errorf("failed to load tx with txHash %s : %w", txHash, err))
 		return
 	}
 
 	if txInfo == nil {
-		api.rw.ErrorResponse(w, http.StatusNotFound, fmt.Errorf("tx with txHash %s not found", txHash))
+		api.rw.WriteErrorResponse(w, fmt.Errorf("tx with txHash %s not found", txHash), http.StatusNotFound)
 		return
 	}
 	api.rw.WriteResponse(w, TxInfo{
@@ -65,12 +65,12 @@ func (api *RestAPI) getTxs(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	partitionIDStr, ok := vars[paramPartitionID]
 	if !ok {
-		http.Error(w, "Missing 'partitionID' variable in the URL", http.StatusBadRequest)
+		api.rw.WriteMissingParamResponse(w, paramPartitionID)
 		return
 	}
 	partitionID, err := strconv.ParseUint(partitionIDStr, 10, 64)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("invalid partitionID: %s", partitionIDStr), http.StatusBadRequest)
+		api.rw.WriteInvalidParamResponse(w, paramPartitionID)
 		return
 	}
 
@@ -80,14 +80,14 @@ func (api *RestAPI) getTxs(w http.ResponseWriter, r *http.Request) {
 	if limitStr != "" {
 		limit, err = ParseMaxResponseItems(limitStr, 100)
 		if err != nil {
-			http.Error(w, "Invalid 'limit' format", http.StatusBadRequest)
+			api.rw.WriteInvalidParamResponse(w, paramLimit)
 			return
 		}
 	}
 
 	txs, previousID, err := api.Service.GetTxsPage(r.Context(), types.PartitionID(partitionID), startID, limit)
 	if err != nil {
-		api.rw.WriteErrorResponse(w, fmt.Errorf("failed to load txs with startID %s and limit %d : %w", startID, limit, err))
+		api.rw.WriteInternalErrorResponse(w, fmt.Errorf("failed to load txs with startID %s and limit %d : %w", startID, limit, err))
 		return
 	}
 
@@ -121,33 +121,33 @@ func (api *RestAPI) getBlockTxsByBlockNumber(w http.ResponseWriter, r *http.Requ
 	vars := mux.Vars(r)
 	blockNumberStr, ok := vars[paramBlockNumber]
 	if !ok {
-		http.Error(w, "Missing 'blockNumber' variable in the URL", http.StatusBadRequest)
+		api.rw.WriteMissingParamResponse(w, paramBlockNumber)
 		return
 	}
 	blockNumber, err := strconv.ParseUint(blockNumberStr, 10, 64)
 	if err != nil {
-		http.Error(w, "Invalid 'blockNumber' format", http.StatusBadRequest)
+		api.rw.WriteInvalidParamResponse(w, paramBlockNumber)
 		return
 	}
 	partitionIDStr, ok := vars[paramPartitionID]
 	if !ok {
-		http.Error(w, "Missing 'partitionID' variable in the URL", http.StatusBadRequest)
+		api.rw.WriteMissingParamResponse(w, paramPartitionID)
 		return
 	}
 	partitionID, err := strconv.ParseUint(partitionIDStr, 10, 64)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("invalid partitionID: %s", partitionIDStr), http.StatusBadRequest)
+		api.rw.WriteInvalidParamResponse(w, paramPartitionID)
 		return
 	}
 
 	txs, err := api.Service.GetTxsByBlockNumber(r.Context(), blockNumber, types.PartitionID(partitionID))
 	if err != nil {
-		api.rw.WriteErrorResponse(w, fmt.Errorf("failed to load txs with blockNumber %d : %w", blockNumber, err))
+		api.rw.WriteInternalErrorResponse(w, fmt.Errorf("failed to load txs with blockNumber %d : %w", blockNumber, err))
 		return
 	}
 
 	if txs == nil {
-		api.rw.ErrorResponse(w, http.StatusNotFound, fmt.Errorf("tx with txHash %d not found", blockNumber))
+		api.rw.WriteErrorResponse(w, fmt.Errorf("tx with txHash %d not found", blockNumber), http.StatusNotFound)
 		return
 	}
 
@@ -179,23 +179,23 @@ func (api *RestAPI) getTxsByUnitID(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	unitID, ok := vars[paramUnitID]
 	if !ok {
-		http.Error(w, "Missing 'unitID' variable in the URL", http.StatusBadRequest)
+		api.rw.WriteMissingParamResponse(w, paramUnitID)
 		return
 	}
 
 	uid, err := util.FromHex([]byte(unitID))
 	if err != nil {
-		http.Error(w, "Invalid 'unitID' format", http.StatusBadRequest)
+		api.rw.WriteInvalidParamResponse(w, paramUnitID)
 		return
 	}
 	txs, err := api.Service.GetTxsByUnitID(r.Context(), uid)
 	if err != nil {
-		api.rw.WriteErrorResponse(w, fmt.Errorf("failed to load txs with unitID %s : %w", unitID, err))
+		api.rw.WriteInternalErrorResponse(w, fmt.Errorf("failed to load txs with unitID %s : %w", unitID, err))
 		return
 	}
 
 	if txs == nil {
-		api.rw.ErrorResponse(w, http.StatusNotFound, fmt.Errorf("tx with unitID %s not found", unitID))
+		api.rw.WriteErrorResponse(w, fmt.Errorf("tx with unitID %s not found", unitID), http.StatusNotFound)
 		return
 	}
 

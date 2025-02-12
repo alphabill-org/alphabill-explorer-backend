@@ -22,6 +22,8 @@ const (
 	paramTxHash       = "txHash"
 	paramStartID      = "startID"
 	paramUnitID       = "unitID"
+	paramSearchKey    = "q"
+	paramPubKey       = "pubKey"
 
 	blockNumberLatest = "latest"
 
@@ -87,14 +89,19 @@ type (
 	}
 )
 
+// @Summary Retrieve round and epoch number for each partition
+// @Description Retrieve round and epoch number for each partition
+// @Tags Info
+// @Produce json
+// @Success 200 {array} service.PartitionRoundInfo
+// @Router /round-number [get]
 func (api *RestAPI) roundNumberFunc(w http.ResponseWriter, r *http.Request) {
 	roundInfos, err := api.Service.GetRoundNumber(r.Context())
 	if err != nil {
-		println("GET /round-number error fetching round number", err)
-		w.WriteHeader(http.StatusInternalServerError)
-	} else {
-		api.rw.WriteResponse(w, roundInfos)
+		api.rw.WriteInternalErrorResponse(w, err)
+		return
 	}
+	api.rw.WriteResponse(w, roundInfos)
 }
 
 // @Summary Retrieve blocks and transactions matching the search key
@@ -110,10 +117,9 @@ func (api *RestAPI) roundNumberFunc(w http.ResponseWriter, r *http.Request) {
 // @Router /search [get]
 func (api *RestAPI) search(w http.ResponseWriter, r *http.Request) {
 	qp := r.URL.Query()
-
-	searchKey := qp.Get("q")
+	searchKey := qp.Get(paramSearchKey)
 	if searchKey == "" {
-		http.Error(w, "Empty search key", http.StatusBadRequest)
+		api.rw.WriteMissingParamResponse(w, paramSearchKey)
 		return
 	}
 
@@ -121,7 +127,7 @@ func (api *RestAPI) search(w http.ResponseWriter, r *http.Request) {
 	for _, pid := range qp[paramPartitionID] {
 		id, err := strconv.ParseUint(pid, 10, 64)
 		if err != nil {
-			http.Error(w, fmt.Sprintf("invalid partitionID: %s", pid), http.StatusBadRequest)
+			api.rw.WriteInvalidParamResponse(w, paramPartitionID)
 			return
 		}
 		partitionIDs = append(partitionIDs, types.PartitionID(id))
@@ -137,7 +143,7 @@ func (api *RestAPI) search(w http.ResponseWriter, r *http.Request) {
 		blockMap, err := api.Service.GetBlock(r.Context(), blockNumber, partitionIDs)
 		if err == nil {
 			if len(blockMap) == 0 {
-				http.Error(w, fmt.Sprintf("no blocks found for number %d", blockNumber), http.StatusNotFound)
+				api.rw.WriteErrorResponse(w, fmt.Errorf("no blocks found for number %d", blockNumber), http.StatusNotFound)
 				return
 			}
 			for partitionID, block := range blockMap {
@@ -172,5 +178,5 @@ func (api *RestAPI) search(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	http.Error(w, fmt.Sprintf("no results found for '%s'", searchKey), http.StatusNotFound)
+	api.rw.WriteErrorResponse(w, fmt.Errorf("no results found for '%s'", searchKey), http.StatusNotFound)
 }

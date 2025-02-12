@@ -21,21 +21,21 @@ import (
 // @Router /address/{pubKey}/bills [get]
 func (api *RestAPI) getBillsByPubKey(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	ownerIDStr, ok := vars["pubKey"]
+	ownerIDStr, ok := vars[paramPubKey]
 	if !ok {
-		http.Error(w, "Missing 'pubKey' variable in the URL", http.StatusBadRequest)
+		api.rw.WriteMissingParamResponse(w, paramPubKey)
 		return
 	}
 
 	ownerID := []byte(ownerIDStr)
 	bills, err := api.Service.GetBillsByPubKey(r.Context(), ownerID)
 	if err != nil {
-		api.rw.WriteErrorResponse(w, fmt.Errorf("failed to load bills with pubKey %s : %w", ownerIDStr, err))
+		api.rw.WriteInternalErrorResponse(w, fmt.Errorf("failed to load bills with pubKey %s : %w", ownerIDStr, err))
 		return
 	}
 
 	if len(bills) == 0 {
-		api.rw.ErrorResponse(w, http.StatusNotFound, fmt.Errorf("bills with pubKey %s not found", ownerIDStr))
+		api.rw.WriteErrorResponse(w, fmt.Errorf("bills with pubKey %s not found", ownerIDStr), http.StatusNotFound)
 		return
 	}
 
