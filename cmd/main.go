@@ -14,9 +14,12 @@ import (
 	"github.com/alphabill-org/alphabill-explorer-backend/blocksync"
 	ra "github.com/alphabill-org/alphabill-explorer-backend/restapi"
 	"github.com/alphabill-org/alphabill-explorer-backend/service"
+	"github.com/alphabill-org/alphabill-go-base/txsystem/money"
 	"github.com/alphabill-org/alphabill-go-base/types"
 	"github.com/alphabill-org/alphabill-wallet/cli/alphabill/cmd/wallet/args"
+	"github.com/alphabill-org/alphabill-wallet/client"
 	"github.com/alphabill-org/alphabill-wallet/client/rpc"
+	wallettypes "github.com/alphabill-org/alphabill-wallet/client/types"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -49,14 +52,14 @@ func Run(ctx context.Context, config *Config) error {
 	}
 	println("created store")
 
+	explorerService := service.NewExplorerService(store)
 	g, ctx := errgroup.WithContext(ctx)
 
 	g.Go(func() error {
 		println("block explorer backend REST server starting on ", config.Server.Address)
-		explorerBackend := service.NewExplorerBackend(store)
 
 		handler := &ra.RestAPI{
-			Service: explorerBackend,
+			Service: explorerService,
 		}
 
 		return httpsrv.Run(
@@ -73,30 +76,9 @@ func Run(ctx context.Context, config *Config) error {
 	})
 
 	for _, node := range config.Nodes {
-		println("getting node info for ", node.URL)
-		adminClient, err := rpc.NewAdminAPIClient(ctx, args.BuildRpcUrl(node.URL))
+		partitionClient, nodeInfo, err := createPartitionClient(ctx, node, explorerService)
 		if err != nil {
-			return fmt.Errorf("failed to dial rpc client: %w", err)
-		}
-
-		nodeInfo, err := adminClient.GetNodeInfo(ctx)
-		if err != nil {
-			return fmt.Errorf("failed to get node info: %w", err)
-		}
-		println("partition ID: ", nodeInfo.PartitionID)
-
-		stateClient, err := rpc.NewStateAPIClient(ctx, args.BuildRpcUrl(node.URL))
-		if err != nil {
-			return fmt.Errorf("failed to dial rpc client: %w", err)
-		}
-
-		roundInfo, err := stateClient.GetRoundInfo(ctx)
-		if err != nil {
-			return fmt.Errorf("failed to get round info: %w", err)
-		}
-		if node.BlockNumber > roundInfo.RoundNumber {
-			return fmt.Errorf("current round number for partition %d (%d) is smaller than configured starting block number (%d)",
-				nodeInfo.PartitionID, roundInfo.RoundNumber, node.BlockNumber)
+			return fmt.Errorf("failed to create partition client: %w", err)
 		}
 
 		g.Go(func() error {
@@ -117,7 +99,7 @@ func Run(ctx context.Context, config *Config) error {
 			}
 
 			getRoundNumber := func(ctx context.Context) (uint64, error) {
-				info, err := stateClient.GetRoundInfo(ctx)
+				info, err := partitionClient.GetRoundInfo(ctx)
 				if err != nil {
 					return 0, err
 				}
@@ -128,7 +110,7 @@ func Run(ctx context.Context, config *Config) error {
 			// just retry in a loop until ctx is cancelled
 			for {
 				println("starting block sync")
-				err := runBlockSync(ctx, stateClient.GetBlock, getRoundNumber, getBlockNumber, 100,
+				err := runBlockSync(ctx, partitionClient.GetBlock, getRoundNumber, getBlockNumber, 100,
 					blockProcessor.ProcessBlock, nodeInfo.PartitionID, nodeInfo.PartitionTypeID)
 				if err != nil {
 					println(fmt.Errorf("synchronizing blocks returned error: %w", err).Error())
@@ -143,6 +125,44 @@ func Run(ctx context.Context, config *Config) error {
 	}
 
 	return g.Wait()
+}
+
+func createPartitionClient(ctx context.Context, node Node, service *service.ExplorerService) (*rpc.StateAPIClient, *wallettypes.NodeInfoResponse, error) {
+	println("getting node info for ", node.URL)
+	adminClient, err := rpc.NewAdminAPIClient(ctx, args.BuildRpcUrl(node.URL))
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to dial rpc client: %w", err)
+	}
+
+	nodeInfo, err := adminClient.GetNodeInfo(ctx)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get node info: %w", err)
+	}
+	println("partition ID: ", nodeInfo.PartitionID)
+
+	stateClient, err := rpc.NewStateAPIClient(ctx, args.BuildRpcUrl(node.URL))
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to dial rpc client: %w", err)
+	}
+	service.AddPartitionClient(stateClient, nodeInfo.PartitionID, nodeInfo.PartitionTypeID)
+	roundInfo, err := stateClient.GetRoundInfo(ctx)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get round info: %w", err)
+	}
+
+	if nodeInfo.PartitionTypeID == money.PartitionTypeID {
+		moneyClient, err := client.NewMoneyPartitionClient(ctx, args.BuildRpcUrl(node.URL))
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to create money partition client: %w", err)
+		}
+		service.AddMoneyClient(moneyClient)
+	}
+
+	if node.BlockNumber > roundInfo.RoundNumber {
+		return nil, nil, fmt.Errorf("current round number for partition %d (%d) is smaller than configured starting block number (%d)",
+			nodeInfo.PartitionID, roundInfo.RoundNumber, node.BlockNumber)
+	}
+	return stateClient, nodeInfo, nil
 }
 
 func runBlockSync(

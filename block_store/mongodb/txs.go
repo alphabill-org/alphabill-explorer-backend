@@ -23,7 +23,7 @@ func (s *MongoBlockStore) SetTxInfo(ctx context.Context, txInfo *domain.TxInfo) 
 	return nil
 }
 
-func (s *MongoBlockStore) GetTxInfo(ctx context.Context, txHash domain.TxHash) (*domain.TxInfo, error) {
+func (s *MongoBlockStore) GetTxByHash(ctx context.Context, txHash domain.TxHash) (*domain.TxInfo, error) {
 	filter := bson.M{
 		"$or": []bson.M{
 			{txRecordHashKey: txHash},
@@ -152,4 +152,39 @@ func (s *MongoBlockStore) GetTxsPage(
 	}
 
 	return transactions, previousID, nil
+}
+
+func (s *MongoBlockStore) FindTxs(ctx context.Context, searchKey []byte) ([]*domain.TxInfo, error) {
+	filter := bson.M{
+		"$or": []bson.M{
+			{txRecordHashKey: searchKey},
+			{txOrderHashKey: searchKey},
+			{targetUnitsKey: searchKey},
+		},
+	}
+
+	cursor, err := s.db.Collection(txCollectionName).Find(ctx, filter)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query transaction: %w", err)
+	}
+	defer cursor.Close(ctx)
+
+	var transactions []*domain.TxInfo
+	for cursor.Next(ctx) {
+		var tx domain.TxInfo
+		if err := cursor.Decode(&tx); err != nil {
+			return nil, fmt.Errorf("failed to decode transaction: %w", err)
+		}
+		transactions = append(transactions, &tx)
+	}
+
+	if err := cursor.Err(); err != nil {
+		return nil, fmt.Errorf("cursor encountered an error: %w", err)
+	}
+
+	if len(transactions) == 0 {
+		return nil, fmt.Errorf("no transaction found matching search key: %x", searchKey)
+	}
+
+	return transactions, nil
 }

@@ -2,12 +2,14 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 
 	"github.com/alphabill-org/alphabill-explorer-backend/domain"
 	"github.com/alphabill-org/alphabill-go-base/types"
-	"github.com/alphabill-org/alphabill-wallet/client/rpc"
+	"github.com/alphabill-org/alphabill-go-base/types/hex"
+	wallettypes "github.com/alphabill-org/alphabill-wallet/client/types"
 )
 
 type (
@@ -20,7 +22,7 @@ type (
 		) (res []*domain.BlockInfo, prevBlockNumber uint64, err error)
 
 		//tx
-		GetTxInfo(ctx context.Context, txHash domain.TxHash) (*domain.TxInfo, error)
+		GetTxByHash(ctx context.Context, txHash domain.TxHash) (*domain.TxInfo, error)
 		GetTxsByBlockNumber(ctx context.Context, blockNumber uint64, partitionID types.PartitionID) ([]*domain.TxInfo, error)
 		GetTxsByUnitID(ctx context.Context, unitID types.UnitID) ([]*domain.TxInfo, error)
 		GetTxsPage(
@@ -29,49 +31,59 @@ type (
 			startID string,
 			limit int,
 		) (transactions []*domain.TxInfo, previousID string, err error)
+		FindTxs(ctx context.Context, searchKey []byte) ([]*domain.TxInfo, error)
 	}
 
-	ExplorerBackend struct {
+	ExplorerService struct {
 		store            BlockStore
 		partitionClients map[types.PartitionID]*PartitionClient
+		moneyClient      wallettypes.MoneyPartitionClient
 		sync.RWMutex
 	}
 
 	PartitionClient struct {
-		*rpc.StateAPIClient
+		RoundInfoClient
 		partitionID     types.PartitionID
 		partitionTypeID types.PartitionTypeID
 	}
 
+	RoundInfoClient interface {
+		GetRoundInfo(ctx context.Context) (*wallettypes.RoundInfo, error)
+	}
+
 	PartitionRoundInfo struct {
-		partitionID     types.PartitionID
-		partitionTypeID types.PartitionTypeID
+		PartitionID     types.PartitionID
+		PartitionTypeID types.PartitionTypeID
 		RoundNumber     uint64
 		EpochNumber     uint64
 	}
 )
 
-func NewExplorerBackend(store BlockStore) *ExplorerBackend {
-	return &ExplorerBackend{
+func NewExplorerService(store BlockStore) *ExplorerService {
+	return &ExplorerService{
 		store:            store,
 		partitionClients: map[types.PartitionID]*PartitionClient{},
 	}
 }
 
-func (ex *ExplorerBackend) AddPartitionClient(
-	client *rpc.StateAPIClient, partitionID types.PartitionID, partitionTypeID types.PartitionTypeID,
+func (ex *ExplorerService) AddMoneyClient(client wallettypes.MoneyPartitionClient) {
+	ex.moneyClient = client
+}
+
+func (ex *ExplorerService) AddPartitionClient(
+	client RoundInfoClient, partitionID types.PartitionID, partitionTypeID types.PartitionTypeID,
 ) {
 	ex.Lock()
 	defer ex.Unlock()
 	ex.partitionClients[partitionID] = &PartitionClient{
-		StateAPIClient:  client,
+		RoundInfoClient: client,
 		partitionID:     partitionID,
 		partitionTypeID: partitionTypeID,
 	}
 }
 
 // GetRoundNumber returns the latest round and epoch number for all partitions
-func (ex *ExplorerBackend) GetRoundNumber(ctx context.Context) ([]PartitionRoundInfo, error) {
+func (ex *ExplorerService) GetRoundNumber(ctx context.Context) ([]PartitionRoundInfo, error) {
 	ex.RLock()
 	defer ex.RUnlock()
 
@@ -82,8 +94,8 @@ func (ex *ExplorerBackend) GetRoundNumber(ctx context.Context) ([]PartitionRound
 			return nil, fmt.Errorf("failed to get round info for partition %d: %w", client.partitionID, err)
 		}
 		result = append(result, PartitionRoundInfo{
-			partitionID:     client.partitionID,
-			partitionTypeID: client.partitionTypeID,
+			PartitionID:     client.partitionID,
+			PartitionTypeID: client.partitionTypeID,
 			RoundNumber:     info.RoundNumber,
 			EpochNumber:     info.Epoch,
 		})
@@ -92,12 +104,12 @@ func (ex *ExplorerBackend) GetRoundNumber(ctx context.Context) ([]PartitionRound
 }
 
 // GetLastBlocks returns last processed blocks for each partition
-func (ex *ExplorerBackend) GetLastBlocks(ctx context.Context, partitionIDs []types.PartitionID, count int, includeEmpty bool) (map[types.PartitionID][]*domain.BlockInfo, error) {
+func (ex *ExplorerService) GetLastBlocks(ctx context.Context, partitionIDs []types.PartitionID, count int, includeEmpty bool) (map[types.PartitionID][]*domain.BlockInfo, error) {
 	return ex.store.GetLastBlocks(ctx, partitionIDs, count, includeEmpty)
 }
 
 // GetBlock returns block with given block number for each specified partition.
-func (ex *ExplorerBackend) GetBlock(
+func (ex *ExplorerService) GetBlock(
 	ctx context.Context,
 	blockNumber uint64,
 	partitionIDs []types.PartitionID,
@@ -106,7 +118,7 @@ func (ex *ExplorerBackend) GetBlock(
 }
 
 // GetBlocksInRange returns amount of blocks provided with count for given partition
-func (ex *ExplorerBackend) GetBlocksInRange(
+func (ex *ExplorerService) GetBlocksInRange(
 	ctx context.Context,
 	partitionID types.PartitionID,
 	dbStartBlock uint64,
@@ -116,19 +128,19 @@ func (ex *ExplorerBackend) GetBlocksInRange(
 	return ex.store.GetBlocksInRange(ctx, partitionID, dbStartBlock, count, includeEmpty)
 }
 
-func (ex *ExplorerBackend) GetTxInfo(ctx context.Context, txHash domain.TxHash) (res *domain.TxInfo, err error) {
-	return ex.store.GetTxInfo(ctx, txHash)
+func (ex *ExplorerService) GetTxByHash(ctx context.Context, txHash domain.TxHash) (res *domain.TxInfo, err error) {
+	return ex.store.GetTxByHash(ctx, txHash)
 }
 
-func (ex *ExplorerBackend) GetTxsByBlockNumber(ctx context.Context, blockNumber uint64, partitionID types.PartitionID) ([]*domain.TxInfo, error) {
+func (ex *ExplorerService) GetTxsByBlockNumber(ctx context.Context, blockNumber uint64, partitionID types.PartitionID) ([]*domain.TxInfo, error) {
 	return ex.store.GetTxsByBlockNumber(ctx, blockNumber, partitionID)
 }
 
-func (ex *ExplorerBackend) GetTxsByUnitID(ctx context.Context, unitID types.UnitID) ([]*domain.TxInfo, error) {
+func (ex *ExplorerService) GetTxsByUnitID(ctx context.Context, unitID types.UnitID) ([]*domain.TxInfo, error) {
 	return ex.store.GetTxsByUnitID(ctx, unitID)
 }
 
-func (ex *ExplorerBackend) GetTxsPage(
+func (ex *ExplorerService) GetTxsPage(
 	ctx context.Context,
 	partitionID types.PartitionID,
 	startID string,
@@ -137,21 +149,17 @@ func (ex *ExplorerBackend) GetTxsPage(
 	return ex.store.GetTxsPage(ctx, partitionID, startID, limit)
 }
 
-/*func (ex *ExplorerBackend) GetUnitsByOwnerID(ctx context.Context, ownerID hex.Bytes) ([]types.UnitID, error) {
-	return ex.client.GetUnitsByOwnerID(ctx, ownerID)
+func (ex *ExplorerService) FindTxs(ctx context.Context, searchKey []byte) ([]*domain.TxInfo, error) {
+	return ex.store.FindTxs(ctx, searchKey)
 }
 
-func (ex *ExplorerBackend) GetUnitsByOwnerID(ctx context.Context, ownerID hex.Bytes) ([]types.UnitID, error) {
-	return ex.GetUnitsByOwnerID(ctx, ownerID)
-}
-
-// bill
-func (ex *ExplorerBackend) GetBillsByPubKey(ctx context.Context, ownerID hex.Bytes) (res []types.UnitID, err error) {
-	unitIDs, err := ex.client.GetUnitsByOwnerID(ctx, ownerID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get units by owner ID: %w", err)
+func (ex *ExplorerService) GetBillsByPubKey(ctx context.Context, ownerID hex.Bytes) ([]*wallettypes.Bill, error) {
+	if ex.moneyClient == nil {
+		return nil, errors.New("bills partition not configured")
 	}
-	// todo get bill data
-	return unitIDs, nil
+	bills, err := ex.moneyClient.GetBills(ctx, ownerID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get bills by owner ID: %w", err)
+	}
+	return bills, nil
 }
-*/

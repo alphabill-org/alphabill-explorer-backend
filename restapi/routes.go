@@ -1,7 +1,9 @@
 package restapi
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 	"net/http"
 	"time"
 
@@ -21,6 +23,7 @@ import (
 func (api *RestAPI) Router() *mux.Router {
 	// TODO add request/response headers middleware
 	router := mux.NewRouter().StrictSlash(true)
+	router.Use(loggerMiddleware)
 
 	router.Path("/health").HandlerFunc(api.healthRequest)
 
@@ -44,6 +47,9 @@ func (api *RestAPI) Router() *mux.Router {
 	// version v1 router
 	apiV1 := apiRouter.PathPrefix("/v1").Subrouter()
 
+	apiV1.HandleFunc("/search", api.search).Methods(http.MethodGet, http.MethodOptions)
+	apiV1.HandleFunc("/round-number", api.roundNumberFunc).Methods(http.MethodGet, http.MethodOptions)
+
 	//block
 	apiV1.HandleFunc("/blocks/{blockNumber}", api.getBlock).Methods(http.MethodGet, http.MethodOptions)
 	apiV1.HandleFunc("/partitions/{partitionID}/blocks", api.getBlocksInRange).Methods(http.MethodGet, http.MethodOptions)
@@ -55,11 +61,29 @@ func (api *RestAPI) Router() *mux.Router {
 	apiV1.HandleFunc("/units/{unitID}/txs", api.getTxsByUnitID).Methods(http.MethodGet, http.MethodOptions)
 
 	//bill
-	//apiV1.HandleFunc("/address/{pubKey}/bills", api.getBillsByPubKey).Methods("GET", "OPTIONS")
+	apiV1.HandleFunc("/address/{pubKey}/bills", api.getBillsByPubKey).Methods(http.MethodGet, http.MethodOptions)
 	return router
 }
 
 func (api *RestAPI) healthRequest(w http.ResponseWriter, _ *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(fmt.Sprintf("OK - %v", time.Now())))
+}
+
+func loggerMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		buf, err := io.ReadAll(r.Body)
+		if err != nil {
+			fmt.Printf("Error reading request body: %v\n", err.Error())
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		reader := io.NopCloser(bytes.NewBuffer(buf))
+		r.Body = reader
+
+		fmt.Printf("Server: request from=%s to=%s:%s body=%v.\n", r.RemoteAddr, r.Method, r.RequestURI, string(buf))
+
+		next.ServeHTTP(w, r)
+	})
 }

@@ -47,15 +47,7 @@ type (
 	ResponseWriter struct {
 		//LogErr func(err error)
 	}
-
-	// InfoResponse should be compatible with Node /info request
-	InfoResponse struct {
-		PartitionID types.PartitionID `json:"system_id"` // hex encoded system identifier (without 0x prefix)
-		Name        string            `json:"name"`      // one of [money backend | tokens backend]
-	}
 )
-
-var ErrRecordNotFound = errors.New("not found")
 
 func (rw *ResponseWriter) WriteResponse(w http.ResponseWriter, data any) {
 	w.Header().Set(ContentType, ApplicationJson)
@@ -71,18 +63,25 @@ func (rw *ResponseWriter) WriteCborResponse(w http.ResponseWriter, data any) {
 	}
 }
 
-func (rw *ResponseWriter) WriteErrorResponse(w http.ResponseWriter, err error) {
-	if errors.Is(err, ErrRecordNotFound) {
-		rw.ErrorResponse(w, http.StatusNotFound, err)
-		return
-	}
-
-	rw.ErrorResponse(w, http.StatusInternalServerError, err)
-	//rw.logError(err)
+func (rw *ResponseWriter) WriteInternalErrorResponse(w http.ResponseWriter, err error) {
+	fmt.Printf("Internal error: %s\n", err)
+	rw.ErrorResponse(w, http.StatusInternalServerError, errors.New("internal error"))
 }
 
-func (rw *ResponseWriter) InvalidParamResponse(w http.ResponseWriter, name string, err error) {
-	rw.ErrorResponse(w, http.StatusBadRequest, fmt.Errorf("invalid parameter %q: %w", name, err))
+func (rw *ResponseWriter) WriteErrorResponse(w http.ResponseWriter, err error, statusCode ...int) {
+	if len(statusCode) > 0 {
+		rw.ErrorResponse(w, statusCode[0], err)
+		return
+	}
+	rw.ErrorResponse(w, http.StatusBadRequest, err)
+}
+
+func (rw *ResponseWriter) WriteMissingParamResponse(w http.ResponseWriter, param string) {
+	rw.ErrorResponse(w, http.StatusBadRequest, fmt.Errorf("missing '%s' parameter", param))
+}
+
+func (rw *ResponseWriter) WriteInvalidParamResponse(w http.ResponseWriter, param string) {
+	rw.ErrorResponse(w, http.StatusBadRequest, fmt.Errorf("invalid '%s' parameter", param))
 }
 
 func (rw *ResponseWriter) ErrorResponse(w http.ResponseWriter, code int, err error) {

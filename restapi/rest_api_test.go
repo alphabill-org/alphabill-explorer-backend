@@ -7,6 +7,7 @@ import (
 	"github.com/alphabill-org/alphabill-explorer-backend/service"
 	"github.com/alphabill-org/alphabill-go-base/types"
 	"github.com/alphabill-org/alphabill-go-base/types/hex"
+	wallettypes "github.com/alphabill-org/alphabill-wallet/client/types"
 )
 
 type MockExplorerBackendService struct {
@@ -20,6 +21,14 @@ type MockExplorerBackendService struct {
 	getTxsByUnitID               func(ctx context.Context, txHash domain.TxHash) (res *domain.TxInfo, err error)
 	getTxsPageFunc               func(ctx context.Context, partitionID types.PartitionID, startID string, limit int) (transactions []*domain.TxInfo, previousID string, err error)
 	//getBillsByPubKey             func(ctx context.Context, ownerID types.Bytes) (res []*moneyApi.Bill, err error)
+}
+
+func (m *MockExplorerBackendService) FindTxs(ctx context.Context, searchKey []byte) ([]*domain.TxInfo, error) {
+	panic("implement me")
+}
+
+func (m *MockExplorerBackendService) GetBillsByPubKey(ctx context.Context, ownerID hex.Bytes) (res []*wallettypes.Bill, err error) {
+	panic("implement me")
 }
 
 func (m *MockExplorerBackendService) GetTxsPage(ctx context.Context, partitionID types.PartitionID, startID string, limit int) (transactions []*domain.TxInfo, previousID string, err error) {
@@ -69,7 +78,7 @@ func (m *MockExplorerBackendService) GetLastBlocks(ctx context.Context, partitio
 	panic("GetLastBlocks not implemented")
 }
 
-func (m *MockExplorerBackendService) GetTxInfo(ctx context.Context, txHash domain.TxHash) (res *domain.TxInfo, err error) {
+func (m *MockExplorerBackendService) GetTxByHash(ctx context.Context, txHash domain.TxHash) (res *domain.TxInfo, err error) {
 	if m.getTxInfoFunc != nil {
 		return m.getTxInfoFunc(ctx, txHash)
 	}
