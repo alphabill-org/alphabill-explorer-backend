@@ -126,7 +126,7 @@ func TestGetBlock_InvalidBlockNumber(t *testing.T) {
 	require.NoError(t, err)
 
 	// Check the error message
-	require.Contains(t, string(body), "invalid blockNumber: invalid")
+	require.Contains(t, string(body), "invalid 'blockNumber' parameter")
 }
 
 func TestGetBlock_FailedToLoadBlock(t *testing.T) {
@@ -149,7 +149,7 @@ func TestGetBlock_FailedToLoadBlock(t *testing.T) {
 	require.NoError(t, err)
 
 	// Check the error message
-	require.Contains(t, string(body), "failed to load block with block number 1")
+	require.Contains(t, string(body), "internal error")
 }
 
 func TestGetBlocks_Success(t *testing.T) {

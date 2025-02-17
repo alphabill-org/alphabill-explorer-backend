@@ -15,6 +15,53 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/address/{pubKey}/bills": {
+            "get": {
+                "description": "Get bills associated with a specific public key",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Bills"
+                ],
+                "summary": "Retrieve bills by public key",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Public Key",
+                        "name": "pubKey",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "List of bills",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/domain.Bill"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Error: Missing 'pubKey' variable in the URL",
+                        "schema": {
+                            "$ref": "#/definitions/restapi.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Error: Bills with specified public key not found",
+                        "schema": {
+                            "$ref": "#/definitions/restapi.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/blocks/{blockNumber}": {
             "get": {
                 "description": "Retrieves a block for all given partitions by using the provided block number as a path parameter, or retrieves the latest block if no number is specified.",
@@ -219,6 +266,76 @@ const docTemplate = `{
                 }
             }
         },
+        "/round-number": {
+            "get": {
+                "description": "Retrieve round and epoch number for each partition",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Info"
+                ],
+                "summary": "Retrieve round and epoch number for each partition",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/service.PartitionRoundInfo"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/search": {
+            "get": {
+                "description": "Retrieve blocks and transactions matching the search key",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Search"
+                ],
+                "summary": "Retrieve blocks and transactions matching the search key",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Search key",
+                        "name": "q",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Filter results by partition ID(s)",
+                        "name": "partitionID",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Block information successfully retrieved",
+                        "schema": {
+                            "$ref": "#/definitions/restapi.SearchResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid partitionID",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "no results found",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/txs/{txHash}": {
             "get": {
                 "description": "Retrieves transaction details using a transaction hash provided as a path parameter.",
@@ -318,6 +435,32 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "domain.Bill": {
+            "type": "object",
+            "properties": {
+                "counter": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "lockStatus": {
+                    "type": "integer"
+                },
+                "networkID": {
+                    "$ref": "#/definitions/types.NetworkID"
+                },
+                "partitionID": {
+                    "type": "integer"
+                },
+                "value": {
+                    "type": "integer"
+                }
+            }
+        },
         "restapi.BlockInfo": {
             "type": "object",
             "properties": {
@@ -373,6 +516,23 @@ const docTemplate = `{
                 }
             }
         },
+        "restapi.SearchResponse": {
+            "type": "object",
+            "properties": {
+                "blocks": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "$ref": "#/definitions/restapi.BlockInfo"
+                    }
+                },
+                "txs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/restapi.TxInfo"
+                    }
+                }
+            }
+        },
         "restapi.TxInfo": {
             "type": "object",
             "properties": {
@@ -398,6 +558,36 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "service.PartitionRoundInfo": {
+            "type": "object",
+            "properties": {
+                "epochNumber": {
+                    "type": "integer"
+                },
+                "partitionID": {
+                    "type": "integer"
+                },
+                "partitionTypeID": {
+                    "type": "integer"
+                },
+                "roundNumber": {
+                    "type": "integer"
+                }
+            }
+        },
+        "types.NetworkID": {
+            "type": "integer",
+            "enum": [
+                1,
+                2,
+                3
+            ],
+            "x-enum-varnames": [
+                "NetworkMainNet",
+                "NetworkTestNet",
+                "NetworkLocal"
+            ]
         },
         "types.ServerMetadata": {
             "type": "object",

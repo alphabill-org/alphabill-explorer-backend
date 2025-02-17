@@ -1,5 +1,22 @@
 basePath: /api/v1
 definitions:
+  domain.Bill:
+    properties:
+      counter:
+        type: integer
+      id:
+        items:
+          type: integer
+        type: array
+      lockStatus:
+        type: integer
+      networkID:
+        $ref: '#/definitions/types.NetworkID'
+      partitionID:
+        type: integer
+      value:
+        type: integer
+    type: object
   restapi.BlockInfo:
     properties:
       blockNumber:
@@ -36,6 +53,17 @@ definitions:
       message:
         type: string
     type: object
+  restapi.SearchResponse:
+    properties:
+      blocks:
+        additionalProperties:
+          $ref: '#/definitions/restapi.BlockInfo'
+        type: object
+      txs:
+        items:
+          $ref: '#/definitions/restapi.TxInfo'
+        type: array
+    type: object
   restapi.TxInfo:
     properties:
       blockNumber:
@@ -53,6 +81,27 @@ definitions:
           type: integer
         type: array
     type: object
+  service.PartitionRoundInfo:
+    properties:
+      epochNumber:
+        type: integer
+      partitionID:
+        type: integer
+      partitionTypeID:
+        type: integer
+      roundNumber:
+        type: integer
+    type: object
+  types.NetworkID:
+    enum:
+    - 1
+    - 2
+    - 3
+    type: integer
+    x-enum-varnames:
+    - NetworkMainNet
+    - NetworkTestNet
+    - NetworkLocal
   types.ServerMetadata:
     properties:
       actualFee:
@@ -99,6 +148,37 @@ info:
   title: Alphabill Blockchain Explorer API
   version: "1.0"
 paths:
+  /address/{pubKey}/bills:
+    get:
+      consumes:
+      - application/json
+      description: Get bills associated with a specific public key
+      parameters:
+      - description: Public Key
+        in: path
+        name: pubKey
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of bills
+          schema:
+            items:
+              $ref: '#/definitions/domain.Bill'
+            type: array
+        "400":
+          description: 'Error: Missing ''pubKey'' variable in the URL'
+          schema:
+            $ref: '#/definitions/restapi.ErrorResponse'
+        "404":
+          description: 'Error: Bills with specified public key not found'
+          schema:
+            $ref: '#/definitions/restapi.ErrorResponse'
+      summary: Retrieve bills by public key
+      tags:
+      - Bills
   /blocks/{blockNumber}:
     get:
       consumes:
@@ -240,6 +320,52 @@ paths:
       summary: Retrieve transactions, latest first.
       tags:
       - Transactions
+  /round-number:
+    get:
+      description: Retrieve round and epoch number for each partition
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/service.PartitionRoundInfo'
+            type: array
+      summary: Retrieve round and epoch number for each partition
+      tags:
+      - Info
+  /search:
+    get:
+      description: Retrieve blocks and transactions matching the search key
+      parameters:
+      - description: Search key
+        in: query
+        name: q
+        required: true
+        type: string
+      - description: Filter results by partition ID(s)
+        in: query
+        name: partitionID
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Block information successfully retrieved
+          schema:
+            $ref: '#/definitions/restapi.SearchResponse'
+        "400":
+          description: invalid partitionID
+          schema:
+            type: string
+        "404":
+          description: no results found
+          schema:
+            type: string
+      summary: Retrieve blocks and transactions matching the search key
+      tags:
+      - Search
   /txs/{txHash}:
     get:
       consumes:
