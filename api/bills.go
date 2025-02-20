@@ -1,11 +1,10 @@
-package restapi
+package api
 
 import (
 	"fmt"
 	"net/http"
 
 	"github.com/alphabill-org/alphabill-explorer-backend/domain"
-
 	"github.com/gorilla/mux"
 )
 
@@ -19,23 +18,23 @@ import (
 // @Failure 400 {object} ErrorResponse "Error: Missing 'pubKey' variable in the URL"
 // @Failure 404 {object} ErrorResponse "Error: Bills with specified public key not found"
 // @Router /address/{pubKey}/bills [get]
-func (api *RestAPI) getBillsByPubKey(w http.ResponseWriter, r *http.Request) {
+func (c *Controller) getBillsByPubKey(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	ownerIDStr, ok := vars[paramPubKey]
 	if !ok {
-		api.rw.WriteMissingParamResponse(w, paramPubKey)
+		c.rw.WriteMissingParamResponse(w, paramPubKey)
 		return
 	}
 
 	ownerID := []byte(ownerIDStr)
-	bills, err := api.Service.GetBillsByPubKey(r.Context(), ownerID)
+	bills, err := c.MoneyService.GetBillsByPubKey(r.Context(), ownerID)
 	if err != nil {
-		api.rw.WriteInternalErrorResponse(w, fmt.Errorf("failed to load bills with pubKey %s : %w", ownerIDStr, err))
+		c.rw.WriteInternalErrorResponse(w, fmt.Errorf("failed to load bills with pubKey %s : %w", ownerIDStr, err))
 		return
 	}
 
 	if len(bills) == 0 {
-		api.rw.WriteErrorResponse(w, fmt.Errorf("bills with pubKey %s not found", ownerIDStr), http.StatusNotFound)
+		c.rw.WriteErrorResponse(w, fmt.Errorf("bills with pubKey %s not found", ownerIDStr), http.StatusNotFound)
 		return
 	}
 
@@ -51,5 +50,5 @@ func (api *RestAPI) getBillsByPubKey(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	api.rw.WriteResponse(w, response)
+	c.rw.WriteResponse(w, response)
 }

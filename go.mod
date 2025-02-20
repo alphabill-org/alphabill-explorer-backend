@@ -10,7 +10,6 @@ require (
 	github.com/ainvaltin/httpsrv v0.3.1
 	github.com/alphabill-org/alphabill-go-base v1.0.0-rc2.0.20250131151333-dfd181a9e5e8
 	github.com/alphabill-org/alphabill-wallet v1.0.0-rc1.0.20250110065811-a7889974f3dc
-	github.com/ethereum/go-ethereum v1.14.11
 	github.com/fxamacker/cbor/v2 v2.7.0
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1
@@ -20,7 +19,6 @@ require (
 	github.com/swaggo/swag v1.16.4
 	github.com/testcontainers/testcontainers-go v0.35.0
 	github.com/testcontainers/testcontainers-go/modules/mongodb v0.35.0
-	go.etcd.io/bbolt v1.3.11
 	go.mongodb.org/mongo-driver v1.17.1
 	golang.org/x/sync v0.10.0
 )
@@ -62,6 +60,7 @@ require (
 	github.com/docker/go-connections v0.5.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/ethereum/c-kzg-4844 v1.0.3 // indirect
+	github.com/ethereum/go-ethereum v1.14.11 // indirect
 	github.com/ethereum/go-verkle v0.2.2 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/fsnotify/fsnotify v1.8.0 // indirect
@@ -138,6 +137,7 @@ require (
 	github.com/xdg-go/stringprep v1.0.4 // indirect
 	github.com/youmark/pkcs8 v0.0.0-20240726163527-a2c0da244d78 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
+	go.etcd.io/bbolt v1.3.11 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.54.0 // indirect
 	go.opentelemetry.io/otel v1.29.0 // indirect
 	go.opentelemetry.io/otel/metric v1.29.0 // indirect

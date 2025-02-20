@@ -3,6 +3,7 @@ package domain
 import (
 	"crypto"
 	"fmt"
+
 	"github.com/alphabill-org/alphabill-go-base/types"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )

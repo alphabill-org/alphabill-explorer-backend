@@ -1,4 +1,4 @@
-package restapi
+package api
 
 import (
 	"context"
@@ -22,7 +22,7 @@ const (
 
 func TestGetBlock_Success(t *testing.T) {
 	r := mux.NewRouter()
-	restapi := &RestAPI{Service: &MockExplorerBackendService{
+	restapi := &Controller{StorageService: &MockStorageService{
 		getBlockFunc: func(ctx context.Context, blockNumber uint64, partitionIDs []types.PartitionID) (map[types.PartitionID]*domain.BlockInfo, error) {
 			require.EqualValues(t, 1, blockNumber)
 			require.Len(t, partitionIDs, 1)
@@ -52,7 +52,7 @@ func TestGetBlock_Success(t *testing.T) {
 
 func TestGetBlock_Success_MultiplePartitions(t *testing.T) {
 	r := mux.NewRouter()
-	restapi := &RestAPI{Service: &MockExplorerBackendService{
+	restapi := &Controller{StorageService: &MockStorageService{
 		getBlockFunc: func(ctx context.Context, blockNumber uint64, partitionIDs []types.PartitionID) (map[types.PartitionID]*domain.BlockInfo, error) {
 			require.EqualValues(t, 1, blockNumber)
 			require.Len(t, partitionIDs, 2)
@@ -85,7 +85,7 @@ func TestGetBlock_Success_MultiplePartitions(t *testing.T) {
 
 func TestGetBlock_latest_Success(t *testing.T) {
 	r := mux.NewRouter()
-	restapi := &RestAPI{Service: &MockExplorerBackendService{
+	restapi := &Controller{StorageService: &MockStorageService{
 		getLastBlocksFunc: func(ctx context.Context, partitionIDs []types.PartitionID, count int, includeEmpty bool) (map[types.PartitionID][]*domain.BlockInfo, error) {
 			blockMap := make(map[types.PartitionID][]*domain.BlockInfo)
 			blockMap[partitionID1] = []*domain.BlockInfo{{TxHashes: []domain.TxHash{{0xFF}}}}
@@ -112,7 +112,7 @@ func TestGetBlock_latest_Success(t *testing.T) {
 
 func TestGetBlock_InvalidBlockNumber(t *testing.T) {
 	r := mux.NewRouter()
-	api := &RestAPI{Service: &MockExplorerBackendService{}}
+	api := &Controller{StorageService: &MockStorageService{}}
 	r.HandleFunc("/blocks/{blockNumber}", api.getBlock)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
@@ -131,7 +131,7 @@ func TestGetBlock_InvalidBlockNumber(t *testing.T) {
 
 func TestGetBlock_FailedToLoadBlock(t *testing.T) {
 	r := mux.NewRouter()
-	api := &RestAPI{Service: &MockExplorerBackendService{
+	api := &Controller{StorageService: &MockStorageService{
 		getBlockFunc: func(ctx context.Context, blockNumber uint64, partitionIDs []types.PartitionID) (map[types.PartitionID]*domain.BlockInfo, error) {
 			return nil, fmt.Errorf("failed to load block")
 		},
@@ -154,7 +154,7 @@ func TestGetBlock_FailedToLoadBlock(t *testing.T) {
 
 func TestGetBlocks_Success(t *testing.T) {
 	r := mux.NewRouter()
-	restapi := &RestAPI{Service: &MockExplorerBackendService{
+	restapi := &Controller{StorageService: &MockStorageService{
 		getBlocksInRangeFunc: func(
 			ctx context.Context, partitionID types.PartitionID, dbStartBlock uint64, count int, includeEmpty bool,
 		) (res []*domain.BlockInfo, prevBlockNumber uint64, err error) {
@@ -189,7 +189,7 @@ func TestGetBlocks_Success(t *testing.T) {
 
 func TestGetBlocks_Success_ExcludeEmpty(t *testing.T) {
 	r := mux.NewRouter()
-	restapi := &RestAPI{Service: &MockExplorerBackendService{
+	restapi := &Controller{StorageService: &MockStorageService{
 		getBlocksInRangeFunc: func(
 			ctx context.Context, partitionID types.PartitionID, dbStartBlock uint64, count int, includeEmpty bool,
 		) (res []*domain.BlockInfo, prevBlockNumber uint64, err error) {

@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/alphabill-org/alphabill-explorer-backend/domain"
+	"github.com/alphabill-org/alphabill-explorer-backend/errors"
 	"github.com/alphabill-org/alphabill-go-base/types"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -35,7 +36,7 @@ func (s *MongoBlockStore) GetTxByHash(ctx context.Context, txHash domain.TxHash)
 	err := s.db.Collection(txCollectionName).FindOne(ctx, filter).Decode(&tx)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
-			return nil, fmt.Errorf("transaction not found for hash: %x", txHash)
+			return nil, errors.ErrNotFound
 		}
 		return nil, fmt.Errorf("failed to query transaction by hash: %w", err)
 	}
@@ -154,13 +155,16 @@ func (s *MongoBlockStore) GetTxsPage(
 	return transactions, previousID, nil
 }
 
-func (s *MongoBlockStore) FindTxs(ctx context.Context, searchKey []byte) ([]*domain.TxInfo, error) {
+func (s *MongoBlockStore) FindTxs(ctx context.Context, searchKey []byte, partitionIDs []types.PartitionID) ([]*domain.TxInfo, error) {
 	filter := bson.M{
 		"$or": []bson.M{
 			{txRecordHashKey: searchKey},
 			{txOrderHashKey: searchKey},
 			{targetUnitsKey: searchKey},
 		},
+	}
+	if len(partitionIDs) > 0 {
+		filter[partitionIDKey] = bson.M{"$in": partitionIDs}
 	}
 
 	cursor, err := s.db.Collection(txCollectionName).Find(ctx, filter)
@@ -183,7 +187,7 @@ func (s *MongoBlockStore) FindTxs(ctx context.Context, searchKey []byte) ([]*dom
 	}
 
 	if len(transactions) == 0 {
-		return nil, fmt.Errorf("no transaction found matching search key: %x", searchKey)
+		return nil, errors.ErrNotFound
 	}
 
 	return transactions, nil

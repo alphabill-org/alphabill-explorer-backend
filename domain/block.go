@@ -17,6 +17,7 @@ type BlockInfo struct {
 	TxHashes           []TxHash
 	UnicityCertificate types.TaggedCBOR
 	BlockNumber        uint64
+	TxCount            int
 }
 
 func NewBlockInfo(b *types.Block, partitionTypeID types.PartitionTypeID) (*BlockInfo, error) {
@@ -56,5 +57,6 @@ func NewBlockInfo(b *types.Block, partitionTypeID types.PartitionTypeID) (*Block
 		TxHashes:           txHashes,
 		UnicityCertificate: b.UnicityCertificate,
 		BlockNumber:        roundNumber,
+		TxCount:            len(txHashes),
 	}, nil
 }

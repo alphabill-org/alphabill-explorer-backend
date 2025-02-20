@@ -1,4 +1,4 @@
-package restapi
+package api
 
 import (
 	"fmt"
@@ -23,13 +23,13 @@ import (
 // @Failure 404 {object} string "No block found with the specified number"
 // @Failure 500 {object} string "Internal server error, such as a failure to retrieve the block"
 // @Router /blocks/{blockNumber} [get]
-func (api *RestAPI) getBlock(w http.ResponseWriter, r *http.Request) {
+func (c *Controller) getBlock(w http.ResponseWriter, r *http.Request) {
 	qp := r.URL.Query()
 	var partitionIDs []types.PartitionID
 	for _, pid := range qp[paramPartitionID] {
 		id, err := strconv.ParseUint(pid, 10, 64)
 		if err != nil {
-			api.rw.WriteInvalidParamResponse(w, paramPartitionID)
+			c.rw.WriteInvalidParamResponse(w, paramPartitionID)
 			return
 		}
 		partitionIDs = append(partitionIDs, types.PartitionID(id))
@@ -40,15 +40,15 @@ func (api *RestAPI) getBlock(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	blockNumberStr, ok := vars[paramBlockNumber]
 	if !ok {
-		api.rw.WriteMissingParamResponse(w, paramBlockNumber)
+		c.rw.WriteMissingParamResponse(w, paramBlockNumber)
 		return
 	}
 
 	result := make(map[types.PartitionID]BlockInfo)
 	if blockNumberStr == blockNumberLatest {
-		blockMap, err := api.Service.GetLastBlocks(r.Context(), partitionIDs, 1, true)
+		blockMap, err := c.StorageService.GetLastBlocks(r.Context(), partitionIDs, 1, true)
 		if err != nil {
-			api.rw.WriteInternalErrorResponse(w, fmt.Errorf("failed to get latest blocks: %w", err))
+			c.rw.WriteInternalErrorResponse(w, fmt.Errorf("failed to get latest blocks: %w", err))
 			return
 		}
 		for partitionID, blocks := range blockMap {
@@ -56,24 +56,24 @@ func (api *RestAPI) getBlock(w http.ResponseWriter, r *http.Request) {
 				result[partitionID] = blockInfoResponse(blocks[0])
 			}
 		}
-		api.rw.WriteResponse(w, result)
+		c.rw.WriteResponse(w, result)
 		return
 	}
 
 	blockNumber, err := strconv.ParseUint(blockNumberStr, 10, 64)
 	if err != nil {
-		api.rw.WriteInvalidParamResponse(w, paramBlockNumber)
+		c.rw.WriteInvalidParamResponse(w, paramBlockNumber)
 		return
 	}
 
-	blockMap, err := api.Service.GetBlock(r.Context(), blockNumber, partitionIDs)
+	blockMap, err := c.StorageService.GetBlock(r.Context(), blockNumber, partitionIDs)
 	if err != nil {
-		api.rw.WriteInternalErrorResponse(w, fmt.Errorf("failed to load block with block number %d: %w", blockNumber, err))
+		c.rw.WriteInternalErrorResponse(w, fmt.Errorf("failed to load block with block number %d: %w", blockNumber, err))
 		return
 	}
 
 	if len(blockMap) == 0 {
-		api.rw.WriteErrorResponse(w, fmt.Errorf("block with block number %d not found", blockNumber), http.StatusNotFound)
+		c.rw.WriteErrorResponse(w, fmt.Errorf("block with block number %d not found", blockNumber), http.StatusNotFound)
 		return
 	}
 
@@ -81,7 +81,7 @@ func (api *RestAPI) getBlock(w http.ResponseWriter, r *http.Request) {
 		result[partitionID] = blockInfoResponse(block)
 	}
 
-	api.rw.WriteResponse(w, result)
+	c.rw.WriteResponse(w, result)
 }
 
 // @Summary Get blocks in a single partition, given a start block number and limit.
@@ -94,16 +94,16 @@ func (api *RestAPI) getBlock(w http.ResponseWriter, r *http.Request) {
 // @Success 200 {array} BlockInfo
 // @Router /partitions/{partitionID}/blocks [get]
 // @Tags Blocks
-func (api *RestAPI) getBlocksInRange(w http.ResponseWriter, r *http.Request) {
+func (c *Controller) getBlocksInRange(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	partitionIDStr, ok := vars[paramPartitionID]
 	if !ok {
-		api.rw.WriteMissingParamResponse(w, paramPartitionID)
+		c.rw.WriteMissingParamResponse(w, paramPartitionID)
 		return
 	}
 	partitionIDUint, err := strconv.ParseUint(partitionIDStr, 10, 64)
 	if err != nil {
-		api.rw.WriteInvalidParamResponse(w, paramPartitionID)
+		c.rw.WriteInvalidParamResponse(w, paramPartitionID)
 		return
 	}
 	partitionID := types.PartitionID(partitionIDUint)
@@ -115,7 +115,7 @@ func (api *RestAPI) getBlocksInRange(w http.ResponseWriter, r *http.Request) {
 	if limitStr != "" {
 		limit, err = strconv.Atoi(limitStr)
 		if err != nil {
-			api.rw.WriteInvalidParamResponse(w, paramLimit)
+			c.rw.WriteInvalidParamResponse(w, paramLimit)
 			return
 		}
 	}
@@ -125,7 +125,7 @@ func (api *RestAPI) getBlocksInRange(w http.ResponseWriter, r *http.Request) {
 	if includeEmptyStr != "" {
 		includeEmpty, err = strconv.ParseBool(includeEmptyStr)
 		if err != nil {
-			api.rw.WriteInvalidParamResponse(w, paramIncludeEmpty)
+			c.rw.WriteInvalidParamResponse(w, paramIncludeEmpty)
 			return
 		}
 	}
@@ -135,26 +135,26 @@ func (api *RestAPI) getBlocksInRange(w http.ResponseWriter, r *http.Request) {
 	if startBlockStr != "" {
 		startBlock, err = strconv.ParseUint(startBlockStr, 10, 64)
 		if err != nil {
-			api.rw.WriteInvalidParamResponse(w, paramStartBlock)
+			c.rw.WriteInvalidParamResponse(w, paramStartBlock)
 			return
 		}
 	} else {
-		lastBlocks, err := api.Service.GetLastBlocks(r.Context(), []types.PartitionID{partitionID}, limit, includeEmpty)
+		lastBlocks, err := c.StorageService.GetLastBlocks(r.Context(), []types.PartitionID{partitionID}, limit, includeEmpty)
 		if err != nil {
-			api.rw.WriteInternalErrorResponse(w, err)
+			c.rw.WriteInternalErrorResponse(w, err)
 			return
 		}
 		var response = []BlockInfo{}
 		for _, block := range lastBlocks[partitionID] {
 			response = append(response, blockInfoResponse(block))
 		}
-		api.rw.WriteResponse(w, response)
+		c.rw.WriteResponse(w, response)
 		return
 	}
 
-	blocks, prevBlockNumber, err := api.Service.GetBlocksInRange(r.Context(), partitionID, startBlock, limit, includeEmpty)
+	blocks, prevBlockNumber, err := c.StorageService.GetBlocksInRange(r.Context(), partitionID, startBlock, limit, includeEmpty)
 	if err != nil {
-		api.rw.WriteInternalErrorResponse(w, err)
+		c.rw.WriteInternalErrorResponse(w, err)
 		return
 	}
 	prevBlockNumberStr := strconv.FormatUint(prevBlockNumber, 10)
@@ -164,7 +164,7 @@ func (api *RestAPI) getBlocksInRange(w http.ResponseWriter, r *http.Request) {
 	for _, block := range blocks {
 		response = append(response, blockInfoResponse(block))
 	}
-	api.rw.WriteResponse(w, response)
+	c.rw.WriteResponse(w, response)
 }
 
 func blockInfoResponse(block *domain.BlockInfo) BlockInfo {

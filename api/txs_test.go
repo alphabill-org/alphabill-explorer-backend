@@ -1,4 +1,4 @@
-package restapi
+package api
 
 import (
 	"context"
@@ -18,7 +18,7 @@ import (
 func TestGetTxByHash_Success(t *testing.T) {
 	txHash := domain.TxHash([]byte{1, 2, 3, 4})
 	r := mux.NewRouter()
-	restapi := &RestAPI{Service: &MockExplorerBackendService{
+	restapi := &Controller{StorageService: &MockStorageService{
 		getTxInfoFunc: func(ctx context.Context, txHash domain.TxHash) (res *domain.TxInfo, err error) {
 			return &domain.TxInfo{TxRecordHash: txHash}, nil
 		},
@@ -43,7 +43,7 @@ func TestGetTxByHash_Success(t *testing.T) {
 
 func TestGetTxs_Success(t *testing.T) {
 	r := mux.NewRouter()
-	restapi := &RestAPI{Service: &MockExplorerBackendService{
+	restapi := &Controller{StorageService: &MockStorageService{
 		getTxsPageFunc: func(
 			ctx context.Context, partitionID types.PartitionID, startID string, limit int,
 		) (transactions []*domain.TxInfo, previousID string, err error) {
