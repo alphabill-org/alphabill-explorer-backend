@@ -3,12 +3,12 @@ package search
 import (
 	"context"
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"strconv"
 	"sync"
 
 	"github.com/alphabill-org/alphabill-explorer-backend/domain"
-	"github.com/alphabill-org/alphabill-explorer-backend/errors"
 	"github.com/alphabill-org/alphabill-explorer-backend/util"
 	"github.com/alphabill-org/alphabill-go-base/types"
 	"github.com/alphabill-org/alphabill-go-base/types/hex"
@@ -37,8 +37,11 @@ type (
 )
 
 func NewSearchService(store BlockStore, partitionClients map[types.PartitionID]PartitionClient) (*Service, error) {
-	if store == nil || partitionClients == nil {
-		return nil, errors.ErrNilArgument
+	if store == nil {
+		return nil, errors.New("store is nil")
+	}
+	if partitionClients == nil {
+		return nil, errors.New("partitionClients is nil")
 	}
 	return &Service{
 		store:            store,
@@ -51,14 +54,14 @@ func (s *Service) Search(ctx context.Context, searchKey string, partitionIDs []t
 	if err == nil {
 		blockMap, err := s.store.GetBlock(ctx, blockNumber, partitionIDs)
 		if err != nil || len(blockMap) == 0 {
-			return nil, errors.ErrNotFound
+			return nil, domain.ErrNotFound
 		}
 		return &Result{Blocks: blockMap}, nil
 	}
 
-	searchKeyBytes, err := util.Decode(searchKey)
+	searchKeyBytes, err := util.DecodeHex(searchKey)
 	if err != nil {
-		return nil, errors.ErrFailedToDecodeHex
+		return nil, domain.ErrFailedToDecodeHex
 	}
 
 	var (
@@ -102,7 +105,7 @@ func (s *Service) Search(ctx context.Context, searchKey string, partitionIDs []t
 		defer wg.Done()
 		var txsErr error
 		txs, txsErr = s.store.FindTxs(ctx, searchKeyBytes, partitionIDs)
-		if txsErr != nil && txsErr != errors.ErrNotFound {
+		if txsErr != nil && txsErr != domain.ErrNotFound {
 			fmt.Println("Tx search failed: ", txsErr)
 		}
 	}()
@@ -125,13 +128,13 @@ func (s *Service) searchUnitsByOwnerPubKey(ctx context.Context, pubKey []byte, p
 		return units
 	}
 
-	wg.Add(len(partitionIDs))
 	for _, partitionID := range partitionIDs {
 		client, exists := s.partitionClients[partitionID]
 		if !exists {
 			fmt.Println("Skipping unknown partition: ", partitionID)
 			continue
 		}
+		wg.Add(1)
 		go func(pid types.PartitionID, c PartitionClient) {
 			defer wg.Done()
 			unitIDs, err := c.GetUnitsByOwnerID(ctx, pubKey)

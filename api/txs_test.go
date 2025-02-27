@@ -1,7 +1,6 @@
 package api
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -9,20 +8,19 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/alphabill-org/alphabill-explorer-backend/api/mocks"
 	"github.com/alphabill-org/alphabill-explorer-backend/domain"
-	"github.com/alphabill-org/alphabill-go-base/types"
 	"github.com/gorilla/mux"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
 
 func TestGetTxByHash_Success(t *testing.T) {
 	txHash := domain.TxHash([]byte{1, 2, 3, 4})
 	r := mux.NewRouter()
-	restapi := &Controller{StorageService: &MockStorageService{
-		getTxInfoFunc: func(ctx context.Context, txHash domain.TxHash) (res *domain.TxInfo, err error) {
-			return &domain.TxInfo{TxRecordHash: txHash}, nil
-		},
-	}}
+	mockStorage := mocks.NewStorageService(t)
+	mockStorage.EXPECT().GetTxByHash(mock.Anything, txHash).Return(&domain.TxInfo{TxRecordHash: txHash}, nil)
+	restapi := &Controller{StorageService: mockStorage}
 	r.HandleFunc("/txs/{txHash}", restapi.getTx)
 	ts := httptest.NewServer(r)
 	defer ts.Close()
@@ -43,17 +41,14 @@ func TestGetTxByHash_Success(t *testing.T) {
 
 func TestGetTxs_Success(t *testing.T) {
 	r := mux.NewRouter()
-	restapi := &Controller{StorageService: &MockStorageService{
-		getTxsPageFunc: func(
-			ctx context.Context, partitionID types.PartitionID, startID string, limit int,
-		) (transactions []*domain.TxInfo, previousID string, err error) {
-			return []*domain.TxInfo{
-				{TxRecordHash: []byte{0x01}},
-				{TxRecordHash: []byte{0x02}},
-				{TxRecordHash: []byte{0x03}},
-			}, "xxx", nil
-		},
-	}}
+	mockStorage := mocks.NewStorageService(t)
+	mockStorage.EXPECT().GetTxsPage(mock.Anything, partitionID1, "", defaultTxsPageLimit).
+		Return([]*domain.TxInfo{
+			{TxRecordHash: []byte{0x01}},
+			{TxRecordHash: []byte{0x02}},
+			{TxRecordHash: []byte{0x03}},
+		}, "xxx", nil)
+	restapi := &Controller{StorageService: mockStorage}
 	r.HandleFunc("/partitions/{partitionID}/txs", restapi.getTxs)
 	ts := httptest.NewServer(r)
 	defer ts.Close()

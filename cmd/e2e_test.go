@@ -163,6 +163,18 @@ func TestE2E(t *testing.T) {
 				require.NotNil(t, searchResponse.Blocks[partitionID])
 				require.Equal(t, searchResponse.Blocks[partitionID].BlockNumber, blockInfo.BlockNumber)
 			})
+
+			t.Run("check units returned when searching by owner public key", func(t *testing.T) {
+				pk0, err := w.GetAccountManager().GetPublicKey(0)
+				require.NoError(t, err)
+				resp, err := client.Get(fmt.Sprintf("http://%s/api/v1/search?q=0x%X", host, pk0))
+				require.NoError(t, err)
+				require.Equal(t, http.StatusOK, resp.StatusCode)
+				searchResponse := api.SearchResponse{}
+				err = api.DecodeResponse(resp, http.StatusOK, &searchResponse, false)
+				require.NoError(t, err)
+				require.GreaterOrEqual(t, len(searchResponse.Units[partitionID]), 1)
+			})
 		}
 	})
 

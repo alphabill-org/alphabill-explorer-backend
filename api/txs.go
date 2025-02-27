@@ -1,12 +1,12 @@
 package api
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
 
 	"github.com/alphabill-org/alphabill-explorer-backend/domain"
-	"github.com/alphabill-org/alphabill-explorer-backend/errors"
 	"github.com/alphabill-org/alphabill-explorer-backend/util"
 	"github.com/alphabill-org/alphabill-go-base/types"
 	"github.com/gorilla/mux"
@@ -30,14 +30,14 @@ func (c *Controller) getTx(w http.ResponseWriter, r *http.Request) {
 		c.rw.WriteMissingParamResponse(w, paramTxHash)
 		return
 	}
-	txHashBytes, err := util.Decode(txHash)
+	txHashBytes, err := util.DecodeHex(txHash)
 	if err != nil {
 		c.rw.WriteInvalidParamResponse(w, paramTxHash)
 		return
 	}
 	txInfo, err := c.StorageService.GetTxByHash(r.Context(), txHashBytes)
 	if err != nil {
-		if errors.Is(err, errors.ErrNotFound) {
+		if errors.Is(err, domain.ErrNotFound) {
 			c.rw.WriteErrorResponse(w, fmt.Errorf("tx with txHash %s not found", txHash), http.StatusNotFound)
 			return
 		}

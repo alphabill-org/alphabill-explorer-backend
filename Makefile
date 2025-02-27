@@ -15,6 +15,9 @@ swagger:
 tools:
 	go install github.com/swaggo/swag/cmd/swag@latest
 
+generate-mocks:
+	mockery
+
 .PHONY: \
 	all \
 	clean \

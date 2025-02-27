@@ -3,14 +3,13 @@ package mongodb
 import (
 	"context"
 	"fmt"
+	"math"
 
 	"github.com/alphabill-org/alphabill-explorer-backend/domain"
 	"github.com/alphabill-org/alphabill-go-base/types"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
-
-const MaxInt64 = 1<<63 - 1
 
 func (s *MongoBlockStore) SetBlockInfo(ctx context.Context, blockInfo *domain.BlockInfo) error {
 	filter := bson.M{partitionIDKey: blockInfo.PartitionID, blockNumberKey: blockInfo.BlockNumber}
@@ -70,7 +69,7 @@ func (s *MongoBlockStore) GetLastBlocks(
 	}
 
 	for _, partitionID := range partitionIDs {
-		blocks, _, err := s.GetBlocksInRange(ctx, partitionID, MaxInt64, count, includeEmpty)
+		blocks, _, err := s.GetBlocksInRange(ctx, partitionID, math.MaxInt64, count, includeEmpty)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get blocks for partition %d: %w", partitionID, err)
 		}

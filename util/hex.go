@@ -52,13 +52,13 @@ func CheckHex(input []byte) ([]byte, error) {
 	return input, nil
 }
 
-// Decode decodes a hex string with 0x prefix.
-func Decode(input string) ([]byte, error) {
+// DecodeHex decodes a hex string with optional 0x prefix
+func DecodeHex(input string) ([]byte, error) {
 	if len(input) == 0 {
 		return nil, errors.New("empty hex string")
 	}
 	if !has0xPrefix(input) {
-		return nil, errors.New("hex string without 0x prefix")
+		return hex.DecodeString(input)
 	}
 	return hex.DecodeString(input[2:])
 }

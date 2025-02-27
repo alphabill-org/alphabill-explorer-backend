@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/alphabill-org/alphabill-explorer-backend/errors"
+	"github.com/alphabill-org/alphabill-explorer-backend/domain"
 	"github.com/alphabill-org/alphabill-go-base/types"
 	wallettypes "github.com/alphabill-org/alphabill-wallet/client/types"
 )
@@ -36,7 +36,7 @@ type (
 
 func NewPartitionService(clients map[types.PartitionID]*Partition) (*Service, error) {
 	if clients == nil {
-		return nil, errors.ErrNilArgument
+		return nil, domain.ErrNilArgument
 	}
 	return &Service{
 		partitions: clients,

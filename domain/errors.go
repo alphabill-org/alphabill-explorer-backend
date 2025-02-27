@@ -1,4 +1,4 @@
-package errors
+package domain
 
 import "errors"
 
@@ -7,7 +7,3 @@ var (
 	ErrNilArgument       = errors.New("nil argument")
 	ErrFailedToDecodeHex = errors.New("failed to decode hex")
 )
-
-func Is(err error, target error) bool {
-	return errors.Is(err, target)
-}

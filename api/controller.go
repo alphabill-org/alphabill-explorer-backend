@@ -2,12 +2,12 @@ package api
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
 
 	"github.com/alphabill-org/alphabill-explorer-backend/domain"
-	"github.com/alphabill-org/alphabill-explorer-backend/errors"
 	"github.com/alphabill-org/alphabill-explorer-backend/service/partition"
 	"github.com/alphabill-org/alphabill-explorer-backend/service/search"
 	"github.com/alphabill-org/alphabill-go-base/types"
@@ -108,8 +108,17 @@ func NewController(
 	MoneyService MoneyService,
 	searchService SearchService,
 ) (*Controller, error) {
-	if StorageService == nil || PartitionService == nil || MoneyService == nil || searchService == nil {
-		return nil, errors.ErrNilArgument
+	if StorageService == nil {
+		return nil, errors.New("storage service is nil")
+	}
+	if PartitionService == nil {
+		return nil, errors.New("partition service is nil")
+	}
+	if MoneyService == nil {
+		return nil, errors.New("money service is nil")
+	}
+	if searchService == nil {
+		return nil, errors.New("search service is nil")
 	}
 
 	return &Controller{
@@ -167,7 +176,7 @@ func (c *Controller) search(w http.ResponseWriter, r *http.Request) {
 
 	result, err := c.SearchService.Search(r.Context(), searchKey, partitionIDs)
 	if err != nil {
-		if errors.Is(err, errors.ErrNotFound) || errors.Is(err, errors.ErrFailedToDecodeHex) {
+		if errors.Is(err, domain.ErrNotFound) || errors.Is(err, domain.ErrFailedToDecodeHex) {
 			c.rw.WriteErrorResponse(w, fmt.Errorf("no results found for '%s'", searchKey), http.StatusNotFound)
 			return
 		}
