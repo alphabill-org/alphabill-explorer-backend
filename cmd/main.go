@@ -13,6 +13,7 @@ import (
 	"github.com/alphabill-org/alphabill-explorer-backend/block_store/mongodb"
 	"github.com/alphabill-org/alphabill-explorer-backend/blocks"
 	"github.com/alphabill-org/alphabill-explorer-backend/blocksync"
+	internalrpc "github.com/alphabill-org/alphabill-explorer-backend/client/rpc"
 	moneyservice "github.com/alphabill-org/alphabill-explorer-backend/service/money"
 	"github.com/alphabill-org/alphabill-explorer-backend/service/partition"
 	"github.com/alphabill-org/alphabill-explorer-backend/service/search"
@@ -21,7 +22,7 @@ import (
 	"github.com/alphabill-org/alphabill-wallet/cli/alphabill/cmd/wallet/args"
 	"github.com/alphabill-org/alphabill-wallet/client"
 	"github.com/alphabill-org/alphabill-wallet/client/rpc"
-	wallettypes "github.com/alphabill-org/alphabill-wallet/client/types"
+	sdktypes "github.com/alphabill-org/alphabill-wallet/client/types"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -55,7 +56,7 @@ func Run(ctx context.Context, config *Config) error {
 	println("created store")
 
 	g, ctx := errgroup.WithContext(ctx)
-	var moneyClient wallettypes.MoneyPartitionClient
+	var moneyClient sdktypes.MoneyPartitionClient
 	partitionService, err := partition.NewPartitionService(make(map[types.PartitionID]*partition.Partition))
 	if err != nil {
 		return fmt.Errorf("failed to create partition service")
@@ -146,7 +147,7 @@ func Run(ctx context.Context, config *Config) error {
 	return g.Wait()
 }
 
-func createPartitionClient(ctx context.Context, node Node) (*rpc.StateAPIClient, *wallettypes.NodeInfoResponse, error) {
+func createPartitionClient(ctx context.Context, node Node) (*internalrpc.StateAPIClient, *sdktypes.NodeInfoResponse, error) {
 	println("getting node info for ", node.URL)
 	adminClient, err := rpc.NewAdminAPIClient(ctx, args.BuildRpcUrl(node.URL))
 	if err != nil {
@@ -158,8 +159,9 @@ func createPartitionClient(ctx context.Context, node Node) (*rpc.StateAPIClient,
 		return nil, nil, fmt.Errorf("failed to get node info: %w", err)
 	}
 	println("partition ID: ", nodeInfo.PartitionID)
+	adminClient.Close()
 
-	stateClient, err := rpc.NewStateAPIClient(ctx, args.BuildRpcUrl(node.URL))
+	stateClient, err := internalrpc.NewStateAPIClient(ctx, args.BuildRpcUrl(node.URL))
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to dial rpc client: %w", err)
 	}

@@ -173,7 +173,7 @@ func TestE2E(t *testing.T) {
 				searchResponse := api.SearchResponse{}
 				err = api.DecodeResponse(resp, http.StatusOK, &searchResponse, false)
 				require.NoError(t, err)
-				require.GreaterOrEqual(t, len(searchResponse.Units[partitionID]), 1)
+				require.GreaterOrEqual(t, len(searchResponse.UnitIDs[partitionID]), 1)
 			})
 		}
 	})

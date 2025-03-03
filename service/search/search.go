@@ -12,6 +12,7 @@ import (
 	"github.com/alphabill-org/alphabill-explorer-backend/util"
 	"github.com/alphabill-org/alphabill-go-base/types"
 	"github.com/alphabill-org/alphabill-go-base/types/hex"
+	sdktypes "github.com/alphabill-org/alphabill-wallet/client/types"
 )
 
 type (
@@ -22,6 +23,7 @@ type (
 
 	PartitionClient interface {
 		GetUnitsByOwnerID(ctx context.Context, ownerID hex.Bytes) ([]types.UnitID, error)
+		GetUnit(ctx context.Context, unitID types.UnitID, includeStateProof bool) (*sdktypes.Unit[any], error)
 	}
 
 	BlockStore interface {
@@ -33,6 +35,7 @@ type (
 		Blocks map[types.PartitionID]*domain.BlockInfo
 		Txs    []*domain.TxInfo
 		Units  map[types.PartitionID][]types.UnitID
+		Unit   *sdktypes.Unit[any]
 	}
 )
 
@@ -69,6 +72,7 @@ func (s *Service) Search(ctx context.Context, searchKey string, partitionIDs []t
 		partitionsToSearch []types.PartitionID
 		txs                []*domain.TxInfo
 		units              = make(map[types.PartitionID][]types.UnitID)
+		unit               *sdktypes.Unit[any]
 	)
 	if len(partitionIDs) > 0 {
 		for _, partitionID := range partitionIDs {
@@ -96,9 +100,15 @@ func (s *Service) Search(ctx context.Context, searchKey string, partitionIDs []t
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			units = s.searchUnitsByOwnerPubKey(ctx, pubKeyHash, partitionsToSearch)
+			units = s.findUnitsByOwnerPubKey(ctx, pubKeyHash, partitionsToSearch)
 		}()
 	}
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		unit = s.findUnit(ctx, searchKeyBytes, partitionsToSearch)
+	}()
 
 	wg.Add(1)
 	go func() {
@@ -114,19 +124,63 @@ func (s *Service) Search(ctx context.Context, searchKey string, partitionIDs []t
 	return &Result{
 		Txs:   txs,
 		Units: units,
+		Unit:  unit,
 	}, nil
 }
 
-func (s *Service) searchUnitsByOwnerPubKey(ctx context.Context, pubKey []byte, partitionIDs []types.PartitionID) map[types.PartitionID][]types.UnitID {
+func (s *Service) findUnit(ctx context.Context, unitID types.UnitID, partitionIDs []types.PartitionID) *sdktypes.Unit[any] {
+	if len(partitionIDs) == 0 {
+		return nil
+	}
+	var (
+		wg                    sync.WaitGroup
+		unitResultChan        = make(chan *sdktypes.Unit[any], 1)
+		ctxWithCancel, cancel = context.WithCancel(ctx)
+	)
+	defer cancel()
+
+	for _, partitionID := range partitionIDs {
+		client, exists := s.partitionClients[partitionID]
+		if !exists {
+			fmt.Println("Skipping unknown partition: ", partitionID)
+			continue
+		}
+		wg.Add(1)
+		go func(c PartitionClient) {
+			defer wg.Done()
+			unit, err := c.GetUnit(ctxWithCancel, unitID, false)
+			if unit != nil {
+				cancel() // Cancel other goroutines if we found a result
+				select {
+				case unitResultChan <- unit:
+				default:
+					// channel full, do nothing
+				}
+			}
+			if err != nil && !errors.Is(err, context.Canceled) {
+				fmt.Println("Failed to get unit: ", err)
+			}
+		}(client)
+	}
+	wg.Wait()
+
+	select {
+	case unit := <-unitResultChan:
+		return unit
+	default:
+		return nil
+	}
+}
+
+func (s *Service) findUnitsByOwnerPubKey(ctx context.Context, pubKey []byte, partitionIDs []types.PartitionID) map[types.PartitionID][]types.UnitID {
+	if len(partitionIDs) == 0 {
+		return make(map[types.PartitionID][]types.UnitID)
+	}
 	var (
 		wg              sync.WaitGroup
 		unitResultsChan = make(chan map[types.PartitionID][]types.UnitID, len(partitionIDs))
 		units           = make(map[types.PartitionID][]types.UnitID)
 	)
-
-	if len(partitionIDs) == 0 {
-		return units
-	}
 
 	for _, partitionID := range partitionIDs {
 		client, exists := s.partitionClients[partitionID]
