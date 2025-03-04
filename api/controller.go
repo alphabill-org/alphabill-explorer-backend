@@ -12,7 +12,7 @@ import (
 	"github.com/alphabill-org/alphabill-explorer-backend/service/search"
 	"github.com/alphabill-org/alphabill-go-base/types"
 	"github.com/alphabill-org/alphabill-go-base/types/hex"
-	wallettypes "github.com/alphabill-org/alphabill-wallet/client/types"
+	sdktypes "github.com/alphabill-org/alphabill-wallet/client/types"
 )
 
 const (
@@ -57,7 +57,7 @@ type (
 	}
 
 	MoneyService interface {
-		GetBillsByPubKey(ctx context.Context, ownerID hex.Bytes) ([]*wallettypes.Bill, error)
+		GetBillsByPubKey(ctx context.Context, ownerID hex.Bytes) ([]*sdktypes.Bill, error)
 	}
 
 	SearchService interface {
@@ -78,6 +78,7 @@ type (
 		Blocks map[types.PartitionID]BlockInfo
 		Txs    []TxInfo
 		Units  map[types.PartitionID][]types.UnitID
+		Unit   *sdktypes.Unit[any]
 	}
 
 	BlockResponse map[types.PartitionID]BlockInfo
@@ -184,7 +185,7 @@ func (c *Controller) search(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if len(result.Txs) == 0 && len(result.Blocks) == 0 && len(result.Units) == 0 {
+	if len(result.Txs) == 0 && len(result.Blocks) == 0 && len(result.Units) == 0 && result.Unit == nil {
 		c.rw.WriteErrorResponse(w, fmt.Errorf("no results found for '%s'", searchKey), http.StatusNotFound)
 		return
 	}
@@ -197,6 +198,7 @@ func formatSearchResponse(result *search.Result) SearchResponse {
 		Blocks: make(map[types.PartitionID]BlockInfo),
 		Txs:    []TxInfo{},
 		Units:  make(map[types.PartitionID][]types.UnitID),
+		Unit:   result.Unit,
 	}
 
 	for partitionID, block := range result.Blocks {

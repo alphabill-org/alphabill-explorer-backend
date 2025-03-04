@@ -19,9 +19,6 @@ tools:
 generate-mocks:
 	mockery
 
-generate-mocks:
-	mockery
-
 .PHONY: \
 	all \
 	clean \

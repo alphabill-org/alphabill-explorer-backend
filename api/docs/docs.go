@@ -282,7 +282,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/partition.RoundInfo"
+                                "$ref": "#/definitions/github_com_alphabill-org_alphabill-explorer-backend_service_partition.RoundInfo"
                             }
                         }
                     }
@@ -571,7 +571,7 @@ const docTemplate = `{
                 }
             }
         },
-        "partition.RoundInfo": {
+        "github_com_alphabill-org_alphabill-explorer-backend_service_partition.RoundInfo": {
             "type": "object",
             "properties": {
                 "epochNumber": {

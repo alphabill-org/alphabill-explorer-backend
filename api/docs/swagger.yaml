@@ -89,7 +89,7 @@ definitions:
       value:
         type: integer
     type: object
-  partition.RoundInfo:
+  github_com_alphabill-org_alphabill-explorer-backend_service_partition.RoundInfo:
     properties:
       epochNumber:
         type: integer
@@ -338,7 +338,7 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/partition.RoundInfo'
+              $ref: '#/definitions/github_com_alphabill-org_alphabill-explorer-backend_service_partition.RoundInfo'
             type: array
       summary: Retrieve round and epoch number for each partition
       tags:
