@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"testing"
 
-	mocks "github.com/alphabill-org/alphabill-explorer-backend/internal/mocks/github.com/alphabill-org/alphabill-explorer-backend/blocks"
+	mocks "github.com/alphabill-org/alphabill-explorer-backend/internal/mocks/blocks"
 	"github.com/alphabill-org/alphabill-go-base/types"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"

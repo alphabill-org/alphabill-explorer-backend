@@ -5,8 +5,8 @@ mockname: "{{.InterfaceName}}"          # Same as actual interface name
 filename: "{{.MockName}}.go"            # Same as 'mockname'
 include-auto-generated: False           # Disable mocks from generated files, as currently there is no use case
 inpackage: False                        # The mocks are being generated inside the 'mocks' dir under the dir where the actual interface is found
-dir: "internal/mocks/{{.PackagePath}}"  # The mocks will be generated under 'internal/mocks', preserving the original package structure
-outpkg: "mocks"                         # Set the package name for generated mocks
+dir: "internal/mocks/{{ trimPrefix .PackagePath `github.com/alphabill-org/alphabill-explorer-backend/` }}" # The mocks will be generated under 'internal/mocks', preserving the original package structure
+outpkg: "{{.PackageName}}_mocks"        # Set the package name for generated mocks
 resolve-type-alias: False
 with-expecter: True
 
