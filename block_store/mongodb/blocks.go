@@ -3,10 +3,10 @@ package mongodb
 import (
 	"context"
 	"fmt"
+	"math"
 
 	"github.com/alphabill-org/alphabill-explorer-backend/domain"
 	"github.com/alphabill-org/alphabill-go-base/types"
-	"github.com/ethereum/go-ethereum/common/math"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -92,9 +92,8 @@ func (s *MongoBlockStore) GetBlocksInRange(
 	}
 
 	if !includeEmpty {
-		filter[txHashesKey] = bson.M{
-			"$ne":  nil,
-			"$not": bson.M{"$size": 0},
+		filter[txCountKey] = bson.M{
+			"$gt": 0,
 		}
 	}
 

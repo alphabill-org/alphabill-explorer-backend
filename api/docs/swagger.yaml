@@ -1,23 +1,6 @@
 basePath: /api/v1
 definitions:
-  domain.Bill:
-    properties:
-      counter:
-        type: integer
-      id:
-        items:
-          type: integer
-        type: array
-      lockStatus:
-        type: integer
-      networkID:
-        $ref: '#/definitions/types.NetworkID'
-      partitionID:
-        type: integer
-      value:
-        type: integer
-    type: object
-  restapi.BlockInfo:
+  api.BlockInfo:
     properties:
       blockNumber:
         type: integer
@@ -44,27 +27,35 @@ definitions:
           type: integer
         type: array
     type: object
-  restapi.BlockResponse:
+  api.BlockResponse:
     additionalProperties:
-      $ref: '#/definitions/restapi.BlockInfo'
+      $ref: '#/definitions/api.BlockInfo'
     type: object
-  restapi.ErrorResponse:
+  api.ErrorResponse:
     properties:
       message:
         type: string
     type: object
-  restapi.SearchResponse:
+  api.SearchResponse:
     properties:
       blocks:
         additionalProperties:
-          $ref: '#/definitions/restapi.BlockInfo'
+          $ref: '#/definitions/api.BlockInfo'
         type: object
       txs:
         items:
-          $ref: '#/definitions/restapi.TxInfo'
+          $ref: '#/definitions/api.TxInfo'
         type: array
+      units:
+        additionalProperties:
+          items:
+            items:
+              type: integer
+            type: array
+          type: array
+        type: object
     type: object
-  restapi.TxInfo:
+  api.TxInfo:
     properties:
       blockNumber:
         type: integer
@@ -81,7 +72,24 @@ definitions:
           type: integer
         type: array
     type: object
-  service.PartitionRoundInfo:
+  domain.Bill:
+    properties:
+      counter:
+        type: integer
+      id:
+        items:
+          type: integer
+        type: array
+      lockStatus:
+        type: integer
+      networkID:
+        $ref: '#/definitions/types.NetworkID'
+      partitionID:
+        type: integer
+      value:
+        type: integer
+    type: object
+  partition.RoundInfo:
     properties:
       epochNumber:
         type: integer
@@ -171,11 +179,11 @@ paths:
         "400":
           description: 'Error: Missing ''pubKey'' variable in the URL'
           schema:
-            $ref: '#/definitions/restapi.ErrorResponse'
+            $ref: '#/definitions/api.ErrorResponse'
         "404":
           description: 'Error: Bills with specified public key not found'
           schema:
-            $ref: '#/definitions/restapi.ErrorResponse'
+            $ref: '#/definitions/api.ErrorResponse'
       summary: Retrieve bills by public key
       tags:
       - Bills
@@ -203,7 +211,7 @@ paths:
         "200":
           description: Block information successfully retrieved
           schema:
-            $ref: '#/definitions/restapi.BlockResponse'
+            $ref: '#/definitions/api.BlockResponse'
         "400":
           description: Missing or invalid block number
           schema:
@@ -249,7 +257,7 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/restapi.BlockInfo'
+              $ref: '#/definitions/api.BlockInfo'
             type: array
       summary: Get blocks in a single partition, given a start block number and limit.
       tags:
@@ -277,7 +285,7 @@ paths:
           description: Successfully retrieved list of transactions for the block
           schema:
             items:
-              $ref: '#/definitions/restapi.TxInfo'
+              $ref: '#/definitions/api.TxInfo'
             type: array
         "400":
           description: Missing or invalid 'blockNumber' variable in the URL
@@ -315,7 +323,7 @@ paths:
           description: Successfully retrieved list of transactions
           schema:
             items:
-              $ref: '#/definitions/restapi.TxInfo'
+              $ref: '#/definitions/api.TxInfo'
             type: array
       summary: Retrieve transactions, latest first.
       tags:
@@ -330,7 +338,7 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/service.PartitionRoundInfo'
+              $ref: '#/definitions/partition.RoundInfo'
             type: array
       summary: Retrieve round and epoch number for each partition
       tags:
@@ -354,7 +362,7 @@ paths:
         "200":
           description: Block information successfully retrieved
           schema:
-            $ref: '#/definitions/restapi.SearchResponse'
+            $ref: '#/definitions/api.SearchResponse'
         "400":
           description: invalid partitionID
           schema:
@@ -384,7 +392,7 @@ paths:
         "200":
           description: Successfully retrieved the transaction information
           schema:
-            $ref: '#/definitions/restapi.TxInfo'
+            $ref: '#/definitions/api.TxInfo'
         "400":
           description: Missing 'txHash' variable in the URL
           schema:
@@ -418,16 +426,16 @@ paths:
           description: List of transactions
           schema:
             items:
-              $ref: '#/definitions/restapi.TxInfo'
+              $ref: '#/definitions/api.TxInfo'
             type: array
         "400":
           description: 'Error: Missing ''unitID'' variable in the URL'
           schema:
-            $ref: '#/definitions/restapi.ErrorResponse'
+            $ref: '#/definitions/api.ErrorResponse'
         "404":
-          description: 'Error: Transaction with specified unit ID not found'
+          description: 'Error: Transactions with specified unit ID not found'
           schema:
-            $ref: '#/definitions/restapi.ErrorResponse'
+            $ref: '#/definitions/api.ErrorResponse'
       summary: Retrieve transactions by unit ID
       tags:
       - Transactions

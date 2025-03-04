@@ -1,4 +1,4 @@
-package restapi
+package api
 
 import (
 	"bytes"
@@ -10,7 +10,7 @@ import (
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 
-	_ "github.com/alphabill-org/alphabill-explorer-backend/restapi/docs"
+	_ "github.com/alphabill-org/alphabill-explorer-backend/api/docs"
 
 	httpSwagger "github.com/swaggo/http-swagger/v2"
 )
@@ -20,12 +20,12 @@ import (
 // @description	API to query blocks and transactions of Alphabill
 // @BasePath	/api/v1
 
-func (api *RestAPI) Router() *mux.Router {
+func (c *Controller) Router() *mux.Router {
 	// TODO add request/response headers middleware
 	router := mux.NewRouter().StrictSlash(true)
 	router.Use(loggerMiddleware)
 
-	router.Path("/health").HandlerFunc(api.healthRequest)
+	router.Path("/health").HandlerFunc(c.healthRequest)
 
 	router.PathPrefix("/swagger/").Handler(httpSwagger.Handler(
 		httpSwagger.URL("/swagger/doc.json"), //The url pointing to API definition
@@ -47,25 +47,25 @@ func (api *RestAPI) Router() *mux.Router {
 	// version v1 router
 	apiV1 := apiRouter.PathPrefix("/v1").Subrouter()
 
-	apiV1.HandleFunc("/search", api.search).Methods(http.MethodGet, http.MethodOptions)
-	apiV1.HandleFunc("/round-number", api.roundNumberFunc).Methods(http.MethodGet, http.MethodOptions)
+	apiV1.HandleFunc("/search", c.search).Methods(http.MethodGet, http.MethodOptions)
+	apiV1.HandleFunc("/round-number", c.roundNumber).Methods(http.MethodGet, http.MethodOptions)
 
 	//block
-	apiV1.HandleFunc("/blocks/{blockNumber}", api.getBlock).Methods(http.MethodGet, http.MethodOptions)
-	apiV1.HandleFunc("/partitions/{partitionID}/blocks", api.getBlocksInRange).Methods(http.MethodGet, http.MethodOptions)
+	apiV1.HandleFunc("/blocks/{blockNumber}", c.getBlock).Methods(http.MethodGet, http.MethodOptions)
+	apiV1.HandleFunc("/partitions/{partitionID}/blocks", c.getBlocksInRange).Methods(http.MethodGet, http.MethodOptions)
 
 	//tx
-	apiV1.HandleFunc("/txs/{txHash}", api.getTx).Methods(http.MethodGet, http.MethodOptions)
-	apiV1.HandleFunc("/partitions/{partitionID}/txs", api.getTxs).Methods(http.MethodGet, http.MethodOptions)
-	apiV1.HandleFunc("/partitions/{partitionID}/blocks/{blockNumber}/txs", api.getBlockTxsByBlockNumber).Methods(http.MethodGet, http.MethodOptions)
-	apiV1.HandleFunc("/units/{unitID}/txs", api.getTxsByUnitID).Methods(http.MethodGet, http.MethodOptions)
+	apiV1.HandleFunc("/txs/{txHash}", c.getTx).Methods(http.MethodGet, http.MethodOptions)
+	apiV1.HandleFunc("/partitions/{partitionID}/txs", c.getTxs).Methods(http.MethodGet, http.MethodOptions)
+	apiV1.HandleFunc("/partitions/{partitionID}/blocks/{blockNumber}/txs", c.getBlockTxsByBlockNumber).Methods(http.MethodGet, http.MethodOptions)
+	apiV1.HandleFunc("/units/{unitID}/txs", c.getTxsByUnitID).Methods(http.MethodGet, http.MethodOptions)
 
 	//bill
-	apiV1.HandleFunc("/address/{pubKey}/bills", api.getBillsByPubKey).Methods(http.MethodGet, http.MethodOptions)
+	apiV1.HandleFunc("/address/{pubKey}/bills", c.getBillsByPubKey).Methods(http.MethodGet, http.MethodOptions)
 	return router
 }
 
-func (api *RestAPI) healthRequest(w http.ResponseWriter, _ *http.Request) {
+func (c *Controller) healthRequest(w http.ResponseWriter, _ *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(fmt.Sprintf("OK - %v", time.Now())))
 }

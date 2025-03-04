@@ -1,4 +1,4 @@
-package restapi
+package api
 
 import (
 	"encoding/json"
@@ -7,13 +7,8 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"path"
-	"regexp"
 	"strconv"
 
-	s "github.com/alphabill-org/alphabill-explorer-backend/domain"
-	"github.com/alphabill-org/alphabill-go-base/types"
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/fxamacker/cbor/v2"
 )
 
@@ -92,58 +87,6 @@ func (rw *ResponseWriter) ErrorResponse(w http.ResponseWriter, code int, err err
 	}
 }
 
-func ParsePubKey(pubkey string, required bool) (s.PubKey, error) {
-	if pubkey == "" {
-		if required {
-			return nil, fmt.Errorf("parameter is required")
-		}
-		return nil, nil
-	}
-	return DecodePubKeyHex(pubkey)
-}
-
-func DecodePubKeyHex(pubKey string) (s.PubKey, error) {
-	if n := len(pubKey); n != 68 {
-		s := " starting "
-		switch {
-		case n == 0:
-			s = ""
-		case n <= 6:
-			s += pubKey
-		default:
-			s += pubKey[:6]
-		}
-		return nil, fmt.Errorf("must be 68 characters long (including 0x prefix), got %d characters%s", len(pubKey), s)
-	}
-	bytes, err := hexutil.Decode(pubKey)
-	if err != nil {
-		return nil, err
-	}
-	return bytes, nil
-}
-
-func ParseHex[T types.UnitID | []byte](value string, required bool) (T, error) {
-	if value == "" {
-		if required {
-			return nil, fmt.Errorf("parameter is required")
-		}
-		return nil, nil
-	}
-
-	bytes, err := hexutil.Decode(value)
-	if err != nil {
-		return nil, err
-	}
-	return bytes, nil
-}
-
-func EncodeHex(value []byte) string {
-	if len(value) == 0 {
-		return ""
-	}
-	return hexutil.Encode(value)
-}
-
 func setLinkHeader(u *url.URL, w http.ResponseWriter, next string) {
 	if next == "" {
 		w.Header().Del(HeaderLink)
@@ -177,48 +120,6 @@ func ParseMaxResponseItems(s string, maxValue int) (int, error) {
 		return maxValue, nil
 	}
 	return v, nil
-}
-
-func GetURL(url url.URL, pathElements ...string) *url.URL {
-	url.Path = path.Join(pathElements...)
-	return &url
-}
-
-func SetPaginationParams(u *url.URL, offset string, limit int) {
-	q := u.Query()
-	if offset != "" {
-		q.Add(QueryParamOffsetKey, offset)
-	}
-	if limit > 0 {
-		q.Add(QueryParamLimit, strconv.Itoa(limit))
-	}
-	u.RawQuery = q.Encode()
-}
-
-var linkHdrMatcher = regexp.MustCompile(`<(.*)>; rel="next"`)
-
-func ExtractOffsetMarker(rsp *http.Response) (string, error) {
-	lh := rsp.Header.Get(HeaderLink)
-	if lh == "" {
-		return "", nil
-	}
-
-	match := linkHdrMatcher.FindStringSubmatch(lh)
-	if len(match) != 2 {
-		return "", fmt.Errorf("link header didn't result in expected match\nHeader: %s\nmatches: %v", lh, match)
-	}
-
-	u, err := url.Parse(match[1])
-	if err != nil {
-		return "", fmt.Errorf("failed to parse Link header as URL: %w", err)
-	}
-	return u.Query().Get(QueryParamOffsetKey), nil
-}
-
-func SetQueryParam(u *url.URL, key, val string) {
-	q := u.Query()
-	q.Add(key, val)
-	u.RawQuery = q.Encode()
 }
 
 // DecodeResponse when "rsp" StatusCode is equal to "successStatus" response body is decoded into "data".

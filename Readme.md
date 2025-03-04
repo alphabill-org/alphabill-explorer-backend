@@ -22,7 +22,7 @@ BLOCK_EXPLORER_NODES_0_BLOCK_NUMBER=100 - first block number to fetch, must be >
 BLOCK_EXPLORER_NODES_1_URL=dev-ab-tokens-archive.abdev1.guardtime.com/rpc
 BLOCK_EXPLORER_NODES_1_BLOCK_NUMBER=100
 BLOCK_EXPLORER_DB_URL=mongodb://<username>:<password>@localhost:27017 - connection string for Mongo DB
-BLOCK_EXPLORER_SERVER_ADDRESS=localhost:9666 - address of the REST API server
+BLOCK_EXPLORER_SERVER_ADDRESS=:9666 - address of the REST API server
 ```
 
 ## Rest API

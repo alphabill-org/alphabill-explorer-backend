@@ -22,6 +22,7 @@ const (
 	txRecordHashKey      = "txrecordhash"
 	txOrderHashKey       = "txorderhash"
 	txHashesKey          = "txhashes"
+	txCountKey           = "txcount"
 	targetUnitsKey       = "transaction.servermetadata.targetunits"
 	latestBlockNumberKey = "latestblocknumber"
 
@@ -46,7 +47,7 @@ func NewMongoBlockStore(ctx context.Context, uri string) (*MongoBlockStore, erro
 			continue
 		}
 		store := &MongoBlockStore{db: client.Database(databaseName)}
-		if err = store.createCollections(ctx); err != nil {
+		if err = store.initialize(ctx); err != nil {
 			return nil, err
 		}
 		return store, nil
@@ -92,7 +93,12 @@ func createIndexes(ctx context.Context, db *mongo.Database) error {
 			Keys:    bson.D{{Key: blockNumberKey, Value: 1}, {Key: partitionIDKey, Value: 1}},
 			Options: options.Index().SetUnique(true),
 		},
-		{Keys: bson.D{{Key: partitionIDKey, Value: 1}, {Key: blockNumberKey, Value: -1}}}, // for GetLatestBlock query
+		{
+			Keys: bson.D{{Key: partitionIDKey, Value: 1}, {Key: blockNumberKey, Value: -1}}, // for GetLatestBlock query
+		},
+		{
+			Keys: bson.D{{Key: partitionIDKey, Value: 1}, {Key: txCountKey, Value: 1}, {Key: blockNumberKey, Value: -1}},
+		},
 	})
 	if err != nil {
 		return err
@@ -199,10 +205,10 @@ func (s *MongoBlockStore) ResetCollections(ctx context.Context) error {
 	if err := s.db.Collection(metadataCollectionName).Drop(ctx); err != nil {
 		return err
 	}
-	return s.createCollections(ctx)
+	return s.initialize(ctx)
 }
 
-func (s *MongoBlockStore) createCollections(ctx context.Context) error {
+func (s *MongoBlockStore) initialize(ctx context.Context) error {
 	if err := ensureCollectionExists(ctx, s.db, blocksCollectionName); err != nil {
 		return err
 	}
@@ -215,5 +221,28 @@ func (s *MongoBlockStore) createCollections(ctx context.Context) error {
 	if err := createIndexes(ctx, s.db); err != nil {
 		return err
 	}
+	if err := s.MigrateTxCount(ctx); err != nil {
+		return fmt.Errorf("failed to run migration: %w", err)
+	}
+
+	return nil
+}
+
+// todo remove
+func (s *MongoBlockStore) MigrateTxCount(ctx context.Context) error {
+	fmt.Println("Starting migration: Adding txCount to existing blocks...")
+
+	filter := bson.M{txCountKey: bson.M{"$exists": false}}
+
+	update := bson.A{ // Use an aggregation pipeline for $size
+		bson.M{"$set": bson.M{txCountKey: bson.M{"$size": fmt.Sprintf("$%s", txHashesKey)}}},
+	}
+
+	result, err := s.db.Collection(blocksCollectionName).UpdateMany(ctx, filter, update)
+	if err != nil {
+		return fmt.Errorf("failed to migrate txCount field: %w", err)
+	}
+
+	fmt.Printf("Migration complete: Updated %d blocks with txCount\n", result.ModifiedCount)
 	return nil
 }

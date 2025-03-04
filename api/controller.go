@@ -1,13 +1,15 @@
-package restapi
+package api
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
 
 	"github.com/alphabill-org/alphabill-explorer-backend/domain"
-	"github.com/alphabill-org/alphabill-explorer-backend/service"
+	"github.com/alphabill-org/alphabill-explorer-backend/service/partition"
+	"github.com/alphabill-org/alphabill-explorer-backend/service/search"
 	"github.com/alphabill-org/alphabill-go-base/types"
 	"github.com/alphabill-org/alphabill-go-base/types/hex"
 	wallettypes "github.com/alphabill-org/alphabill-wallet/client/types"
@@ -32,9 +34,7 @@ const (
 )
 
 type (
-	ExplorerBackendService interface {
-		GetRoundNumber(ctx context.Context) ([]service.PartitionRoundInfo, error)
-
+	StorageService interface {
 		//block
 		GetLastBlocks(ctx context.Context, partitionIDs []types.PartitionID, count int, includeEmpty bool) (map[types.PartitionID][]*domain.BlockInfo, error)
 		GetBlock(ctx context.Context, blockNumber uint64, partitionIDs []types.PartitionID) (map[types.PartitionID]*domain.BlockInfo, error)
@@ -49,22 +49,35 @@ type (
 		GetTxsPage(
 			ctx context.Context, partitionID types.PartitionID, startID string, limit int,
 		) (transactions []*domain.TxInfo, previousID string, err error)
-		FindTxs(ctx context.Context, searchKey []byte) ([]*domain.TxInfo, error)
-
-		//bill
-		GetBillsByPubKey(ctx context.Context, ownerID hex.Bytes) (res []*wallettypes.Bill, err error)
+		FindTxs(ctx context.Context, searchKey []byte, partitionIDs []types.PartitionID) ([]*domain.TxInfo, error)
 	}
 
-	RestAPI struct {
-		Service ExplorerBackendService
-		rw      *ResponseWriter
+	PartitionService interface {
+		GetRoundNumber(ctx context.Context) ([]partition.RoundInfo, error)
 	}
 
-	RoundNumberResponse []service.PartitionRoundInfo
+	MoneyService interface {
+		GetBillsByPubKey(ctx context.Context, ownerID hex.Bytes) ([]*wallettypes.Bill, error)
+	}
+
+	SearchService interface {
+		Search(ctx context.Context, searchKey string, partitionIDs []types.PartitionID) (*search.Result, error)
+	}
+
+	Controller struct {
+		StorageService   StorageService
+		PartitionService PartitionService
+		MoneyService     MoneyService
+		SearchService    SearchService
+		rw               *ResponseWriter
+	}
+
+	RoundNumberResponse []partition.RoundInfo
 
 	SearchResponse struct {
 		Blocks map[types.PartitionID]BlockInfo
 		Txs    []TxInfo
+		Units  map[types.PartitionID][]types.UnitID
 	}
 
 	BlockResponse map[types.PartitionID]BlockInfo
@@ -89,19 +102,47 @@ type (
 	}
 )
 
+func NewController(
+	StorageService StorageService,
+	PartitionService PartitionService,
+	MoneyService MoneyService,
+	searchService SearchService,
+) (*Controller, error) {
+	if StorageService == nil {
+		return nil, errors.New("storage service is nil")
+	}
+	if PartitionService == nil {
+		return nil, errors.New("partition service is nil")
+	}
+	if MoneyService == nil {
+		return nil, errors.New("money service is nil")
+	}
+	if searchService == nil {
+		return nil, errors.New("search service is nil")
+	}
+
+	return &Controller{
+		StorageService:   StorageService,
+		PartitionService: PartitionService,
+		MoneyService:     MoneyService,
+		SearchService:    searchService,
+		rw:               &ResponseWriter{},
+	}, nil
+}
+
 // @Summary Retrieve round and epoch number for each partition
 // @Description Retrieve round and epoch number for each partition
 // @Tags Info
 // @Produce json
-// @Success 200 {array} service.PartitionRoundInfo
+// @Success 200 {array} partition.RoundInfo
 // @Router /round-number [get]
-func (api *RestAPI) roundNumberFunc(w http.ResponseWriter, r *http.Request) {
-	roundInfos, err := api.Service.GetRoundNumber(r.Context())
+func (c *Controller) roundNumber(w http.ResponseWriter, r *http.Request) {
+	roundInfos, err := c.PartitionService.GetRoundNumber(r.Context())
 	if err != nil {
-		api.rw.WriteInternalErrorResponse(w, err)
+		c.rw.WriteInternalErrorResponse(w, err)
 		return
 	}
-	api.rw.WriteResponse(w, roundInfos)
+	c.rw.WriteResponse(w, roundInfos)
 }
 
 // @Summary Retrieve blocks and transactions matching the search key
@@ -115,11 +156,11 @@ func (api *RestAPI) roundNumberFunc(w http.ResponseWriter, r *http.Request) {
 // @Failure 400 {object} string "invalid partitionID"
 // @Failure 404 {object} string "no results found"
 // @Router /search [get]
-func (api *RestAPI) search(w http.ResponseWriter, r *http.Request) {
+func (c *Controller) search(w http.ResponseWriter, r *http.Request) {
 	qp := r.URL.Query()
 	searchKey := qp.Get(paramSearchKey)
 	if searchKey == "" {
-		api.rw.WriteMissingParamResponse(w, paramSearchKey)
+		c.rw.WriteMissingParamResponse(w, paramSearchKey)
 		return
 	}
 
@@ -127,56 +168,47 @@ func (api *RestAPI) search(w http.ResponseWriter, r *http.Request) {
 	for _, pid := range qp[paramPartitionID] {
 		id, err := strconv.ParseUint(pid, 10, 64)
 		if err != nil {
-			api.rw.WriteInvalidParamResponse(w, paramPartitionID)
+			c.rw.WriteInvalidParamResponse(w, paramPartitionID)
 			return
 		}
 		partitionIDs = append(partitionIDs, types.PartitionID(id))
 	}
 
-	result := SearchResponse{
-		Blocks: map[types.PartitionID]BlockInfo{},
-		Txs:    []TxInfo{},
-	}
-
-	blockNumber, err := strconv.ParseUint(searchKey, 10, 64)
-	if err == nil {
-		blockMap, err := api.Service.GetBlock(r.Context(), blockNumber, partitionIDs)
-		if err == nil {
-			if len(blockMap) == 0 {
-				api.rw.WriteErrorResponse(w, fmt.Errorf("no blocks found for number %d", blockNumber), http.StatusNotFound)
-				return
-			}
-			for partitionID, block := range blockMap {
-				result.Blocks[partitionID] = blockInfoResponse(block)
-			}
-			api.rw.WriteResponse(w, result)
+	result, err := c.SearchService.Search(r.Context(), searchKey, partitionIDs)
+	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) || errors.Is(err, domain.ErrFailedToDecodeHex) {
+			c.rw.WriteErrorResponse(w, fmt.Errorf("no results found for '%s'", searchKey), http.StatusNotFound)
 			return
-		} else {
-			fmt.Printf("Error getting block by number (%d): %s\n", blockNumber, err)
 		}
+		c.rw.WriteInternalErrorResponse(w, err)
+		return
 	}
 
-	hashBytes, err := ParseHex[[]byte](searchKey, true)
-	if err == nil {
-		txs, err := api.Service.FindTxs(r.Context(), hashBytes)
-		if err == nil {
-			if len(txs) > 0 {
-				for _, txInfo := range txs {
-					result.Txs = append(result.Txs, TxInfo{
-						TxRecordHash: txInfo.TxRecordHash,
-						TxOrderHash:  txInfo.TxOrderHash,
-						BlockNumber:  txInfo.BlockNumber,
-						Transaction:  txInfo.Transaction,
-						PartitionID:  txInfo.PartitionID,
-					})
-				}
-				api.rw.WriteResponse(w, result)
-				return
-			}
-		} else {
-			fmt.Printf("Error finding transactions: %s\n", err)
-		}
+	if len(result.Txs) == 0 && len(result.Blocks) == 0 && len(result.Units) == 0 {
+		c.rw.WriteErrorResponse(w, fmt.Errorf("no results found for '%s'", searchKey), http.StatusNotFound)
+		return
 	}
 
-	api.rw.WriteErrorResponse(w, fmt.Errorf("no results found for '%s'", searchKey), http.StatusNotFound)
+	c.rw.WriteResponse(w, formatSearchResponse(result))
+}
+
+func formatSearchResponse(result *search.Result) SearchResponse {
+	response := SearchResponse{
+		Blocks: make(map[types.PartitionID]BlockInfo),
+		Txs:    []TxInfo{},
+		Units:  make(map[types.PartitionID][]types.UnitID),
+	}
+
+	for partitionID, block := range result.Blocks {
+		response.Blocks[partitionID] = blockInfoResponse(block)
+	}
+	for _, tx := range result.Txs {
+		response.Txs = append(response.Txs, txInfoResponse(tx))
+	}
+	for partitionID, unitIDs := range result.Units {
+		if len(unitIDs) > 0 {
+			response.Units[partitionID] = unitIDs
+		}
+	}
+	return response
 }

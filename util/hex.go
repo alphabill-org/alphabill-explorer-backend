@@ -2,7 +2,13 @@ package util
 
 import (
 	"encoding/hex"
+	"errors"
 	"fmt"
+)
+
+const (
+	PubKeyBytesLength     = 33
+	PubKeyHashBytesLength = 32
 )
 
 func ToHex(src []byte) []byte {
@@ -44,4 +50,19 @@ func CheckHex(input []byte) ([]byte, error) {
 		return nil, fmt.Errorf("hex string of odd length")
 	}
 	return input, nil
+}
+
+// DecodeHex decodes a hex string with optional 0x prefix
+func DecodeHex(input string) ([]byte, error) {
+	if len(input) == 0 {
+		return nil, errors.New("empty hex string")
+	}
+	if !has0xPrefix(input) {
+		return hex.DecodeString(input)
+	}
+	return hex.DecodeString(input[2:])
+}
+
+func has0xPrefix(input string) bool {
+	return len(input) >= 2 && input[0] == '0' && (input[1] == 'x' || input[1] == 'X')
 }

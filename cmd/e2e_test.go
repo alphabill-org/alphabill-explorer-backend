@@ -14,8 +14,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/alphabill-org/alphabill-explorer-backend/api"
 	"github.com/alphabill-org/alphabill-explorer-backend/domain"
-	"github.com/alphabill-org/alphabill-explorer-backend/restapi"
 	"github.com/alphabill-org/alphabill-explorer-backend/util"
 	"github.com/alphabill-org/alphabill-go-base/types"
 	"github.com/alphabill-org/alphabill-wallet/cli/alphabill/cmd/wallet/args"
@@ -98,13 +98,13 @@ func TestE2E(t *testing.T) {
 			require.NoError(t, err)
 			txRn := unicityCertificate.GetRoundNumber()
 
-			blockMap := make(map[types.PartitionID]restapi.BlockInfo)
+			blockMap := make(map[types.PartitionID]api.BlockInfo)
 			require.Eventually(t, func() bool {
 				resp, err := client.Get(fmt.Sprintf("http://%s/api/v1/blocks/%d", host, txRn))
 				require.NoError(t, err)
 				fmt.Printf("Checking block %d, status code: %d\n", txRn, resp.StatusCode)
 				if resp.StatusCode == http.StatusOK {
-					require.NoError(t, restapi.DecodeResponse(resp, http.StatusOK, &blockMap, false))
+					require.NoError(t, api.DecodeResponse(resp, http.StatusOK, &blockMap, false))
 					return true
 				}
 				return false
@@ -117,12 +117,12 @@ func TestE2E(t *testing.T) {
 			require.NotNil(t, blockInfo)
 			require.Contains(t, blockInfo.TxHashes, domain.TxHash(txrHash))
 
-			txInfo := &restapi.TxInfo{}
+			txInfo := &api.TxInfo{}
 			t.Run("Check tx info is correct", func(t *testing.T) {
 				resp, err := client.Get(fmt.Sprintf("http://%s/api/v1/txs/0x%X", host, txrHash))
 				require.NoError(t, err)
 				require.Equal(t, http.StatusOK, resp.StatusCode)
-				err = restapi.DecodeResponse(resp, http.StatusOK, txInfo, false)
+				err = api.DecodeResponse(resp, http.StatusOK, txInfo, false)
 				require.NoError(t, err)
 				require.EqualValues(t, txrHash, txInfo.TxRecordHash)
 				require.Equal(t, txRn, txInfo.BlockNumber)
@@ -136,8 +136,8 @@ func TestE2E(t *testing.T) {
 				resp, err := client.Get(fmt.Sprintf("http://%s/api/v1/partitions/%s/txs", host, partitionID))
 				require.NoError(t, err)
 				require.Equal(t, http.StatusOK, resp.StatusCode)
-				txInfos := make([]restapi.TxInfo, 0)
-				err = restapi.DecodeResponse(resp, http.StatusOK, &txInfos, false)
+				txInfos := make([]api.TxInfo, 0)
+				err = api.DecodeResponse(resp, http.StatusOK, &txInfos, false)
 				require.NoError(t, err)
 				require.Contains(t, txInfos, *txInfo)
 			})
@@ -147,8 +147,8 @@ func TestE2E(t *testing.T) {
 				resp, err := client.Get(fmt.Sprintf("http://%s/api/v1/search?q=%s", host, txHashHex))
 				require.NoError(t, err)
 				require.Equal(t, http.StatusOK, resp.StatusCode)
-				searchResponse := restapi.SearchResponse{}
-				err = restapi.DecodeResponse(resp, http.StatusOK, &searchResponse, false)
+				searchResponse := api.SearchResponse{}
+				err = api.DecodeResponse(resp, http.StatusOK, &searchResponse, false)
 				require.NoError(t, err)
 				require.Contains(t, searchResponse.Txs, *txInfo)
 			})
@@ -157,11 +157,23 @@ func TestE2E(t *testing.T) {
 				resp, err := client.Get(fmt.Sprintf("http://%s/api/v1/search?q=%d", host, blockInfo.BlockNumber))
 				require.NoError(t, err)
 				require.Equal(t, http.StatusOK, resp.StatusCode)
-				searchResponse := restapi.SearchResponse{}
-				err = restapi.DecodeResponse(resp, http.StatusOK, &searchResponse, false)
+				searchResponse := api.SearchResponse{}
+				err = api.DecodeResponse(resp, http.StatusOK, &searchResponse, false)
 				require.NoError(t, err)
 				require.NotNil(t, searchResponse.Blocks[partitionID])
 				require.Equal(t, searchResponse.Blocks[partitionID].BlockNumber, blockInfo.BlockNumber)
+			})
+
+			t.Run("check units returned when searching by owner public key", func(t *testing.T) {
+				pk0, err := w.GetAccountManager().GetPublicKey(0)
+				require.NoError(t, err)
+				resp, err := client.Get(fmt.Sprintf("http://%s/api/v1/search?q=0x%X", host, pk0))
+				require.NoError(t, err)
+				require.Equal(t, http.StatusOK, resp.StatusCode)
+				searchResponse := api.SearchResponse{}
+				err = api.DecodeResponse(resp, http.StatusOK, &searchResponse, false)
+				require.NoError(t, err)
+				require.GreaterOrEqual(t, len(searchResponse.Units[partitionID]), 1)
 			})
 		}
 	})

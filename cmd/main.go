@@ -9,11 +9,13 @@ import (
 	"time"
 
 	"github.com/ainvaltin/httpsrv"
+	"github.com/alphabill-org/alphabill-explorer-backend/api"
 	"github.com/alphabill-org/alphabill-explorer-backend/block_store/mongodb"
 	"github.com/alphabill-org/alphabill-explorer-backend/blocks"
 	"github.com/alphabill-org/alphabill-explorer-backend/blocksync"
-	ra "github.com/alphabill-org/alphabill-explorer-backend/restapi"
-	"github.com/alphabill-org/alphabill-explorer-backend/service"
+	moneyservice "github.com/alphabill-org/alphabill-explorer-backend/service/money"
+	"github.com/alphabill-org/alphabill-explorer-backend/service/partition"
+	"github.com/alphabill-org/alphabill-explorer-backend/service/search"
 	"github.com/alphabill-org/alphabill-go-base/txsystem/money"
 	"github.com/alphabill-org/alphabill-go-base/types"
 	"github.com/alphabill-org/alphabill-wallet/cli/alphabill/cmd/wallet/args"
@@ -52,33 +54,30 @@ func Run(ctx context.Context, config *Config) error {
 	}
 	println("created store")
 
-	explorerService := service.NewExplorerService(store)
 	g, ctx := errgroup.WithContext(ctx)
-
-	g.Go(func() error {
-		println("block explorer backend REST server starting on ", config.Server.Address)
-
-		handler := &ra.RestAPI{
-			Service: explorerService,
-		}
-
-		return httpsrv.Run(
-			ctx,
-			&http.Server{
-				Addr:              config.Server.Address,
-				Handler:           handler.Router(),
-				ReadTimeout:       3 * time.Second,
-				ReadHeaderTimeout: time.Second,
-				WriteTimeout:      5 * time.Second,
-				IdleTimeout:       30 * time.Second,
-			},
-			httpsrv.ShutdownTimeout(5*time.Second))
-	})
+	var moneyClient wallettypes.MoneyPartitionClient
+	partitionService, err := partition.NewPartitionService(make(map[types.PartitionID]*partition.Partition))
+	if err != nil {
+		return fmt.Errorf("failed to create partition service")
+	}
+	searchService, err := search.NewSearchService(store, make(map[types.PartitionID]search.PartitionClient))
+	if err != nil {
+		return fmt.Errorf("failed to create search service")
+	}
 
 	for _, node := range config.Nodes {
-		partitionClient, nodeInfo, err := createPartitionClient(ctx, node, explorerService)
+		partitionClient, nodeInfo, err := createPartitionClient(ctx, node)
 		if err != nil {
 			return fmt.Errorf("failed to create partition client: %w", err)
+		}
+
+		partitionService.AddPartition(partitionClient, nodeInfo.PartitionID, nodeInfo.PartitionTypeID)
+		searchService.AddPartitionClient(partitionClient, nodeInfo.PartitionID)
+		if nodeInfo.PartitionTypeID == money.PartitionTypeID {
+			moneyClient, err = client.NewMoneyPartitionClient(ctx, args.BuildRpcUrl(node.URL))
+			if err != nil {
+				return fmt.Errorf("failed to create money partition client: %w", err)
+			}
 		}
 
 		g.Go(func() error {
@@ -124,10 +123,30 @@ func Run(ctx context.Context, config *Config) error {
 		})
 	}
 
+	g.Go(func() error {
+		println("block explorer REST server starting on ", config.Server.Address)
+		controller, err := api.NewController(store, partitionService, moneyservice.NewMoneyService(moneyClient), searchService)
+		if err != nil {
+			return fmt.Errorf("failed to create controller for rest API: %w", err)
+		}
+
+		return httpsrv.Run(
+			ctx,
+			&http.Server{
+				Addr:              config.Server.Address,
+				Handler:           controller.Router(),
+				ReadTimeout:       3 * time.Second,
+				ReadHeaderTimeout: time.Second,
+				WriteTimeout:      5 * time.Second,
+				IdleTimeout:       30 * time.Second,
+			},
+			httpsrv.ShutdownTimeout(5*time.Second))
+	})
+
 	return g.Wait()
 }
 
-func createPartitionClient(ctx context.Context, node Node, service *service.ExplorerService) (*rpc.StateAPIClient, *wallettypes.NodeInfoResponse, error) {
+func createPartitionClient(ctx context.Context, node Node) (*rpc.StateAPIClient, *wallettypes.NodeInfoResponse, error) {
 	println("getting node info for ", node.URL)
 	adminClient, err := rpc.NewAdminAPIClient(ctx, args.BuildRpcUrl(node.URL))
 	if err != nil {
@@ -144,20 +163,10 @@ func createPartitionClient(ctx context.Context, node Node, service *service.Expl
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to dial rpc client: %w", err)
 	}
-	service.AddPartitionClient(stateClient, nodeInfo.PartitionID, nodeInfo.PartitionTypeID)
 	roundInfo, err := stateClient.GetRoundInfo(ctx)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get round info: %w", err)
 	}
-
-	if nodeInfo.PartitionTypeID == money.PartitionTypeID {
-		moneyClient, err := client.NewMoneyPartitionClient(ctx, args.BuildRpcUrl(node.URL))
-		if err != nil {
-			return nil, nil, fmt.Errorf("failed to create money partition client: %w", err)
-		}
-		service.AddMoneyClient(moneyClient)
-	}
-
 	if node.BlockNumber > roundInfo.RoundNumber {
 		return nil, nil, fmt.Errorf("current round number for partition %d (%d) is smaller than configured starting block number (%d)",
 			nodeInfo.PartitionID, roundInfo.RoundNumber, node.BlockNumber)
