@@ -12,7 +12,7 @@ import (
 	"github.com/alphabill-org/alphabill-explorer-backend/service/search"
 	"github.com/alphabill-org/alphabill-go-base/types"
 	"github.com/alphabill-org/alphabill-go-base/types/hex"
-	wallettypes "github.com/alphabill-org/alphabill-wallet/client/types"
+	sdktypes "github.com/alphabill-org/alphabill-wallet/client/types"
 )
 
 const (
@@ -57,7 +57,7 @@ type (
 	}
 
 	MoneyService interface {
-		GetBillsByPubKey(ctx context.Context, ownerID hex.Bytes) ([]*wallettypes.Bill, error)
+		GetBillsByPubKey(ctx context.Context, ownerID hex.Bytes) ([]*sdktypes.Bill, error)
 	}
 
 	SearchService interface {
@@ -75,9 +75,10 @@ type (
 	RoundNumberResponse []partition.RoundInfo
 
 	SearchResponse struct {
-		Blocks map[types.PartitionID]BlockInfo
-		Txs    []TxInfo
-		Units  map[types.PartitionID][]types.UnitID
+		Blocks  map[types.PartitionID]BlockInfo
+		Txs     []TxInfo
+		UnitIDs map[types.PartitionID][]types.UnitID
+		Unit    *sdktypes.Unit[any]
 	}
 
 	BlockResponse map[types.PartitionID]BlockInfo
@@ -184,7 +185,7 @@ func (c *Controller) search(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if len(result.Txs) == 0 && len(result.Blocks) == 0 && len(result.Units) == 0 {
+	if len(result.Txs) == 0 && len(result.Blocks) == 0 && len(result.UnitIDs) == 0 && result.Unit == nil {
 		c.rw.WriteErrorResponse(w, fmt.Errorf("no results found for '%s'", searchKey), http.StatusNotFound)
 		return
 	}
@@ -194,9 +195,10 @@ func (c *Controller) search(w http.ResponseWriter, r *http.Request) {
 
 func formatSearchResponse(result *search.Result) SearchResponse {
 	response := SearchResponse{
-		Blocks: make(map[types.PartitionID]BlockInfo),
-		Txs:    []TxInfo{},
-		Units:  make(map[types.PartitionID][]types.UnitID),
+		Blocks:  make(map[types.PartitionID]BlockInfo),
+		Txs:     []TxInfo{},
+		UnitIDs: make(map[types.PartitionID][]types.UnitID),
+		Unit:    result.Unit,
 	}
 
 	for partitionID, block := range result.Blocks {
@@ -205,9 +207,9 @@ func formatSearchResponse(result *search.Result) SearchResponse {
 	for _, tx := range result.Txs {
 		response.Txs = append(response.Txs, txInfoResponse(tx))
 	}
-	for partitionID, unitIDs := range result.Units {
+	for partitionID, unitIDs := range result.UnitIDs {
 		if len(unitIDs) > 0 {
-			response.Units[partitionID] = unitIDs
+			response.UnitIDs[partitionID] = unitIDs
 		}
 	}
 	return response
