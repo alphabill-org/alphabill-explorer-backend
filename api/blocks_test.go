@@ -10,6 +10,7 @@ import (
 
 	"github.com/alphabill-org/alphabill-explorer-backend/api/mocks"
 	"github.com/alphabill-org/alphabill-explorer-backend/domain"
+	mocks "github.com/alphabill-org/alphabill-explorer-backend/internal/mocks/api"
 	"github.com/alphabill-org/alphabill-go-base/types"
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/mock"

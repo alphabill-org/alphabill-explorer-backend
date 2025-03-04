@@ -12,7 +12,7 @@ import (
 	"github.com/alphabill-org/alphabill-explorer-backend/service/search"
 	"github.com/alphabill-org/alphabill-go-base/types"
 	"github.com/alphabill-org/alphabill-go-base/types/hex"
-	sdktypes "github.com/alphabill-org/alphabill-wallet/client/types"
+	wallettypes "github.com/alphabill-org/alphabill-wallet/client/types"
 )
 
 const (
@@ -57,7 +57,7 @@ type (
 	}
 
 	MoneyService interface {
-		GetBillsByPubKey(ctx context.Context, ownerID hex.Bytes) ([]*sdktypes.Bill, error)
+		GetBillsByPubKey(ctx context.Context, ownerID hex.Bytes) ([]*wallettypes.Bill, error)
 	}
 
 	SearchService interface {
@@ -75,10 +75,9 @@ type (
 	RoundNumberResponse []partition.RoundInfo
 
 	SearchResponse struct {
-		Blocks  map[types.PartitionID]BlockInfo
-		Txs     []TxInfo
-		UnitIDs map[types.PartitionID][]types.UnitID
-		Unit    *sdktypes.Unit[any]
+		Blocks map[types.PartitionID]BlockInfo
+		Txs    []TxInfo
+		Units  map[types.PartitionID][]types.UnitID
 	}
 
 	BlockResponse map[types.PartitionID]BlockInfo
@@ -146,8 +145,8 @@ func (c *Controller) roundNumber(w http.ResponseWriter, r *http.Request) {
 	c.rw.WriteResponse(w, roundInfos)
 }
 
-// @Summary Retrieve blocks, transactions and units matching the search key
-// @Description Retrieve blocks, transactions and units matching the search key
+// @Summary Retrieve blocks and transactions matching the search key
+// @Description Retrieve blocks and transactions matching the search key
 // @Tags Search
 // @Produce json
 // @Param q query string true "Search key"
@@ -185,7 +184,7 @@ func (c *Controller) search(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if len(result.Txs) == 0 && len(result.Blocks) == 0 && len(result.Units) == 0 && result.Unit == nil {
+	if len(result.Txs) == 0 && len(result.Blocks) == 0 && len(result.Units) == 0 {
 		c.rw.WriteErrorResponse(w, fmt.Errorf("no results found for '%s'", searchKey), http.StatusNotFound)
 		return
 	}
@@ -195,10 +194,9 @@ func (c *Controller) search(w http.ResponseWriter, r *http.Request) {
 
 func formatSearchResponse(result *search.Result) SearchResponse {
 	response := SearchResponse{
-		Blocks:  make(map[types.PartitionID]BlockInfo),
-		Txs:     []TxInfo{},
-		UnitIDs: make(map[types.PartitionID][]types.UnitID),
-		Unit:    result.Unit,
+		Blocks: make(map[types.PartitionID]BlockInfo),
+		Txs:    []TxInfo{},
+		Units:  make(map[types.PartitionID][]types.UnitID),
 	}
 
 	for partitionID, block := range result.Blocks {
@@ -209,7 +207,7 @@ func formatSearchResponse(result *search.Result) SearchResponse {
 	}
 	for partitionID, unitIDs := range result.Units {
 		if len(unitIDs) > 0 {
-			response.UnitIDs[partitionID] = unitIDs
+			response.Units[partitionID] = unitIDs
 		}
 	}
 	return response

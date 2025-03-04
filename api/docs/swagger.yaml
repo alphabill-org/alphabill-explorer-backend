@@ -46,9 +46,7 @@ definitions:
         items:
           $ref: '#/definitions/api.TxInfo'
         type: array
-      unit:
-        $ref: '#/definitions/types.Unit-any'
-      unitIDs:
+      units:
         additionalProperties:
           items:
             items:
@@ -91,16 +89,6 @@ definitions:
       value:
         type: integer
     type: object
-  mt.PathItem:
-    properties:
-      directionLeft:
-        description: true - left from parent, false - right from parent
-        type: boolean
-      hash:
-        items:
-          type: integer
-        type: array
-    type: object
   partition.RoundInfo:
     properties:
       epochNumber:
@@ -141,51 +129,6 @@ definitions:
     type: object
   types.ShardID:
     type: object
-  types.StateTreeCert:
-    properties:
-      leftSummaryHash:
-        items:
-          type: integer
-        type: array
-      leftSummaryValue:
-        example: "0"
-        type: string
-      path:
-        items:
-          $ref: '#/definitions/types.StateTreePathItem'
-        type: array
-      rightSummaryHash:
-        items:
-          type: integer
-        type: array
-      rightSummaryValue:
-        example: "0"
-        type: string
-    type: object
-  types.StateTreePathItem:
-    properties:
-      logsHash:
-        description: (z)
-        items:
-          type: integer
-        type: array
-      siblingSummaryHash:
-        items:
-          type: integer
-        type: array
-      siblingSummaryValue:
-        example: "0"
-        type: string
-      unitId:
-        description: (ι′)
-        items:
-          type: integer
-        type: array
-      value:
-        description: (V)
-        example: "0"
-        type: string
-    type: object
   types.TransactionRecord:
     properties:
       serverMetadata:
@@ -207,63 +150,6 @@ definitions:
     - TxStatusFailed
     - TxStatusSuccessful
     - TxErrOutOfGas
-  types.Unit-any:
-    properties:
-      data: {}
-      networkId:
-        $ref: '#/definitions/types.NetworkID'
-      partitionId:
-        type: integer
-      stateProof:
-        $ref: '#/definitions/types.UnitStateProof'
-      unitId:
-        items:
-          type: integer
-        type: array
-    type: object
-  types.UnitStateProof:
-    properties:
-      stateTreeCert:
-        $ref: '#/definitions/types.StateTreeCert'
-      unicityCert:
-        items:
-          type: integer
-        type: array
-      unitId:
-        items:
-          type: integer
-        type: array
-      unitLedgerHash:
-        description: x_ - previous state hash of type H ∪ {⊥}
-        items:
-          type: integer
-        type: array
-      unitTreeCert:
-        $ref: '#/definitions/types.UnitTreeCert'
-      unitValue:
-        description: V0 - data summary of type PD.V
-        example: "0"
-        type: string
-      version:
-        type: integer
-    type: object
-  types.UnitTreeCert:
-    properties:
-      dataHash:
-        description: s
-        items:
-          type: integer
-        type: array
-      path:
-        items:
-          $ref: '#/definitions/mt.PathItem'
-        type: array
-      txrHash:
-        description: t
-        items:
-          type: integer
-        type: array
-    type: object
 info:
   contact: {}
   description: API to query blocks and transactions of Alphabill
@@ -459,7 +345,7 @@ paths:
       - Info
   /search:
     get:
-      description: Retrieve blocks, transactions and units matching the search key
+      description: Retrieve blocks and transactions matching the search key
       parameters:
       - description: Search key
         in: query
@@ -485,7 +371,7 @@ paths:
           description: no results found
           schema:
             type: string
-      summary: Retrieve blocks, transactions and units matching the search key
+      summary: Retrieve blocks and transactions matching the search key
       tags:
       - Search
   /txs/{txHash}:

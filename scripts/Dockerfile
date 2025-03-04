@@ -1,7 +1,7 @@
 FROM scratch AS go-dependency
 # Empty
 
-FROM golang:1.23-bookworm AS builder
+FROM golang:1.24-bookworm AS builder
 ARG DOCKER_GO_DEPENDENCY=/go-dependency
 
 WORKDIR /usr/src/app

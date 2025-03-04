@@ -291,14 +291,14 @@ const docTemplate = `{
         },
         "/search": {
             "get": {
-                "description": "Retrieve blocks, transactions and units matching the search key",
+                "description": "Retrieve blocks and transactions matching the search key",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Search"
                 ],
-                "summary": "Retrieve blocks, transactions and units matching the search key",
+                "summary": "Retrieve blocks and transactions matching the search key",
                 "parameters": [
                     {
                         "type": "string",
@@ -505,10 +505,7 @@ const docTemplate = `{
                         "$ref": "#/definitions/api.TxInfo"
                     }
                 },
-                "unit": {
-                    "$ref": "#/definitions/types.Unit-any"
-                },
-                "unitIDs": {
+                "units": {
                     "type": "object",
                     "additionalProperties": {
                         "type": "array",
@@ -574,21 +571,6 @@ const docTemplate = `{
                 }
             }
         },
-        "mt.PathItem": {
-            "type": "object",
-            "properties": {
-                "directionLeft": {
-                    "description": "true - left from parent, false - right from parent",
-                    "type": "boolean"
-                },
-                "hash": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                }
-            }
-        },
         "partition.RoundInfo": {
             "type": "object",
             "properties": {
@@ -648,71 +630,6 @@ const docTemplate = `{
         "types.ShardID": {
             "type": "object"
         },
-        "types.StateTreeCert": {
-            "type": "object",
-            "properties": {
-                "leftSummaryHash": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "leftSummaryValue": {
-                    "type": "string",
-                    "example": "0"
-                },
-                "path": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/types.StateTreePathItem"
-                    }
-                },
-                "rightSummaryHash": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "rightSummaryValue": {
-                    "type": "string",
-                    "example": "0"
-                }
-            }
-        },
-        "types.StateTreePathItem": {
-            "type": "object",
-            "properties": {
-                "logsHash": {
-                    "description": "(z)",
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "siblingSummaryHash": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "siblingSummaryValue": {
-                    "type": "string",
-                    "example": "0"
-                },
-                "unitId": {
-                    "description": "(ι′)",
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "value": {
-                    "description": "(V)",
-                    "type": "string",
-                    "example": "0"
-                }
-            }
-        },
         "types.TransactionRecord": {
             "type": "object",
             "properties": {
@@ -742,90 +659,6 @@ const docTemplate = `{
                 "TxStatusSuccessful",
                 "TxErrOutOfGas"
             ]
-        },
-        "types.Unit-any": {
-            "type": "object",
-            "properties": {
-                "data": {},
-                "networkId": {
-                    "$ref": "#/definitions/types.NetworkID"
-                },
-                "partitionId": {
-                    "type": "integer"
-                },
-                "stateProof": {
-                    "$ref": "#/definitions/types.UnitStateProof"
-                },
-                "unitId": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                }
-            }
-        },
-        "types.UnitStateProof": {
-            "type": "object",
-            "properties": {
-                "stateTreeCert": {
-                    "$ref": "#/definitions/types.StateTreeCert"
-                },
-                "unicityCert": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "unitId": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "unitLedgerHash": {
-                    "description": "x_ - previous state hash of type H ∪ {⊥}",
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "unitTreeCert": {
-                    "$ref": "#/definitions/types.UnitTreeCert"
-                },
-                "unitValue": {
-                    "description": "V0 - data summary of type PD.V",
-                    "type": "string",
-                    "example": "0"
-                },
-                "version": {
-                    "type": "integer"
-                }
-            }
-        },
-        "types.UnitTreeCert": {
-            "type": "object",
-            "properties": {
-                "dataHash": {
-                    "description": "s",
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "path": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/mt.PathItem"
-                    }
-                },
-                "txrHash": {
-                    "description": "t",
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                }
-            }
         }
     }
 }`
