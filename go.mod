@@ -1,6 +1,6 @@
 module github.com/alphabill-org/alphabill-explorer-backend
 
-go 1.23
+go 1.24
 
 // uncomment for local development:
 //replace github.com/alphabill-org/alphabill => ../alphabill
