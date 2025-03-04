@@ -10,7 +10,7 @@ build:
 	cd ./cmd && go build -tags=viper_bind_struct -o ../build/abexplorer
 
 swagger:
-	swag init --generalInfo restapi/routes.go --parseInternal --parseDependency --output restapi/docs
+	swag init --generalInfo api/routes.go --parseInternal --parseDependency --output api/docs
 
 tools:
 	go install github.com/swaggo/swag/cmd/swag@latest
@@ -25,4 +25,5 @@ generate-mocks:
 	test \
 	build \
 	swagger \
-	tools
+	tools \
+	generate-mocks
