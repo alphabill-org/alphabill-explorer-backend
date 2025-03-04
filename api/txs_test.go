@@ -8,8 +8,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/alphabill-org/alphabill-explorer-backend/api/mocks"
 	"github.com/alphabill-org/alphabill-explorer-backend/domain"
+	mocks "github.com/alphabill-org/alphabill-explorer-backend/internal/mocks/github.com/alphabill-org/alphabill-explorer-backend/api"
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
