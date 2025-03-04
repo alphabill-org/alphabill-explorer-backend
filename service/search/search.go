@@ -32,10 +32,10 @@ type (
 	}
 
 	Result struct {
-		Blocks map[types.PartitionID]*domain.BlockInfo
-		Txs    []*domain.TxInfo
-		Units  map[types.PartitionID][]types.UnitID
-		Unit   *sdktypes.Unit[any]
+		Blocks  map[types.PartitionID]*domain.BlockInfo
+		Txs     []*domain.TxInfo
+		UnitIDs map[types.PartitionID][]types.UnitID
+		Unit    *sdktypes.Unit[any]
 	}
 )
 
@@ -122,9 +122,9 @@ func (s *Service) Search(ctx context.Context, searchKey string, partitionIDs []t
 	wg.Wait()
 
 	return &Result{
-		Txs:   txs,
-		Units: units,
-		Unit:  unit,
+		Txs:     txs,
+		UnitIDs: units,
+		Unit:    unit,
 	}, nil
 }
 
