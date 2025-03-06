@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/alphabill-org/alphabill-explorer-backend/internal/log"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 
@@ -74,7 +75,7 @@ func loggerMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		buf, err := io.ReadAll(r.Body)
 		if err != nil {
-			fmt.Printf("Error reading request body: %v\n", err.Error())
+			log.Error("Error reading request body", "err", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -82,7 +83,7 @@ func loggerMiddleware(next http.Handler) http.Handler {
 		reader := io.NopCloser(bytes.NewBuffer(buf))
 		r.Body = reader
 
-		fmt.Printf("Server: request from=%s to=%s:%s body=%v.\n", r.RemoteAddr, r.Method, r.RequestURI, string(buf))
+		log.Info("Request", "from", r.RemoteAddr, "to", fmt.Sprintf("%s:%s", r.Method, r.RequestURI), "body", string(buf))
 
 		next.ServeHTTP(w, r)
 	})

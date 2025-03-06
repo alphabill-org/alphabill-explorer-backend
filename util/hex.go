@@ -1,6 +1,7 @@
 package util
 
 import (
+	"crypto/sha256"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -50,6 +51,25 @@ func CheckHex(input []byte) ([]byte, error) {
 		return nil, fmt.Errorf("hex string of odd length")
 	}
 	return input, nil
+}
+
+// PubKeyHash returns the hash of the given hex-encoded public key
+// If the input is already a hash of the public key, it just returns the hash
+func PubKeyHash(pubKeyHex string) ([]byte, error) {
+	bytes, err := DecodeHex(pubKeyHex)
+	if err != nil {
+		return nil, err
+	}
+	var pubKeyHash []byte
+	if len(bytes) == PubKeyBytesLength {
+		hash := sha256.Sum256(bytes)
+		pubKeyHash = hash[:]
+	} else if len(bytes) == PubKeyHashBytesLength {
+		pubKeyHash = bytes
+	} else {
+		return nil, errors.New("hex string is not public key or it's hash")
+	}
+	return pubKeyHash, nil
 }
 
 // DecodeHex decodes a hex string with optional 0x prefix

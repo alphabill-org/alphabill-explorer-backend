@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"strconv"
 
+	"github.com/alphabill-org/alphabill-explorer-backend/internal/log"
 	"github.com/fxamacker/cbor/v2"
 )
 
@@ -59,7 +60,7 @@ func (rw *ResponseWriter) WriteCborResponse(w http.ResponseWriter, data any) {
 }
 
 func (rw *ResponseWriter) WriteInternalErrorResponse(w http.ResponseWriter, err error) {
-	fmt.Printf("Internal error: %s\n", err)
+	log.Error("Internal error", "err", err)
 	rw.ErrorResponse(w, http.StatusInternalServerError, errors.New("internal error"))
 }
 

@@ -15,6 +15,9 @@ services:
       - BLOCK_EXPLORER_NODES_1_BLOCK_NUMBER=100
       - BLOCK_EXPLORER_DB_URL=mongodb://root:pass@mongo:27017/
       - BLOCK_EXPLORER_SERVER_ADDRESS=:9666
+      - BLOCK_EXPLORER_LOG_LEVEL=INFO
+      - BLOCK_EXPLORER_LOG_FORMAT=console
+      - BLOCK_EXPLORER_LOG_OUTPUT_PATH=
     ports:
       - "9666:9666"
     volumes:

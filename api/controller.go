@@ -57,7 +57,7 @@ type (
 	}
 
 	MoneyService interface {
-		GetBillsByPubKey(ctx context.Context, ownerID hex.Bytes) ([]*sdktypes.Bill, error)
+		GetBillsByPubKeyHash(ctx context.Context, ownerID hex.Bytes) ([]*sdktypes.Bill, error)
 	}
 
 	SearchService interface {
@@ -78,7 +78,7 @@ type (
 		Blocks  map[types.PartitionID]BlockInfo
 		Txs     []TxInfo
 		UnitIDs map[types.PartitionID][]types.UnitID
-		Unit    *sdktypes.Unit[any]
+		Unit    *sdktypes.Unit[any] `json:",omitempty"`
 	}
 
 	BlockResponse map[types.PartitionID]BlockInfo
