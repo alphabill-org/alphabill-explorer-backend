@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/alphabill-org/alphabill-explorer-backend/domain"
+	"github.com/alphabill-org/alphabill-explorer-backend/internal/log"
 	"github.com/alphabill-org/alphabill-go-base/types"
 )
 
@@ -30,10 +31,7 @@ func (p *BlockProcessor) ProcessBlock(ctx context.Context, b *types.Block, parti
 	if err != nil {
 		return fmt.Errorf("failed to get round number: %w", err)
 	}
-	fmt.Printf("partition %d: processing block %d\n", b.PartitionID(), roundNumber)
-	if len(b.Transactions) > 0 {
-		fmt.Printf("Block number: %d has %d transactions\n", roundNumber, len(b.Transactions))
-	}
+	log.Info("processing block", "partition", b.PartitionID(), "round", roundNumber, "TXS", len(b.Transactions))
 	lastBlockNumber, err := p.store.GetBlockNumber(ctx, b.PartitionID())
 	if err != nil {
 		return fmt.Errorf("failed to get last block number: %w", err)

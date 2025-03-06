@@ -11,7 +11,10 @@ RUN --mount=from=go-dependency,target=$DOCKER_GO_DEPENDENCY \
     go mod download && go mod verify
 
 COPY . .
+# Cache Go build artifacts to speed up subsequent builds
 RUN --mount=from=go-dependency,target=$DOCKER_GO_DEPENDENCY \
+    --mount=type=cache,target=/root/.cache/go-build \
+    --mount=type=cache,target=/go/pkg/mod \
     make build
 
 FROM gcr.io/distroless/base-debian12:debug-nonroot

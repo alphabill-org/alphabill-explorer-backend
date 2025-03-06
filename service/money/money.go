@@ -19,7 +19,7 @@ func NewMoneyService(moneyClient types.MoneyPartitionClient) *Service {
 	return &Service{moneyClient: moneyClient}
 }
 
-func (m *Service) GetBillsByPubKey(ctx context.Context, ownerID hex.Bytes) ([]*types.Bill, error) {
+func (m *Service) GetBillsByPubKeyHash(ctx context.Context, ownerID hex.Bytes) ([]*types.Bill, error) {
 	if m.moneyClient == nil {
 		return nil, errors.New("money partition not configured")
 	}
