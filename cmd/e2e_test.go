@@ -142,6 +142,18 @@ func TestE2E(t *testing.T) {
 				require.Contains(t, txInfos, *txInfo)
 			})
 
+			t.Run("check bills returned for owner public key", func(t *testing.T) {
+				pk0, err := w.GetAccountManager().GetPublicKey(0)
+				require.NoError(t, err)
+				resp, err := client.Get(fmt.Sprintf("http://%s/api/v1/address/0x%X/bills", host, pk0))
+				require.NoError(t, err)
+				require.Equal(t, http.StatusOK, resp.StatusCode)
+				bills := make([]domain.Bill, 0)
+				err = api.DecodeResponse(resp, http.StatusOK, &bills, false)
+				require.NoError(t, err)
+				require.GreaterOrEqual(t, len(bills), 1)
+			})
+
 			t.Run("check tx returned in search", func(t *testing.T) {
 				txHashHex := util.ToHex(txrHash)
 				resp, err := client.Get(fmt.Sprintf("http://%s/api/v1/search?q=%s", host, txHashHex))

@@ -15,7 +15,7 @@ import (
 )
 
 var (
-	Logger *slog.Logger
+	logger *slog.Logger
 	once   sync.Once
 )
 
@@ -39,7 +39,7 @@ type Configuration struct {
 }
 
 func init() {
-	Logger = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
+	logger = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
 }
 
 // SetupLogger allows configuring the logger but only once
@@ -58,26 +58,26 @@ func SetupLogger(cfg *Configuration) error {
 			return
 		}
 
-		Logger = slog.New(h)
+		logger = slog.New(h)
 	})
 
 	return err
 }
 
 func Info(msg string, args ...any) {
-	Logger.Info(msg, args...)
+	logger.Info(msg, args...)
 }
 
 func Error(msg string, args ...any) {
-	Logger.Error(msg, args...)
+	logger.Error(msg, args...)
 }
 
 func Debug(msg string, args ...any) {
-	Logger.Debug(msg, args...)
+	logger.Debug(msg, args...)
 }
 
 func Warn(msg string, args ...any) {
-	Logger.Warn(msg, args...)
+	logger.Warn(msg, args...)
 }
 
 func (cfg *Configuration) handler(out io.Writer) (slog.Handler, error) {
