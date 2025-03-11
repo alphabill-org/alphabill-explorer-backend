@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/alphabill-org/alphabill-explorer-backend/domain"
+	"github.com/alphabill-org/alphabill-explorer-backend/util"
 	"github.com/gorilla/mux"
 )
 
@@ -20,21 +21,26 @@ import (
 // @Router /address/{pubKey}/bills [get]
 func (c *Controller) getBillsByPubKey(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	ownerIDStr, ok := vars[paramPubKey]
+	pubKeyStr, ok := vars[paramPubKey]
 	if !ok {
 		c.rw.WriteMissingParamResponse(w, paramPubKey)
 		return
 	}
 
-	ownerID := []byte(ownerIDStr)
-	bills, err := c.MoneyService.GetBillsByPubKey(r.Context(), ownerID)
+	pubKeyHash, err := util.PubKeyHash(pubKeyStr)
 	if err != nil {
-		c.rw.WriteInternalErrorResponse(w, fmt.Errorf("failed to load bills with pubKey %s : %w", ownerIDStr, err))
+		c.rw.WriteInvalidParamResponse(w, paramPubKey)
+		return
+	}
+
+	bills, err := c.MoneyService.GetBillsByPubKeyHash(r.Context(), pubKeyHash)
+	if err != nil {
+		c.rw.WriteInternalErrorResponse(w, fmt.Errorf("failed to load bills with pubKey %s : %w", pubKeyStr, err))
 		return
 	}
 
 	if len(bills) == 0 {
-		c.rw.WriteErrorResponse(w, fmt.Errorf("bills with pubKey %s not found", ownerIDStr), http.StatusNotFound)
+		c.rw.WriteErrorResponse(w, fmt.Errorf("bills with pubKey %s not found", pubKeyStr), http.StatusNotFound)
 		return
 	}
 

@@ -2,13 +2,13 @@ package search
 
 import (
 	"context"
-	"crypto/sha256"
 	"errors"
 	"fmt"
 	"strconv"
 	"sync"
 
 	"github.com/alphabill-org/alphabill-explorer-backend/domain"
+	"github.com/alphabill-org/alphabill-explorer-backend/internal/log"
 	"github.com/alphabill-org/alphabill-explorer-backend/util"
 	"github.com/alphabill-org/alphabill-go-base/types"
 	"github.com/alphabill-org/alphabill-go-base/types/hex"
@@ -79,7 +79,7 @@ func (s *Service) Search(ctx context.Context, searchKey string, partitionIDs []t
 			if _, exists := s.partitionClients[partitionID]; exists {
 				partitionsToSearch = append(partitionsToSearch, partitionID)
 			} else {
-				fmt.Printf("Warning: Partition %d does not exist in search service\n", partitionID)
+				log.Warn("Partition does not exist in search service", "id", partitionID)
 			}
 		}
 	} else {
@@ -88,14 +88,7 @@ func (s *Service) Search(ctx context.Context, searchKey string, partitionIDs []t
 		}
 	}
 
-	var pubKeyHash []byte
-	if len(searchKeyBytes) == util.PubKeyBytesLength {
-		hash := sha256.Sum256(searchKeyBytes)
-		pubKeyHash = hash[:]
-	} else if len(searchKeyBytes) == util.PubKeyHashBytesLength {
-		pubKeyHash = searchKeyBytes
-	}
-
+	pubKeyHash, _ := util.PubKeyHash(searchKey)
 	if pubKeyHash != nil {
 		wg.Add(1)
 		go func() {
@@ -142,7 +135,7 @@ func (s *Service) findUnit(ctx context.Context, unitID types.UnitID, partitionID
 	for _, partitionID := range partitionIDs {
 		client, exists := s.partitionClients[partitionID]
 		if !exists {
-			fmt.Println("Skipping unknown partition: ", partitionID)
+			log.Info("Skipping unknown partition", "id", partitionID)
 			continue
 		}
 		wg.Add(1)
@@ -158,7 +151,7 @@ func (s *Service) findUnit(ctx context.Context, unitID types.UnitID, partitionID
 				}
 			}
 			if err != nil && !errors.Is(err, context.Canceled) {
-				fmt.Println("Failed to get unit: ", err)
+				log.Error("Failed to get unit", "err", err)
 			}
 		}(client)
 	}
@@ -185,7 +178,7 @@ func (s *Service) findUnitsByOwnerPubKey(ctx context.Context, pubKey []byte, par
 	for _, partitionID := range partitionIDs {
 		client, exists := s.partitionClients[partitionID]
 		if !exists {
-			fmt.Println("Skipping unknown partition: ", partitionID)
+			log.Info("Skipping unknown partition", "id", partitionID)
 			continue
 		}
 		wg.Add(1)
@@ -194,7 +187,7 @@ func (s *Service) findUnitsByOwnerPubKey(ctx context.Context, pubKey []byte, par
 			unitIDs, err := c.GetUnitsByOwnerID(ctx, pubKey)
 			unitResultsChan <- map[types.PartitionID][]types.UnitID{pid: unitIDs}
 			if err != nil {
-				fmt.Println("Failed to get units by owner ID: ", err)
+				log.Error("Failed to get units by owner ID", "err", err)
 			}
 		}(partitionID, client)
 	}

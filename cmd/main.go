@@ -14,6 +14,7 @@ import (
 	"github.com/alphabill-org/alphabill-explorer-backend/blocks"
 	"github.com/alphabill-org/alphabill-explorer-backend/blocksync"
 	internalrpc "github.com/alphabill-org/alphabill-explorer-backend/client/rpc"
+	"github.com/alphabill-org/alphabill-explorer-backend/internal/log"
 	moneyservice "github.com/alphabill-org/alphabill-explorer-backend/service/money"
 	"github.com/alphabill-org/alphabill-explorer-backend/service/partition"
 	"github.com/alphabill-org/alphabill-explorer-backend/service/search"
@@ -27,19 +28,26 @@ import (
 )
 
 func main() {
-	fmt.Println("Starting AB Explorer")
-
 	configPath := ""
 	if len(os.Args) > 1 {
 		configPath = os.Args[1]
-		fmt.Printf("reading config from %s\n", configPath)
+		log.Info("reading config", "path", configPath)
 	}
 
 	config, err := LoadConfig(configPath)
 	if err != nil {
 		panic(fmt.Errorf("failed to read config: %w", err))
 	}
-	fmt.Printf("config: %+v\n", config)
+
+	if err = log.SetupLogger(&log.Configuration{
+		Level:      config.Log.Level,
+		Format:     config.Log.Format,
+		OutputPath: config.Log.OutputPath,
+	}); err != nil {
+		log.Warn("Failed to setup logger, using default settings", "err", err)
+	}
+
+	log.Info("loaded config: ", "config", config)
 
 	err = Run(context.Background(), config)
 	if err != nil {
@@ -48,12 +56,12 @@ func main() {
 }
 
 func Run(ctx context.Context, config *Config) error {
-	println("creating block store...")
+	log.Info("creating block store...")
 	store, err := mongodb.NewMongoBlockStore(ctx, config.DB.URL)
 	if err != nil {
 		return fmt.Errorf("failed to get storage: %w", err)
 	}
-	println("created store")
+	log.Info("created store")
 
 	g, ctx := errgroup.WithContext(ctx)
 	var moneyClient sdktypes.MoneyPartitionClient
@@ -88,7 +96,7 @@ func Run(ctx context.Context, config *Config) error {
 			}
 			getBlockNumber := func(ctx context.Context, partitionID types.PartitionID) (uint64, error) {
 				storedBN, err := store.GetBlockNumber(ctx, partitionID)
-				println("stored block number: ", storedBN)
+				log.Info("stored block number", "block number", storedBN)
 				if err != nil {
 					return 0, fmt.Errorf("failed to read current block number: %w", err)
 				}
@@ -109,11 +117,11 @@ func Run(ctx context.Context, config *Config) error {
 			// we act as if all errors returned by block sync are recoverable ie we
 			// just retry in a loop until ctx is cancelled
 			for {
-				println("starting block sync")
+				log.Info("starting block sync")
 				err := runBlockSync(ctx, partitionClient.GetBlock, getRoundNumber, getBlockNumber, 100,
 					blockProcessor.ProcessBlock, nodeInfo.PartitionID, nodeInfo.PartitionTypeID)
 				if err != nil {
-					println(fmt.Errorf("synchronizing blocks returned error: %w", err).Error())
+					log.Error("synchronizing blocks returned error", "err", err)
 				}
 				select {
 				case <-ctx.Done():
@@ -125,7 +133,7 @@ func Run(ctx context.Context, config *Config) error {
 	}
 
 	g.Go(func() error {
-		println("block explorer REST server starting on ", config.Server.Address)
+		log.Info("block explorer REST server starting", "address", config.Server.Address)
 		controller, err := api.NewController(store, partitionService, moneyservice.NewMoneyService(moneyClient), searchService)
 		if err != nil {
 			return fmt.Errorf("failed to create controller for rest API: %w", err)
@@ -148,7 +156,7 @@ func Run(ctx context.Context, config *Config) error {
 }
 
 func createPartitionClient(ctx context.Context, node Node) (*internalrpc.StateAPIClient, *sdktypes.NodeInfoResponse, error) {
-	println("getting node info for ", node.URL)
+	log.Info("getting node info", "url", node.URL)
 	adminClient, err := rpc.NewAdminAPIClient(ctx, args.BuildRpcUrl(node.URL))
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to dial rpc client: %w", err)
@@ -158,7 +166,7 @@ func createPartitionClient(ctx context.Context, node Node) (*internalrpc.StateAP
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get node info: %w", err)
 	}
-	println("partition ID: ", nodeInfo.PartitionID)
+	log.Info("received partition ID", "id", nodeInfo.PartitionID)
 	adminClient.Close()
 
 	stateClient, err := internalrpc.NewStateAPIClient(ctx, args.BuildRpcUrl(node.URL))

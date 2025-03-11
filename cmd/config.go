@@ -2,10 +2,10 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"path/filepath"
 	"strings"
 
+	"github.com/alphabill-org/alphabill-explorer-backend/internal/log"
 	"github.com/spf13/viper"
 )
 
@@ -14,6 +14,7 @@ type (
 		Nodes  []Node `mapstructure:"nodes"`
 		DB     DB     `mapstructure:"db"`
 		Server Server `mapstructure:"server"`
+		Log    Log    `mapstructure:"log"`
 	}
 
 	Node struct {
@@ -27,6 +28,12 @@ type (
 
 	Server struct {
 		Address string `mapstructure:"address"`
+	}
+
+	Log struct {
+		Level      string `mapstructure:"level"`
+		Format     string `mapstructure:"format"`
+		OutputPath string `mapstructure:"output_path"`
 	}
 )
 
@@ -50,12 +57,12 @@ func LoadConfig(configFilePath string) (*Config, error) {
 			if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
 				return nil, fmt.Errorf("failed to read config file: %w", err)
 			}
-			log.Println("No config file found, using environment variables only.")
+			log.Info("No config file found, using environment variables only")
 		} else {
-			log.Printf("Config file %s loaded successfully.", configFilePath)
+			log.Info("Config file loaded successfully", "path", configFilePath)
 		}
 	} else {
-		log.Println("No config file provided, using environment variables only.")
+		log.Info("No config file provided, using environment variables only")
 	}
 
 	// Build the nodes structure manually from environment variables

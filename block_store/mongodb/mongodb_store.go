@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/alphabill-org/alphabill-explorer-backend/internal/log"
 	"github.com/alphabill-org/alphabill-go-base/types"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -42,7 +43,7 @@ func NewMongoBlockStore(ctx context.Context, uri string) (*MongoBlockStore, erro
 			if i == connectionRetries {
 				return nil, fmt.Errorf("failed to connect to mongo: %w", err)
 			}
-			fmt.Printf("Failed to connect to mongo, retrying after %v... err = %s\n", connectionRetryDelay, err)
+			log.Error("Failed to connect to mongo, retrying soon", "delay", connectionRetryDelay, "err", err)
 			time.Sleep(connectionRetryDelay)
 			continue
 		}
@@ -66,9 +67,9 @@ func ensureCollectionExists(ctx context.Context, db *mongo.Database, collectionN
 		if err != nil {
 			return fmt.Errorf("failed to create collection '%s': %v", collectionName, err)
 		}
-		fmt.Printf("Created collection: %s\n", collectionName)
+		log.Info("Created collection", "name", collectionName)
 	} else {
-		fmt.Printf("Collection '%s' already exists\n", collectionName)
+		log.Info("Collection already exists", "name", collectionName)
 	}
 	return nil
 }
@@ -230,7 +231,7 @@ func (s *MongoBlockStore) initialize(ctx context.Context) error {
 
 // todo remove
 func (s *MongoBlockStore) MigrateTxCount(ctx context.Context) error {
-	fmt.Println("Starting migration: Adding txCount to existing blocks...")
+	log.Info("Starting migration: Adding txCount to existing blocks...")
 
 	filter := bson.M{txCountKey: bson.M{"$exists": false}}
 
@@ -243,6 +244,6 @@ func (s *MongoBlockStore) MigrateTxCount(ctx context.Context) error {
 		return fmt.Errorf("failed to migrate txCount field: %w", err)
 	}
 
-	fmt.Printf("Migration complete: Updated %d blocks with txCount\n", result.ModifiedCount)
+	log.Info("Migration complete", "updated", result.ModifiedCount)
 	return nil
 }

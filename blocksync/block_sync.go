@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"time"
 
+	"github.com/alphabill-org/alphabill-explorer-backend/internal/log"
 	"github.com/alphabill-org/alphabill-go-base/types"
 	"golang.org/x/sync/errgroup"
 )
@@ -108,9 +109,9 @@ func fetchBlocks(
 		if retries >= fetchBlockRetryCount {
 			roundNumber, err := getRoundNumber(ctx)
 			if err != nil {
-				fmt.Println("Failed to get latest round number: ", err)
+				log.Error("Failed to get latest round number", "err", err)
 			} else if roundNumber > blockNumber {
-				fmt.Printf("Could not get block %d after %d retries, skipping (current round = %d)\n", blockNumber, retries, roundNumber)
+				log.Info("Could not get block after retries, skipping", "block", blockNumber, "retries", retries, "current_round", roundNumber)
 				blockNumber++
 			}
 			retries = 0
