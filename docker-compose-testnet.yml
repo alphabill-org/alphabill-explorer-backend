@@ -1,0 +1,46 @@
+services:
+  abexplorer:
+    build:
+      context: .
+      dockerfile: ./scripts/Dockerfile
+    image: abexplorer:latest
+    container_name: abexplorer-container
+    depends_on:
+      mongo:
+        condition: service_healthy
+    environment:
+      - BLOCK_EXPLORER_NODES_0_URL=https://tokens-archive-pentest.testnet.alphabill.org/rpc
+      - BLOCK_EXPLORER_NODES_0_BLOCK_NUMBER=2
+      - BLOCK_EXPLORER_DB_URL=mongodb://root:pass@mongo:27017/
+      - BLOCK_EXPLORER_SERVER_ADDRESS=:9666
+      - BLOCK_EXPLORER_LOG_LEVEL=DEBUG
+      - BLOCK_EXPLORER_LOG_FORMAT=console
+      - BLOCK_EXPLORER_LOG_OUTPUT_PATH=
+    ports:
+      - "9666:9666"
+    volumes:
+      - ./cmd/config.yaml:/app/config.yaml
+
+  mongo:
+    image: mongo:7.0
+    container_name: mongo-container
+    restart: unless-stopped
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=root
+      - MONGO_INITDB_ROOT_PASSWORD=pass
+      - MONGO_INITDB_DATABASE=blockExplorerDB
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    command:
+      - '--logpath'
+      - '/var/log/mongodb/mongod.log'
+    healthcheck:
+      test: [ "CMD", "mongosh", "-u", "root", "-p", "pass", "--eval", "db.adminCommand('ping')" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  mongo-data:
