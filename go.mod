@@ -8,8 +8,8 @@ go 1.24
 
 require (
 	github.com/ainvaltin/httpsrv v0.3.1
-	github.com/alphabill-org/alphabill-go-base v1.0.0-rc2.0.20250131151333-dfd181a9e5e8
-	github.com/alphabill-org/alphabill-wallet v1.0.0-rc1.0.20250110065811-a7889974f3dc
+	github.com/alphabill-org/alphabill-go-base v1.0.0-rc2.0.20250405171453-00e084a48dce
+	github.com/alphabill-org/alphabill-wallet v1.0.0-rc2.0.20250409103853-8b19a74244cc
 	github.com/fxamacker/cbor/v2 v2.7.0
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1
