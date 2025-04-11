@@ -9,7 +9,7 @@ go 1.24
 require (
 	github.com/ainvaltin/httpsrv v0.3.1
 	github.com/alphabill-org/alphabill-go-base v1.0.0-rc2.0.20250411174237-b13f7ce8ec86
-	github.com/alphabill-org/alphabill-wallet v1.0.0-rc2.0.20250411181233-994dfd5796d0
+	github.com/alphabill-org/alphabill-wallet v1.0.0-rc2.0.20250411211608-76bd485e39cb
 	github.com/fxamacker/cbor/v2 v2.7.0
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1
