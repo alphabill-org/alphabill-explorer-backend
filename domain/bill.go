@@ -7,6 +7,5 @@ type Bill struct {
 	PartitionID types.PartitionID
 	ID          types.UnitID
 	Value       uint64
-	LockStatus  uint64
 	Counter     uint64
 }

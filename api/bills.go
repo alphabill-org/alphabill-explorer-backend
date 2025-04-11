@@ -51,7 +51,6 @@ func (c *Controller) getBillsByPubKey(w http.ResponseWriter, r *http.Request) {
 			PartitionID: bill.PartitionID,
 			ID:          bill.ID,
 			Value:       bill.Value,
-			LockStatus:  bill.LockStatus,
 			Counter:     bill.Counter,
 		})
 	}

@@ -59,7 +59,7 @@ func (p *Service) GetRoundNumber(ctx context.Context) ([]RoundInfo, error) {
 			PartitionID:     client.partitionID,
 			PartitionTypeID: client.partitionTypeID,
 			RoundNumber:     info.RoundNumber,
-			EpochNumber:     info.Epoch,
+			EpochNumber:     info.EpochNumber,
 		})
 	}
 	return result, nil
